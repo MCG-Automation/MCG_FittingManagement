@@ -9,6 +9,7 @@ using MCGCadPlugin.Views.FittingManagement;
 using MCGCadPlugin.Views.PanelData;
 using MCGCadPlugin.Views.TableOfContent;
 using MCGCadPlugin.Views.Weight;
+using MCGCadPlugin.Views.CheckList;
 
 namespace MCGCadPlugin.Commands
 {
@@ -121,6 +122,7 @@ namespace MCGCadPlugin.Commands
             _paletteSet.AddVisual("Panel Data",         new PanelDataView());
             _paletteSet.AddVisual("Table of Content",   new TableOfContentView());
             _paletteSet.AddVisual("Weight",             new WeightView());
+            _paletteSet.AddVisual("CheckList",      new QaChecklistView());
 
             // 3. Thiết lập thuộc tính — SAU AddVisual
             _paletteSet.DockEnabled = DockSides.Right | DockSides.Left;
@@ -129,7 +131,7 @@ namespace MCGCadPlugin.Commands
                               | PaletteSetStyles.Snappable;
             _paletteSet.KeepFocus = true;
 
-            Debug.WriteLine($"{LOG_PREFIX} PaletteSet khởi tạo THÀNH CÔNG — 5 tabs đã đăng ký.");
+            Debug.WriteLine($"{LOG_PREFIX} PaletteSet khởi tạo THÀNH CÔNG — 6 tabs đã đăng ký.");
         }
 
         #endregion
