@@ -4,6 +4,26 @@
 
 ---
 
+## Session 2026-04-20 (4) — Đăng ký lệnh AutoCAD cho Palette
+
+### Đã làm
+- Thêm `[CommandMethod("MCG_Show")]` và `[CommandMethod("MCG_Hide")]` vào Commands/PaletteManager.cs.
+- Các lệnh này gọi trực tiếp đến instance Singleton để điều khiển hiển thị `PaletteSet`.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded.
+
+### Bước tiếp theo
+- **File:** `Views/DetailDesign/DetailDesignViewModel.cs` | Triển khai ViewModel mẫu cho module DetailDesign.
+- **Build & Test:** Chạy file `build-and-launch.bat` để kiểm tra các lệnh mới trong AutoCAD.
+
+### Ghi chú API
+- `CommandFlags.Modal` được sử dụng cho lệnh hiển thị Palette để đảm bảo tính ổn định khi gọi từ command line.
+- Do `PaletteManager` là Singleton, các phương thức `CommandMethod` không cần static nếu class được AutoCAD khởi tạo đúng cách, nhưng ở đây tôi để instance method gọi qua singleton để nhất quán.
+
+---
+
 ## Session 2026-04-20 (3) — Checklist: Remove (đã có) + N/A cho custom items
 
 ### Đã làm

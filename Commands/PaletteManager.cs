@@ -103,6 +103,18 @@ namespace MCGCadPlugin.Commands
 
         #endregion
 
+        #region AutoCAD Commands
+
+        /// <summary>Lệnh hiển thị Palette (gõ MCG_Show trong CAD)</summary>
+        [CommandMethod("MCG_Show", CommandFlags.Modal)]
+        public void McgShow() => Show();
+
+        /// <summary>Lệnh ẩn Palette (gõ MCG_Hide trong CAD)</summary>
+        [CommandMethod("MCG_Hide", CommandFlags.Modal)]
+        public void McgHide() => Hide();
+
+        #endregion
+
         #region Private Methods
 
         /// <summary>
