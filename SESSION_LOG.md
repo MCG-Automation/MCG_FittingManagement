@@ -4,6 +4,36 @@
 
 ---
 
+## Session 2026-04-10 (1) — Project Audit
+
+### Đã làm
+- Thực hiện **Audit dự án** theo skill `audit-project`.
+- Đối soát 5 lớp kiến trúc (Commands, Models, Services, Views, Utilities) cho 5 module.
+
+### Trạng thái thực tế
+| File/Folder | Tình trạng | Ghi chú |
+|---|---|---|
+| `Views/*.xaml` | ✅ OK | 5 UserControl đã sẵn sàng. |
+| `ViewModels/` | ❌ THIẾU | Chưa triển khai MVVM hoàn chỉnh. |
+| `Interfaces/` | ❌ THIẾU | Mới chỉ có cho FittingManagement. |
+| `Commands/` | ⚠️ Cần sửa | Thiếu đăng ký CommandMethod cho Palette. |
+| `_Template/` | ❌ THIẾU | Chưa có folder mẫu cho các layer. |
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation (Bị nghẽn do thiếu ViewModel).
+- **Build:** Succeeded (nhưng code chỉ là placeholder).
+
+### Bước tiếp theo
+1. **File:** `Views/DetailDesign/DetailDesignViewModel.cs` | Tạo ViewModel đầu tiên làm mẫu.
+2. **File:** `Commands/PaletteManager.cs` | Thêm `[CommandMethod]` cho `MCG_Show` và `MCG_Hide`.
+3. **File:** `Services/_Template/ITemplateService.cs` | Tạo bộ template chuẩn.
+
+### Ghi chú API
+- Cần chú ý việc bind `DataContext` của View vào ViewModel trong code-behind của UserControl.
+- PaletteSet yêu cầu các lệnh Show/Hide phải nằm trong một class được AutoCAD nhận diện (thường là static hoặc singleton).
+
+---
+
 ## Session 2026-04-09 (2) — Triển khai Import IDW + Import JSON
 
 ### Đã làm
