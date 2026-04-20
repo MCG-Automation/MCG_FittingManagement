@@ -5,28 +5,41 @@
              FontSize="11"
              Loaded="UserControl_Loaded">
 
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </UserControl.Resources>
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <GroupBox Grid.Row="0" Header="DRAWING STATUS" BorderBrush="#FFCCCCCC" BorderThickness="1" Margin="0,0,0,15" Padding="15,10">
+        <!-- Khu vực 0: Nút đóng Palette (X) ở góc trên phải -->
+        <Button x:Name="BtnClosePalette" Grid.Row="0" Content="X" Width="24" Height="24"
+                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,0,5"
+                Background="Transparent" Foreground="#FF555555" BorderBrush="#FFADADAD" BorderThickness="1"
+                FontWeight="Bold" Cursor="Hand" ToolTip="Close Palette"
+                Click="BtnClosePalette_Click"/>
+
+        <!-- Khu vực 1: Thông tin trạng thái bản vẽ -->
+        <GroupBox Grid.Row="1" Header="DRAWING STATUS" BorderBrush="#FFCCCCCC" BorderThickness="1" Margin="0,0,0,10" Padding="15,10">
             <StackPanel>
-                <Grid Margin="0,0,0,15">
+                <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="120"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    
+
                     <TextBlock Grid.Column="0" Text="Current Status:" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#FF555555"/>
                     <Border Grid.Column="1" x:Name="BorderStatus" Background="#FFFFE0B2" BorderBrush="#FFFFB300" BorderThickness="1" CornerRadius="3" Padding="10,4" HorizontalAlignment="Left">
                         <TextBlock x:Name="TxtStatus" Text="PENDING / NOT STARTED" FontWeight="Bold" Foreground="#FFE65100"/>
                     </Border>
                 </Grid>
 
-                <Grid Margin="0,0,0,15">
+                <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="120"/>
                         <ColumnDefinition Width="*"/>
@@ -36,7 +49,7 @@
                     <ComboBox Grid.Column="1" x:Name="CboDiscipline" Height="26" Width="200" HorizontalAlignment="Left"/>
                 </Grid>
 
-                <Grid x:Name="GridApprovedInfo" Margin="0,0,0,10" Visibility="Collapsed">
+                <Grid x:Name="GridApprovedInfo" Margin="0,0,0,5" Visibility="Collapsed">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="120"/>
                         <ColumnDefinition Width="*"/>
@@ -47,9 +60,103 @@
             </StackPanel>
         </GroupBox>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal">
-            <Button x:Name="BtnOpenChecklist" Content="OPEN CHECKLIST" Height="32" Width="200" Background="#FF005E9E" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnOpenChecklist_Click" Margin="0,0,15,0"/>
+        <!-- Khu vực 2: Nút điều khiển trạng thái -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
+            <Button x:Name="BtnOpenChecklist" Content="OPEN CHECKLIST" Height="32" Width="200" Background="#FF005E9E" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnOpenChecklist_Click" Margin="0,0,10,0"/>
             <Button x:Name="BtnReset" Content="Reset / Clear Data" Height="32" Width="130" Background="#FFE1E1E1" BorderBrush="#FFADADAD" Cursor="Hand" Click="BtnReset_Click"/>
         </StackPanel>
+
+        <!-- Khu vực 3: Panel checklist inline (ẩn mặc định, hiển thị khi bấm OPEN CHECKLIST) -->
+        <Border Grid.Row="3" x:Name="PanelChecklist" Visibility="Collapsed" Background="#FFF8F9FA" BorderBrush="#FFCCCCCC" BorderThickness="1" CornerRadius="3" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock x:Name="TxtHeader" Grid.Row="0" Text="Checklist" FontSize="16" FontWeight="Bold" Foreground="#FF005E9E" Margin="0,0,0,10"/>
+
+                <Grid Grid.Row="1" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ProgressBar x:Name="ProgBar" Grid.Column="0" Height="18" Minimum="0" Maximum="100" Value="0" Foreground="#FF4CAF50" Background="#FFE0E0E0" BorderThickness="0"/>
+                    <TextBlock x:Name="TxtProgress" Grid.Column="1" Text="0 / 0 (0%)" FontWeight="Bold" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="#FF333333"/>
+                </Grid>
+
+                <Border Grid.Row="2" Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1" CornerRadius="3" Padding="5" Margin="0,0,0,10">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="ListItems">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="#FFEEEEEE" BorderThickness="0,0,0,1" Padding="5,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" Margin="0,0,10,0" Checked="CheckBox_Click" Unchecked="CheckBox_Click">
+                                                <CheckBox.LayoutTransform>
+                                                    <ScaleTransform ScaleX="1.2" ScaleY="1.2"/>
+                                                </CheckBox.LayoutTransform>
+                                            </CheckBox>
+
+                                            <TextBlock Grid.Column="1" Text="{Binding Content}" TextWrapping="Wrap" VerticalAlignment="Center" FontSize="12">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#FF222222"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsNotApplicable}" Value="True">
+                                                                <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                                <Setter Property="Foreground" Value="#FF999999"/>
+                                                                <Setter Property="FontStyle" Value="Italic"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <!-- N/A chỉ áp dụng cho custom items — Fixed items không được phép N/A -->
+                                            <CheckBox Grid.Column="2" Content="N/A" FontSize="11" FontWeight="SemiBold" Foreground="#FF757575"
+                                                      VerticalAlignment="Center" Margin="0,0,8,0"
+                                                      IsChecked="{Binding IsNotApplicable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      Visibility="{Binding IsCustom, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                      ToolTip="Not Applicable — bỏ qua yêu cầu hoàn thành"
+                                                      Checked="NaCheckBox_Click" Unchecked="NaCheckBox_Click"/>
+
+                                            <Button Grid.Column="3" Content="X" Width="22" Height="22" Background="Transparent" Foreground="#FFD32F2F" BorderThickness="0" Cursor="Hand" FontWeight="Bold" ToolTip="Delete Custom Item"
+                                                    Visibility="{Binding IsCustom, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                    Click="BtnDeleteCustomItem_Click" Tag="{Binding Id}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
+                <Grid Grid.Row="3" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="TxtNewItem" Grid.Column="0" Height="26" Padding="5,0" VerticalContentAlignment="Center" Margin="0,0,10,0" Tag="Add custom check item here..."/>
+                    <Button x:Name="BtnAddItem" Grid.Column="1" Content="+ Add Custom Item" Height="26" Width="130" Background="#FFE1E1E1" BorderBrush="#FFADADAD" Cursor="Hand" Click="BtnAddItem_Click"/>
+                </Grid>
+
+                <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="BtnCancel" Content="Cancel" Height="30" Width="80" Background="#FFE1E1E1" BorderBrush="#FFADADAD" Cursor="Hand" Margin="0,0,10,0" Click="BtnCancel_Click"/>
+                    <Button x:Name="BtnSaveDraft" Content="Save Draft" Height="30" Width="90" Background="#FFE1E1E1" BorderBrush="#FFADADAD" Cursor="Hand" Margin="0,0,10,0" Click="BtnSaveDraft_Click"/>
+                    <Button x:Name="BtnSignApprove" Content="SIGN &amp; APPROVE" Height="30" Width="180" Background="#FF4CAF50" Foreground="White" FontWeight="Bold" Cursor="Hand" Click="BtnSignApprove_Click" IsEnabled="False"/>
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>
