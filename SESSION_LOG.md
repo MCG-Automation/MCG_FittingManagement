@@ -4,6 +4,28 @@
 
 ---
 
+## Session 2026-04-21 (2) — Tách CheckList sang repo riêng
+
+### Đã làm
+- Tách nội dung module CheckList sang repo `https://github.com/MCG-Automation/CheckList.git` (branch `main`, giữ full git history qua clone local → modify → push).
+- Xóa trong repo này: `Models/CheckList/`, `Services/CheckList/`, `Views/CheckList/`, `Docs/Macgregor_CheckList_UserGuide.html`.
+- [Commands/PaletteManager.cs](Commands/PaletteManager.cs): bỏ `using MCGCadPlugin.Views.CheckList`, Initialize() chỉ còn 1 `AddVisual` cho FittingManagement.
+- [CLAUDE.md](CLAUDE.md): cập nhật §3 namespace tree và §9 PaletteSet (1 Module — 1 Tab) cho scope FittingManagement.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation (repo chỉ còn module FittingManagement).
+- **Build:** Succeeded — 0 errors.
+- **Remote:** `origin` → `https://github.com/MCG-Automation/FittingManagement.git`.
+
+### Bước tiếp theo
+- Xem xét đổi `PaletteGuid` hoặc đổi tên lệnh `MCG_Show`/`MCG_Hide` ở 1 trong 2 repo nếu muốn load đồng thời cả 2 plugin trong AutoCAD (hiện tại sẽ conflict GUID + command name).
+- Khi sửa `Commands/PaletteManager.cs` hoặc `Utilities/FileLogger.cs`, cần sync thủ công sang repo CheckList.
+
+### Ghi chú API
+- `git clone <local>` giữ full history khi tách. Push lần đầu sang remote mới dùng `git push -u origin HEAD:main` để tạo branch `main` trên repo rỗng.
+
+---
+
 ## Session 2026-04-21 — Xóa 4 module (giữ CheckList + FittingManagement), tách repo
 
 ### Đã làm

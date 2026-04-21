@@ -5,7 +5,6 @@ using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Windows;
 using Exception = System.Exception;
 using MCGCadPlugin.Views.FittingManagement;
-using MCGCadPlugin.Views.CheckList;
 
 namespace MCGCadPlugin.Commands
 {
@@ -114,7 +113,7 @@ namespace MCGCadPlugin.Commands
         #region Private Methods
 
         /// <summary>
-        /// Khởi tạo PaletteSet và 2 tabs (Fitting Management, CheckList).
+        /// Khởi tạo PaletteSet và tab Fitting Management.
         /// Chỉ chạy 1 lần duy nhất trong vòng đời plugin.
         /// </summary>
         private void Initialize()
@@ -126,7 +125,6 @@ namespace MCGCadPlugin.Commands
 
             // 2. Nạp nội dung — PHẢI thực hiện TRƯỚC khi set Dock/Size
             _paletteSet.AddVisual("Fitting Management", new FittingManagementView());
-            _paletteSet.AddVisual("CheckList",          new QaChecklistView());
 
             // 3. Thiết lập thuộc tính — SAU AddVisual
             _paletteSet.DockEnabled = DockSides.Right | DockSides.Left;
@@ -135,7 +133,7 @@ namespace MCGCadPlugin.Commands
                               | PaletteSetStyles.Snappable;
             _paletteSet.KeepFocus = true;
 
-            Debug.WriteLine($"{LOG_PREFIX} PaletteSet khởi tạo THÀNH CÔNG — 2 tabs đã đăng ký.");
+            Debug.WriteLine($"{LOG_PREFIX} PaletteSet khởi tạo THÀNH CÔNG — 1 tab đã đăng ký.");
         }
 
         #endregion

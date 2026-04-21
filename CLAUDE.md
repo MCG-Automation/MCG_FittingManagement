@@ -46,13 +46,10 @@ MCGCadPlugin                                    ← Root
 ├── MCGCadPlugin.Commands                       ← Đăng ký lệnh CommandMethod
 │   └── MCGCadPlugin.Commands.FittingManagement
 ├── MCGCadPlugin.Models                         ← Data objects thuần, không import AutoCAD
-│   ├── MCGCadPlugin.Models.CheckList
 │   └── MCGCadPlugin.Models.FittingManagement
 ├── MCGCadPlugin.Services                       ← Business logic, luôn có Interface
-│   ├── MCGCadPlugin.Services.CheckList
 │   └── MCGCadPlugin.Services.FittingManagement
 ├── MCGCadPlugin.Views                          ← WPF XAML + code-behind tối thiểu
-│   ├── MCGCadPlugin.Views.CheckList
 │   └── MCGCadPlugin.Views.FittingManagement
 └── MCGCadPlugin.Utilities                      ← Hàm dùng chung toàn project
     └── MCGCadPlugin.Utilities.FittingManagement
@@ -60,10 +57,11 @@ MCGCadPlugin                                    ← Root
 
 **Quy tắc namespace theo vị trí file:**
 ```
-Models/FittingManagement/FittingData.cs              → namespace MCGCadPlugin.Models.FittingManagement
-Services/CheckList/ChecklistService.cs               → namespace MCGCadPlugin.Services.CheckList
-Views/CheckList/CheckList.View.xaml.cs               → namespace MCGCadPlugin.Views.CheckList
-Utilities/CoordinateHelper.cs                        → namespace MCGCadPlugin.Utilities
+Commands/FittingManagement/FittingManagementCommand.cs → namespace MCGCadPlugin.Commands.FittingManagement
+Models/FittingManagement/FittingData.cs                → namespace MCGCadPlugin.Models.FittingManagement
+Services/FittingManagement/IFittingManagementService.cs → namespace MCGCadPlugin.Services.FittingManagement
+Views/FittingManagement/FittingManagementView.xaml.cs  → namespace MCGCadPlugin.Views.FittingManagement
+Utilities/FileLogger.cs                                → namespace MCGCadPlugin.Utilities
 ```
 
 ---
@@ -217,20 +215,19 @@ if (result.Status == PromptStatus.OK)
 }
 ```
 
-### PaletteSet — Singleton pattern (2 Modules — 2 Tabs)
+### PaletteSet — Singleton pattern (1 Module — 1 Tab)
 
 > Quyết định kiến trúc đã được chốt. Không thảo luận lại.
 
 - Toàn plugin dùng **DUY NHẤT 1 PaletteSet**, GUID cố định, không bao giờ thay đổi
 - `PaletteManager.cs` là Singleton nằm trong `Commands/`
-- 2 Module = 2 tab trong cùng 1 PaletteSet
-- Mỗi tab là 1 UserControl độc lập (ViewModel riêng, Service riêng)
+- Module FittingManagement = 1 tab trong PaletteSet
+- Tab là 1 UserControl độc lập (ViewModel riêng, Service riêng)
 - **Cấm** tạo PaletteSet thứ 2 ở bất kỳ file nào khác
 
 ```
 Commands/PaletteManager.cs                              ← Singleton duy nhất
 Views/FittingManagement/FittingManagementView.xaml
-Views/CheckList/CheckList.View.xaml
 ```
 
 ```csharp
@@ -244,7 +241,6 @@ private void Initialize()
 
     // 2. Nạp nội dung — PHẢI thực hiện TRƯỚC khi set Dock/Size
     _paletteSet.AddVisual("Fitting Management", new FittingManagementView());
-    _paletteSet.AddVisual("CheckList",          new QaChecklistView());
 
     // 3. Thiết lập kích thước và khả năng neo — SAU AddVisual
     _paletteSet.DockEnabled = DockSides.Right | DockSides.Left;

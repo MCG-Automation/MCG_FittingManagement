@@ -22,7 +22,10 @@
       "Bash(cmd /c \"start \\\\\"\\\\\" \\\\\"C:\\\\\\\\Program Files\\\\\\\\Autodesk\\\\\\\\Inventor 2023\\\\\\\\Bin\\\\\\\\Inventor.exe\\\\\"\")",
       "Bash(cmd /c \"taskkill /F /IM Inventor.exe\")",
       "Bash(cp \"e:/Programming/InventorSymbolReplacement/bin/Debug/net48/SymbolReplacer.dll\" \"/c/Users/TRANTH/AppData/Roaming/Autodesk/Inventor 2023/Addins/SymbolReplacer.dll\")",
-      "Bash(cmd /c \"taskkill /F /IM Inventor.exe 2>&1 & timeout /t 4 /nobreak >nul & copy /Y \\\\\"E:\\\\Programming\\\\InventorSymbolReplacement\\\\bin\\\\Debug\\\\net48\\\\SymbolReplacer.dll\\\\\" \\\\\"%APPDATA%\\\\Autodesk\\\\Inventor 2023\\\\Addins\\\\SymbolReplacer.dll\\\\\" & echo COPY_DONE\")"
+      "Bash(cmd /c \"taskkill /F /IM Inventor.exe 2>&1 & timeout /t 4 /nobreak >nul & copy /Y \\\\\"E:\\\\Programming\\\\InventorSymbolReplacement\\\\bin\\\\Debug\\\\net48\\\\SymbolReplacer.dll\\\\\" \\\\\"%APPDATA%\\\\Autodesk\\\\Inventor 2023\\\\Addins\\\\SymbolReplacer.dll\\\\\" & echo COPY_DONE\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\TRANTH\\AppData\\Local\\Temp\\probe4"
