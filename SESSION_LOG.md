@@ -4,6 +4,65 @@
 
 ---
 
+## Session 2026-04-21 (3) — Rename plugin + đổi command names (FittingManagement)
+
+### Đã làm
+- [Commands/PaletteManager.cs](Commands/PaletteManager.cs):
+  - `[CommandMethod("MCG_Show")]` → `[CommandMethod("MCG_Fitting_Show")]`.
+  - `[CommandMethod("MCG_Hide")]` → `[CommandMethod("MCG_Fitting_Hide")]`.
+  - PaletteSet title `"MCG Plugins"` → `"MCGCadPlugin - FittingManagement"`.
+- [MCGCadPlugin.csproj](MCGCadPlugin.csproj): `<PluginName>MCGCadPlugin</PluginName>` → `<PluginName>MCGCadPlugin.FittingManagement</PluginName>` → DLL xuất ra đổi thành `MCGCadPlugin.FittingManagement_<timestamp>.dll`.
+- [CLAUDE.md](CLAUDE.md): nới rule §2 (hạn chế chứ không cấm tuyệt đối sửa csproj khi có lý do rõ ràng), cập nhật §9 (title + command names).
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Bước tiếp theo
+- Test trong AutoCAD: gõ `MCG_Fitting_Show` / `MCG_Fitting_Hide`, xác nhận title `"MCGCadPlugin - FittingManagement"`.
+- Load song song với plugin CheckList (GUID `7b3e9a2c-...`, command `MCG_Checklist_Show/Hide`) để confirm không xung đột.
+
+### Ghi chú API
+- `$(PluginName)` trong csproj lan truyền xuống `$(AssemblyName)` → tên DLL output. Dùng dấu chấm (`.FittingManagement`) thay vì dấu cách để an toàn với bundle script/PowerShell regex trong target `UpdatePackageContents`.
+- File `Commands/PaletteManager.cs` và `SESSION_LOG.md` đã bị revert trong working dir giữa session (có thể do VS Code hot-reload/file watcher) — dùng `git checkout HEAD --` để restore trước khi apply edits mới.
+
+---
+
+## Session 2026-04-21 (2) — Tách CheckList sang repo riêng
+
+### Đã làm
+- Tách nội dung module CheckList sang repo `https://github.com/MCG-Automation/CheckList.git` (branch `main`, giữ full git history qua clone local → modify → push).
+- Xóa trong repo này: `Models/CheckList/`, `Services/CheckList/`, `Views/CheckList/`, `Docs/Macgregor_CheckList_UserGuide.html`.
+- [Commands/PaletteManager.cs](Commands/PaletteManager.cs): bỏ `using MCGCadPlugin.Views.CheckList`, `Initialize()` chỉ còn 1 `AddVisual` cho FittingManagement.
+- [CLAUDE.md](CLAUDE.md): cập nhật §3 namespace tree và §9 PaletteSet (1 Module — 1 Tab) cho scope FittingManagement.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation (repo chỉ còn module FittingManagement).
+- **Build:** Succeeded — 0 errors.
+- **Remote:** `origin` → `https://github.com/MCG-Automation/FittingManagement.git`.
+
+### Ghi chú API
+- `git clone <local>` giữ full history khi tách. Push lần đầu sang remote mới dùng `git push -u origin HEAD:main` để tạo branch `main` trên repo rỗng.
+
+---
+
+## Session 2026-04-21 (1) — Xóa 4 module (giữ CheckList + FittingManagement), tách repo
+
+### Đã làm
+- Xóa 20 folder module (Commands/Models/Services/Views/Utilities × 4 module: DetailDesign, PanelData, TableOfContent, Weight).
+- [Commands/PaletteManager.cs](Commands/PaletteManager.cs): bỏ 4 `using` Views của các module đã xóa, rút gọn `Initialize()` còn 2 `AddVisual` (Fitting Management, CheckList).
+- [CLAUDE.md](CLAUDE.md): cập nhật §3 namespace tree và §9 PaletteSet section để phản ánh kiến trúc 2 module.
+- Thêm remote mới → push sang `https://github.com/MCG-Automation/FittingManagement.git` (branch `main`), sau đó rename thành `origin`.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Ghi chú API
+- `.csproj` dùng `Microsoft.NET.Sdk` nên tự include source theo thư mục — xóa folder không cần sửa csproj.
+
+---
+
 ## Session 2026-04-20 (4) — Đăng ký lệnh AutoCAD cho Palette
 
 ### Đã làm
