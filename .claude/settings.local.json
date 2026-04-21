@@ -25,7 +25,13 @@
       "Bash(cmd /c \"taskkill /F /IM Inventor.exe 2>&1 & timeout /t 4 /nobreak >nul & copy /Y \\\\\"E:\\\\Programming\\\\InventorSymbolReplacement\\\\bin\\\\Debug\\\\net48\\\\SymbolReplacer.dll\\\\\" \\\\\"%APPDATA%\\\\Autodesk\\\\Inventor 2023\\\\Addins\\\\SymbolReplacer.dll\\\\\" & echo COPY_DONE\")",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(powershell -NoProfile -Command \"[guid]::NewGuid\\(\\).ToString\\(\\)\")",
+      "Bash(python -c \"import uuid; print\\(uuid.uuid4\\(\\)\\)\")",
+      "Bash(uuidgen)",
+      "Bash(git clone *)",
+      "Bash(git checkout *)",
+      "Bash(sed -n '5,12p;120,140p' Commands/PaletteManager.cs)"
     ],
     "additionalDirectories": [
       "C:\\Users\\TRANTH\\AppData\\Local\\Temp\\probe4"

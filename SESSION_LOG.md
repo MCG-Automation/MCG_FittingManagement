@@ -4,54 +4,6 @@
 
 ---
 
-## Session 2026-04-21 (2) — Tách CheckList sang repo riêng
-
-### Đã làm
-- Tách nội dung module CheckList sang repo `https://github.com/MCG-Automation/CheckList.git` (branch `main`, giữ full git history qua clone local → modify → push).
-- Xóa trong repo này: `Models/CheckList/`, `Services/CheckList/`, `Views/CheckList/`, `Docs/Macgregor_CheckList_UserGuide.html`.
-- [Commands/PaletteManager.cs](Commands/PaletteManager.cs): bỏ `using MCGCadPlugin.Views.CheckList`, Initialize() chỉ còn 1 `AddVisual` cho FittingManagement.
-- [CLAUDE.md](CLAUDE.md): cập nhật §3 namespace tree và §9 PaletteSet (1 Module — 1 Tab) cho scope FittingManagement.
-
-### Trạng thái
-- **Phase:** 1 — Feature Implementation (repo chỉ còn module FittingManagement).
-- **Build:** Succeeded — 0 errors.
-- **Remote:** `origin` → `https://github.com/MCG-Automation/FittingManagement.git`.
-
-### Bước tiếp theo
-- Xem xét đổi `PaletteGuid` hoặc đổi tên lệnh `MCG_Show`/`MCG_Hide` ở 1 trong 2 repo nếu muốn load đồng thời cả 2 plugin trong AutoCAD (hiện tại sẽ conflict GUID + command name).
-- Khi sửa `Commands/PaletteManager.cs` hoặc `Utilities/FileLogger.cs`, cần sync thủ công sang repo CheckList.
-
-### Ghi chú API
-- `git clone <local>` giữ full history khi tách. Push lần đầu sang remote mới dùng `git push -u origin HEAD:main` để tạo branch `main` trên repo rỗng.
-
----
-
-## Session 2026-04-21 — Xóa 4 module (giữ CheckList + FittingManagement), tách repo
-
-### Đã làm
-- Xóa 20 folder module (Commands/Models/Services/Views/Utilities × 4 module: DetailDesign, PanelData, TableOfContent, Weight).
-- [Commands/PaletteManager.cs](Commands/PaletteManager.cs): bỏ 4 `using` Views của các module đã xóa, rút gọn `Initialize()` còn 2 `AddVisual` (Fitting Management, CheckList), cập nhật comment "5 tabs" → "2 tabs".
-- [CLAUDE.md](CLAUDE.md): cập nhật §3 namespace tree và §9 PaletteSet section để phản ánh kiến trúc 2 module.
-- Thêm remote `fittingmgmt` → push sang `https://github.com/MCG-Automation/FittingManagement.git` (branch `main`).
-
-### Files giữ nguyên
-- `CheckList` (Models/Services/Views) — không có Commands, không có Utilities.
-- `FittingManagement` (Commands/Models/Services/Views/Utilities).
-- `Commands/PaletteManager.cs` (sửa), `Utilities/FileLogger.cs` (shared), `Docs/`, `Resources/`, `MCGCadPlugin.csproj` (không sửa — SDK-style tự include theo thư mục).
-
-### Trạng thái
-- **Phase:** 1 — Feature Implementation (scope giới hạn lại còn 2 module).
-- **Build:** Succeeded — 0 errors, 5 warnings (pre-existing: AutoCAD lock DLL cũ, Fody IncludeAssets, PowerShell escape trong target UpdatePackageContents).
-
-### Bước tiếp theo
-- Xác nhận repo `FittingManagement` trên GitHub đã nhận được code.
-- Test trong AutoCAD: `MCG_Show` → palette phải có đúng 2 tab "Fitting Management" và "CheckList".
-
-### Ghi chú API
-- `.csproj` dùng `Microsoft.NET.Sdk` nên tự include source theo thư mục — xóa folder không cần sửa csproj.
-
----
-
 ## Session 2026-04-20 (4) — Đăng ký lệnh AutoCAD cho Palette
 
 ### Đã làm

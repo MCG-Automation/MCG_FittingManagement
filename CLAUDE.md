@@ -35,7 +35,7 @@ Bundle folder  : %APPDATA%\Autodesk\ApplicationPlugins\
 Build          : dotnet build -c Debug (chạy với quyền Administrator)
 ```
 
-> ⚠️ **KHÔNG BAO GIỜ chỉnh sửa `MCGCadPlugin.csproj`**
+> ⚠️ **Hạn chế chỉnh sửa `MCGCadPlugin.csproj`** — chỉ sửa khi có lý do rõ ràng (đổi `PluginName`, thêm `PackageReference`, đổi target framework). Không chạm các field không hiểu rõ.
 
 ---
 
@@ -44,24 +44,40 @@ Build          : dotnet build -c Debug (chạy với quyền Administrator)
 ```
 MCGCadPlugin                                    ← Root
 ├── MCGCadPlugin.Commands                       ← Đăng ký lệnh CommandMethod
-│   └── MCGCadPlugin.Commands.FittingManagement
+│   ├── MCGCadPlugin.Commands.DetailDesign
+│   ├── MCGCadPlugin.Commands.FittingManagement
+│   ├── MCGCadPlugin.Commands.PanelData
+│   ├── MCGCadPlugin.Commands.TableOfContent
+│   └── MCGCadPlugin.Commands.Weight
 ├── MCGCadPlugin.Models                         ← Data objects thuần, không import AutoCAD
-│   └── MCGCadPlugin.Models.FittingManagement
+│   ├── MCGCadPlugin.Models.DetailDesign
+│   ├── MCGCadPlugin.Models.FittingManagement
+│   ├── MCGCadPlugin.Models.PanelData
+│   ├── MCGCadPlugin.Models.TableOfContent
+│   └── MCGCadPlugin.Models.Weight
 ├── MCGCadPlugin.Services                       ← Business logic, luôn có Interface
-│   └── MCGCadPlugin.Services.FittingManagement
+│   ├── MCGCadPlugin.Services.DetailDesign
+│   ├── MCGCadPlugin.Services.FittingManagement
+│   ├── MCGCadPlugin.Services.PanelData
+│   ├── MCGCadPlugin.Services.TableOfContent
+│   └── MCGCadPlugin.Services.Weight
 ├── MCGCadPlugin.Views                          ← WPF XAML + code-behind tối thiểu
-│   └── MCGCadPlugin.Views.FittingManagement
+│   ├── MCGCadPlugin.Views.DetailDesign
+│   ├── MCGCadPlugin.Views.FittingManagement
+│   ├── MCGCadPlugin.Views.PanelData
+│   ├── MCGCadPlugin.Views.TableOfContent
+│   └── MCGCadPlugin.Views.Weight
 └── MCGCadPlugin.Utilities                      ← Hàm dùng chung toàn project
-    └── MCGCadPlugin.Utilities.FittingManagement
 ```
 
 **Quy tắc namespace theo vị trí file:**
 ```
-Commands/FittingManagement/FittingManagementCommand.cs → namespace MCGCadPlugin.Commands.FittingManagement
-Models/FittingManagement/FittingData.cs                → namespace MCGCadPlugin.Models.FittingManagement
-Services/FittingManagement/IFittingManagementService.cs → namespace MCGCadPlugin.Services.FittingManagement
-Views/FittingManagement/FittingManagementView.xaml.cs  → namespace MCGCadPlugin.Views.FittingManagement
-Utilities/FileLogger.cs                                → namespace MCGCadPlugin.Utilities
+Services/DetailDesign/DetailExtractionService.cs     → namespace MCGCadPlugin.Services.DetailDesign
+Models/FittingManagement/FittingData.cs              → namespace MCGCadPlugin.Models.FittingManagement
+Views/PanelData/PanelDataView.xaml.cs                → namespace MCGCadPlugin.Views.PanelData
+Services/TableOfContent/TableGeneratorService.cs     → namespace MCGCadPlugin.Services.TableOfContent
+Models/Weight/WeightCalculationResult.cs             → namespace MCGCadPlugin.Models.Weight
+Utilities/CoordinateHelper.cs                        → namespace MCGCadPlugin.Utilities
 ```
 
 ---
@@ -215,19 +231,23 @@ if (result.Status == PromptStatus.OK)
 }
 ```
 
-### PaletteSet — Singleton pattern (1 Module — 1 Tab)
+### PaletteSet — Singleton pattern (5 Modules — 5 Tabs)
 
 > Quyết định kiến trúc đã được chốt. Không thảo luận lại.
 
 - Toàn plugin dùng **DUY NHẤT 1 PaletteSet**, GUID cố định, không bao giờ thay đổi
 - `PaletteManager.cs` là Singleton nằm trong `Commands/`
-- Module FittingManagement = 1 tab trong PaletteSet
-- Tab là 1 UserControl độc lập (ViewModel riêng, Service riêng)
+- 5 Module = 5 tab trong cùng 1 PaletteSet
+- Mỗi tab là 1 UserControl độc lập (ViewModel riêng, Service riêng)
 - **Cấm** tạo PaletteSet thứ 2 ở bất kỳ file nào khác
 
 ```
-Commands/PaletteManager.cs                              ← Singleton duy nhất
+Commands/PaletteManager.cs                    ← Singleton duy nhất
+Views/DetailDesign/DetailDesignView.xaml
 Views/FittingManagement/FittingManagementView.xaml
+Views/PanelData/PanelDataView.xaml
+Views/TableOfContent/TableOfContentView.xaml
+Views/Weight/WeightView.xaml
 ```
 
 ```csharp
@@ -237,10 +257,14 @@ private static readonly Guid PaletteGuid = new Guid("2b80cfe9-c560-49d6-8a09-9d6
 private void Initialize()
 {
     // 1. Khởi tạo cơ bản với GUID
-    _paletteSet = new PaletteSet("MCG Tools", PaletteGuid);
+    _paletteSet = new PaletteSet("MCGCadPlugin - FittingManagement", PaletteGuid);
 
     // 2. Nạp nội dung — PHẢI thực hiện TRƯỚC khi set Dock/Size
+    _paletteSet.AddVisual("Detail Design",      new DetailDesignView());
     _paletteSet.AddVisual("Fitting Management", new FittingManagementView());
+    _paletteSet.AddVisual("Panel Data",         new PanelDataView());
+    _paletteSet.AddVisual("Table of Content",   new TableOfContentView());
+    _paletteSet.AddVisual("Weight",             new WeightView());
 
     // 3. Thiết lập kích thước và khả năng neo — SAU AddVisual
     _paletteSet.DockEnabled = DockSides.Right | DockSides.Left;
@@ -271,8 +295,8 @@ Autodesk.AutoCAD.Internal.Utils.SetFocusToDwgView();
 > cần tương tác với bản vẽ (pick point, select entity, zoom, v.v.)
 
 **Lệnh CAD:**
-- `MCG_Show` → hiển thị PaletteSet
-- `MCG_Hide` → ẩn PaletteSet
+- `MCG_Fitting_Show` → hiển thị PaletteSet
+- `MCG_Fitting_Hide` → ẩn PaletteSet
 
 ---
 

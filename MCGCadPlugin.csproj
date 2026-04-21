@@ -8,7 +8,7 @@
     <UseWPF>true</UseWPF>
     <LangVersion>latest</LangVersion>
     <Platforms>x64</Platforms>
-    <PluginName>MCGCadPlugin</PluginName>
+    <PluginName>MCGCadPlugin.FittingManagement</PluginName>
 
     <Timestamp>$([System.DateTime]::Now.ToString("yyyyMMdd_HHmmss"))</Timestamp>
 

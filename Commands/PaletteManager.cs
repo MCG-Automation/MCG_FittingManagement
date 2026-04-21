@@ -100,12 +100,12 @@ namespace MCGCadPlugin.Commands
 
         #region AutoCAD Commands
 
-        /// <summary>Lệnh hiển thị Palette (gõ MCG_Show trong CAD)</summary>
-        [CommandMethod("MCG_Show", CommandFlags.Modal)]
+        /// <summary>Lệnh hiển thị Palette (gõ MCG_Fitting_Show trong CAD)</summary>
+        [CommandMethod("MCG_Fitting_Show", CommandFlags.Modal)]
         public void McgShow() => Show();
 
-        /// <summary>Lệnh ẩn Palette (gõ MCG_Hide trong CAD)</summary>
-        [CommandMethod("MCG_Hide", CommandFlags.Modal)]
+        /// <summary>Lệnh ẩn Palette (gõ MCG_Fitting_Hide trong CAD)</summary>
+        [CommandMethod("MCG_Fitting_Hide", CommandFlags.Modal)]
         public void McgHide() => Hide();
 
         #endregion
@@ -121,7 +121,7 @@ namespace MCGCadPlugin.Commands
             Debug.WriteLine($"{LOG_PREFIX} Bắt đầu khởi tạo PaletteSet...");
 
             // 1. Tạo PaletteSet với GUID cố định
-            _paletteSet = new PaletteSet("MCG Plugins", PaletteGuid);
+            _paletteSet = new PaletteSet("MCGCadPlugin - FittingManagement", PaletteGuid);
 
             // 2. Nạp nội dung — PHẢI thực hiện TRƯỚC khi set Dock/Size
             _paletteSet.AddVisual("Fitting Management", new FittingManagementView());
