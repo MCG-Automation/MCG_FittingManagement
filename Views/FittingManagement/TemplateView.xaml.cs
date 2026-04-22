@@ -40,7 +40,7 @@ namespace MCGCadPlugin.Views.FittingManagement
             if (ofd.ShowDialog() != true || ofd.FileNames.Length == 0) return;
 
             string bomType = (RadioPanelFitting.IsChecked == true) ? "PANEL" : "DETAIL";
-            bool pullFromVault = (ChkPullFromVault.IsChecked == true);
+            bool pullFromVault = true;
 
             BtnBatchImportInventor.IsEnabled = false;
             Mouse.OverrideCursor = Cursors.AppStarting;
