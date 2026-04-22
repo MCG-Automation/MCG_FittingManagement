@@ -33,5 +33,13 @@ namespace MCGCadPlugin.Services.FittingManagement
         void ExtractEntitiesFromBlock();
         void ChangeBlockBasePoint();
         void AddEntitiesToBlock();
+
+        // --- Giai đoạn 3.4: Drawing Collection ---
+        // Gom Model Space của nhiều file .dwg vào bản vẽ hiện hành:
+        // - Đổi tên block theo [TênFile]_[TênBlock] (giữ nguyên A1, CAS_HEAD).
+        // - Purge rác trước khi clone.
+        // - Xếp ngang từ trái sang phải, khoảng hở 1000.
+        // - Phase tiền xử lý (side db) chạy trên worker thread; phase clone vào current doc quay về UI thread sau await.
+        Task<ImportResult> CollectDrawingsAsync(string[] dwgPaths, IProgress<string> progress = null);
     }
 }
