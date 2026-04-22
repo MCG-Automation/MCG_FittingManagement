@@ -4,6 +4,94 @@
 
 ---
 
+## Session 2026-04-22 (17) — Vault integration (Phương án B): Pull latest qua Inventor AddIn
+
+### Yêu cầu user
+Workflow admin hiện tại: chọn file IDW trên ổ local → import vào Library. Vấn đề: file local có thể cũ so với Vault. User muốn: khi chọn file, plugin tự pull latest từ Vault trước khi extract.
+
+User chọn **Phương án B**: dùng Inventor COM mượn Vault AddIn — không cần Vault SDK reference riêng.
+
+### Đã làm
+
+**1. Model mới** [Models/FittingManagement/VaultRefreshResult.cs](Models/FittingManagement/VaultRefreshResult.cs):
+- Enum `VaultRefreshStatus`: Success / AlreadyLatest / SkippedNoAddIn / SkippedNotLoggedIn / SkippedNotInVault / Failed.
+- Class `VaultRefreshResult` với `Status`, `Message`, `FilePath`, `MethodUsed` (tên Vault API method đã hoạt động — dùng cho debug).
+- Static factory methods cho mỗi status.
+- `IsSuccess` property = Success || AlreadyLatest.
+
+**2. Service partial** [Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs](Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs):
+- `TryPullLatestFromVault(dynamic invApp, string filePath)` — core method.
+- Flow:
+  1. `FindVaultAddIn(invApp)` → iterate `ApplicationAddIns`, match `DisplayName` chứa "Vault" (case-insensitive).
+  2. Check `Activated` property.
+  3. Access `Automation` property (COM late-bound, Vault-specific).
+  4. `TryGetLoggedInStatus(auto)` — thử `LoggedIn`/`IsLoggedIn`/`LoggedOn` property (Vault API varies by version).
+  5. **Fallback chain** 6 method names: `GetLatestServerVersion`, `RefreshFile`, `GetLatestForDocument`, `RefreshDocument`, `GetLatest`, `UpdateFile` — try từng method, catch `RuntimeBinderException` (method không exist) + generic Exception (method exist nhưng fail).
+  6. Nếu exception message chứa "not found" / "not in vault" → trả `SkippedNotInVault`.
+  7. Nếu tất cả fail → `Failed` với list methods đã thử.
+- Log verbose từng bước: số AddIns, tên AddIn match, method đã hoạt động, reason skip — để diagnose môi trường Vault khác nhau.
+
+**3. Interface** [Services/FittingManagement/IFittingManagementService.cs](Services/FittingManagement/IFittingManagementService.cs):
+```csharp
+Task<ImportResult> ImportIdwFilesAsync(string[] idwPaths, string bomType, bool pullFromVault = false, IProgress<string> progress = null);
+```
+Thêm param `pullFromVault` default=false (không break caller cũ).
+
+**4. Integration trong Phase 1** [Services/FittingManagement/Import/FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs):
+- `ExtractAllIdw` nhận thêm `bool pullFromVault`.
+- Trước mỗi `ProcessSingleIdwFile`, nếu `pullFromVault=true`:
+  - `progress?.Report("[i/N] Vault refresh: fileName")`.
+  - Gọi `TryPullLatestFromVault(invApp, idwPath)`.
+  - Log warning nếu Failed — **không fail toàn extract**, proceed với file local.
+  - Catch generic Exception quanh Vault call (non-fatal).
+
+**5. UI checkbox** [Views/FittingManagement/TemplateView.xaml](Views/FittingManagement/TemplateView.xaml):
+- `<CheckBox x:Name="ChkPullFromVault" Content="Pull latest from Vault trước khi import">` dưới BOM type, trên button Import.
+- Tooltip giải thích prerequisites.
+
+**6. Pass state** [Views/FittingManagement/TemplateView.xaml.cs](Views/FittingManagement/TemplateView.xaml.cs):
+- `bool pullFromVault = (ChkPullFromVault.IsChecked == true);`
+- Pass vào `_service.ImportIdwFilesAsync(ofd.FileNames, bomType, pullFromVault, progress)`.
+
+### Thiết kế
+- **Không reference Vault SDK assembly**: tránh binding cứng version, giảm deployment complexity. Tradeoff: API reliability không đảm bảo 100%, phải late-bind dynamic.
+- **Graceful degradation**: mọi Vault failure đều **non-fatal** — import tiếp với file local. User vẫn làm việc được kể cả khi Vault server down/không login.
+- **Fallback chain cho method names**: Vault AddIn cho Inventor không document API chính thức, tên method khác nhau qua các Inventor/Vault version (2018/2020/2023/...). Thử 6 tên phổ biến, nếu tất cả fail → log rõ đã thử gì để user biết version compat issue.
+- **Log verbose**: mỗi bước có log (count AddIns, tên AddIn match, login status, method result). User debug dễ khi test môi trường thật.
+- **Opt-in via checkbox**: mặc định OFF — không tự động gọi Vault gây lag cho user không dùng Vault. User chủ động tick khi cần.
+
+### Giới hạn & expected behavior
+- **API không verified**: method names trong fallback chain dựa trên convention/forum posts, chưa test với Vault thật. Có thể tất cả fail ở môi trường thực → log sẽ cho biết method nào hoạt động để tune sau.
+- **Yêu cầu môi trường**:
+  1. Inventor đã cài đặt (pattern `AcquireInventorInstance` hiện có).
+  2. Vault Client installed, Vault AddIn for Inventor enabled (`Tools → Add-In Manager → Autodesk Vault` checked).
+  3. User login Vault qua Inventor UI (menu Vault → Log In) trước khi chạy plugin. Plugin không prompt login (tránh modal UI trên worker thread).
+- **Không config được Vault server trong plugin**: dùng server/vault mà Inventor đang connect. Đổi server → đổi trong Inventor Vault menu.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Bước tiếp theo
+- Test trong môi trường Vault thật:
+  1. Mở Inventor, login Vault qua menu.
+  2. AutoCAD → Drawing Tool palette → tab Template → tick "Pull latest from Vault trước khi import" → chọn 1-2 file IDW.
+  3. Đọc plugin.log tìm dòng `Vault:` để xem:
+     - Có detect được Vault AddIn không (count AddIns, tên AddIn match).
+     - Login status đọc được không.
+     - Method nào trong fallback chain hoạt động (hoặc tất cả fail).
+- Nếu tất cả 6 method fail với cùng 1 exception type/message → báo lại để tìm đúng API name cho Vault version đang dùng.
+- Nếu Vault AddIn có `Connection.WebServiceManager` (kiểu VDF) → phải dùng approach khác (không phải Automation direct) — sẽ design Phương án B.2.
+
+### Ghi chú API
+- **`invApp.ApplicationAddIns`**: collection đếm được qua `.Count`, iterate qua foreach. Mỗi item có `DisplayName` (string), `Activated` (bool), `Automation` (object).
+- **Vault AddIn identification**: tên phổ biến "Autodesk Vault" / "Vault" / "Vault Professional" — match chứa "Vault" là an toàn.
+- **`RuntimeBinderException`**: exception khi dynamic invoke method không exist trên object. Import `Microsoft.CSharp.RuntimeBinder`.
+- **Vault AddIn Automation API**: không có official documentation từ Autodesk. Phải reverse-engineer qua Inventor API docs + forum posts. Method names có thể khác giữa Vault 2020 / 2023 / 2024.
+- **Graceful degradation cho COM late-bound**: try/catch bao chặt mọi call. `dynamic` throw 2 loại: `RuntimeBinderException` (member không exist) + runtime exception của method (method exist nhưng throw). Phân biệt 2 loại để không false-positive "method không có".
+
+---
+
 ## Session 2026-04-22 (16) — Tách DrawingCollection thành 6 partial file
 
 ### Bối cảnh

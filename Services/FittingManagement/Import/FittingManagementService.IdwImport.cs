@@ -37,16 +37,16 @@ namespace MCGCadPlugin.Services.FittingManagement
         /// <param name="bomType">"PANEL" hoặc "DETAIL"</param>
         /// <param name="progress">Callback nhận thông điệp trạng thái (có thể null).</param>
         /// <returns>ImportResult tính theo file IDW (thành công khi extract OK và tạo được ≥1 block)</returns>
-        public async Task<ImportResult> ImportIdwFilesAsync(string[] idwPaths, string bomType, IProgress<string> progress = null)
+        public async Task<ImportResult> ImportIdwFilesAsync(string[] idwPaths, string bomType, bool pullFromVault = false, IProgress<string> progress = null)
         {
             var result = new ImportResult();
-            FileLogger.LogSessionStart($"ImportIdwFilesAsync ({idwPaths.Length} files, BomType={bomType})");
-            FileLogger.Log(LOG_PREFIX, $"Bắt đầu ImportIdwFilesAsync — {idwPaths.Length} file(s), BomType={bomType}...");
-            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu ImportIdwFilesAsync — {idwPaths.Length} file(s), BomType={bomType}...");
+            FileLogger.LogSessionStart($"ImportIdwFilesAsync ({idwPaths.Length} files, BomType={bomType}, pullFromVault={pullFromVault})");
+            FileLogger.Log(LOG_PREFIX, $"Bắt đầu ImportIdwFilesAsync — {idwPaths.Length} file(s), BomType={bomType}, pullFromVault={pullFromVault}...");
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu ImportIdwFilesAsync — {idwPaths.Length} file(s), BomType={bomType}, pullFromVault={pullFromVault}...");
 
             // PHASE 1 — worker thread: Inventor COM (Open/SaveAs/Close — chậm)
             progress?.Report($"Extracting {idwPaths.Length} IDW file(s) via Inventor...");
-            var extractedItems = await Task.Run(() => ExtractAllIdw(idwPaths, result, progress));
+            var extractedItems = await Task.Run(() => ExtractAllIdw(idwPaths, result, progress, pullFromVault));
 
             // PHASE 2 — thread gốc: AutoCAD db phải chạy trên main thread
             if (extractedItems.Count > 0)
@@ -64,8 +64,9 @@ namespace MCGCadPlugin.Services.FittingManagement
         /// <summary>
         /// PHASE 1 — Extract toàn bộ IDW. File extract fail bị ghi vào result.Errors ngay;
         /// file extract OK được trả về để PHASE 2 dùng. Chạy trên worker thread.
+        /// Nếu <paramref name="pullFromVault"/> = true, mỗi file sẽ được refresh từ Vault trước khi extract.
         /// </summary>
-        private List<ExtractedIdw> ExtractAllIdw(string[] idwPaths, ImportResult result, IProgress<string> progress)
+        private List<ExtractedIdw> ExtractAllIdw(string[] idwPaths, ImportResult result, IProgress<string> progress, bool pullFromVault)
         {
             var extracted = new List<ExtractedIdw>();
             bool weStartedInventor = false;
@@ -86,6 +87,27 @@ namespace MCGCadPlugin.Services.FittingManagement
                 {
                     string idwPath = idwPaths[i];
                     string fileName = Path.GetFileName(idwPath);
+
+                    // Optional: pull latest từ Vault TRƯỚC khi mở file để đảm bảo extract từ disk là version mới nhất.
+                    // Không fail toàn file nếu Vault không available — graceful degradation, proceed với file local.
+                    if (pullFromVault)
+                    {
+                        progress?.Report($"[{i + 1}/{total}] Vault refresh: {fileName}");
+                        try
+                        {
+                            var vaultResult = TryPullLatestFromVault(invApp, idwPath);
+                            if (vaultResult.Status == Models.FittingManagement.VaultRefreshStatus.Failed)
+                            {
+                                // Log warning nhưng vẫn proceed với file local.
+                                FileLogger.Log(LOG_PREFIX, $"  Vault refresh fail (non-fatal) cho '{fileName}': {vaultResult.Message}");
+                            }
+                        }
+                        catch (System.Exception vex)
+                        {
+                            FileLogger.LogException(LOG_PREFIX, $"TryPullLatestFromVault '{fileName}' (non-fatal)", vex);
+                        }
+                    }
+
                     progress?.Report($"[{i + 1}/{total}] Extracting: {fileName}");
 
                     try

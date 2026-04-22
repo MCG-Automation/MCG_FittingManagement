@@ -40,6 +40,7 @@ namespace MCGCadPlugin.Views.FittingManagement
             if (ofd.ShowDialog() != true || ofd.FileNames.Length == 0) return;
 
             string bomType = (RadioPanelFitting.IsChecked == true) ? "PANEL" : "DETAIL";
+            bool pullFromVault = (ChkPullFromVault.IsChecked == true);
 
             BtnBatchImportInventor.IsEnabled = false;
             Mouse.OverrideCursor = Cursors.AppStarting;
@@ -47,7 +48,7 @@ namespace MCGCadPlugin.Views.FittingManagement
 
             try
             {
-                ImportResult result = await _service.ImportIdwFilesAsync(ofd.FileNames, bomType, progress);
+                ImportResult result = await _service.ImportIdwFilesAsync(ofd.FileNames, bomType, pullFromVault, progress);
                 TxtImportStatus.Text = $"Done. Success={result.SuccessCount}, Failed={result.FailCount}";
                 ShowImportResultDialog("Import IDW", result);
             }

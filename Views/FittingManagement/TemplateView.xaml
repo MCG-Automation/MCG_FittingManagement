@@ -25,6 +25,9 @@
                         </StackPanel>
                     </Border>
 
+                    <CheckBox x:Name="ChkPullFromVault" Content="Pull latest from Vault trước khi import"
+                              Margin="0,0,0,6" ToolTip="Yêu cầu Inventor đã cài Vault AddIn và user đã login Vault. Nếu Vault không available hoặc file không trong Vault, plugin sẽ dùng file local."/>
+
                     <Button x:Name="BtnBatchImportInventor" Content="Import .idw" Style="{StaticResource PrimaryButtonStyle}" Click="BtnBatchImportInventor_Click"/>
                     <TextBlock x:Name="TxtImportStatus" Text="" Foreground="#FF005E9E" FontStyle="Italic" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </StackPanel>

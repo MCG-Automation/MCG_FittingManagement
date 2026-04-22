@@ -11,7 +11,8 @@ namespace MCGCadPlugin.Services.FittingManagement
         // --- Giai đoạn 1+2 (đã gộp): IDW → Extract DWG/JSON → Split View → Create Blocks ---
         // Phase 1 (Inventor COM) chạy trên worker thread để UI AutoCAD không bị khoá;
         // Phase 2 (AutoCAD db) tự quay về thread gốc của caller (UI thread) sau await.
-        Task<ImportResult> ImportIdwFilesAsync(string[] idwPaths, string bomType, IProgress<string> progress = null);
+        // pullFromVault=true → gọi Vault AddIn của Inventor để GetLatest mỗi file trước khi extract.
+        Task<ImportResult> ImportIdwFilesAsync(string[] idwPaths, string bomType, bool pullFromVault = false, IProgress<string> progress = null);
 
         // --- Giai đoạn 3.1: Library & Virtual Items ---
         List<CatalogItem> GetMasterCatalogItems();
