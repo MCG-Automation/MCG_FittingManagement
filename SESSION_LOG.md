@@ -4,6 +4,218 @@
 
 ---
 
+## Session 2026-04-22 (4) — Align Import IDW với reference code ShipAutoCadPlugin
+
+### Mục tiêu
+User cung cấp 3 file từ plugin reference `ShipAutoCadPlugin` (Interface.Inventor.BatchExtractor, AutoCadService.BimHarvester, AutoCadService.BimLibrary). User approve áp dụng toàn bộ Phase 1+2 + attribute tag rename (M). Skip early-binding Inventor Interop (Q) và view label DBText (K).
+
+### Đã làm
+**[Services/FittingManagement/Import/FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs)** — Refactor extract:
+- `ProcessSingleIdwFile`: `Documents.Open(path, false)` thay `true` → background open, nhanh hơn.
+- Thêm `GetReferencedModel(drawingDoc)` — duyệt sheets/views tìm `ReferencedDocumentDescriptor.ReferencedDocument` → trả model IPT/IAM để đọc iProperties thật.
+- `ExtractIProperties(doc)` đổi signature: nhận bất kỳ doc (ưu tiên modelDoc, fallback drawingDoc). Thêm: đọc `Title` + `Revision Number` từ `Inventor Summary Information`; fallback `Designer` → `Author` từ Summary.
+- Thêm `FormatAndRoundMass(raw)` — regex parse "24.532 kg" → "25 kg" (giữ unit suffix, Math.Round(0)).
+- `ExtractDrawingViews`: 
+  - Tính `baseScaleFactor = 1 / sheet.DrawingViews[1].Scale` per sheet.
+  - Convert sheet coords → model mm: `center_mm = view.Center * 10 × baseScaleFactor`, `Width_mm = view.Width * 10 × baseScaleFactor`.
+  - View name đơn giản `"View_N"` (đếm tuần tự) thay vì `drawingView.Name` (tránh ký tự không hợp lệ cho block name).
+- `SafeGetProperty`: bỏ `.ToString("F3")` cho double — trả raw, caller quyết format (Mass được format ở `FormatAndRoundMass`).
+
+**[Services/FittingManagement/Import/FittingManagementService.JsonImport.cs](Services/FittingManagement/Import/FittingManagementService.JsonImport.cs)** — Rewrite toàn bộ PHASE 2 theo kiến trúc reference:
+- Bỏ kiến trúc `db.Insert` temp block → dùng `sourceDb.WblockCloneObjects(ids, destBtr.ObjectId, mapping, DuplicateRecordCloning.Ignore, false)` clone cross-db trực tiếp. Tiết kiệm 1 round-trip copy toàn DWG.
+- **Entity filter**: chỉ clone `Line/Arc/Circle/Polyline/Polyline2d/Polyline3d/Spline/Ellipse`. Loại text/dim/hatch/blockref (title block, annotation Inventor).
+- **Tolerance 50mm** quanh bbox view để bắt edge entities vẽ sát biên.
+- **Layer remap theo tên kiểu nét source**: VISIBLE → `0`, HIDDEN → `Mechanical-AM_3` (color 6 magenta), CENTER → `Mechanical-AM_7` (color 4 cyan). Non-match giữ layer gốc.
+- **Force ByLayer**: mọi entity đã clone → `ColorIndex=256`, `Linetype="ByLayer"`, `LineWeight.ByLayer`. Essential — không set sẽ giữ màu cứng từ Inventor DWG → layer rules không áp dụng.
+- **Unlock layers** `0/_3/_7/_9` + CheckAndCreateLayer cho 3 layer mới trước khi xử lý.
+- **Attribute tag rename** (user OK vì chưa có block cũ): 10 attribute invisible:
+  - `PART_NUMBER` (was PART_ID), `DESCRIPTION` (was DESC), `MATERIAL`, `MASS`, `REVISION`
+  - Mới: `DESIGNER`, `TITLE`
+  - Giữ: `BOM_TYPE`, `POS_NUM`, `VIEW_NAME`
+- `ImportSingleDwgWithSplit` trả `List<Tuple<ObjectId, CatalogItem>>` thay vì `List<CatalogItem>`.
+- `CreateBlocksFromExtracted` sau khi unlock doc gọi `PublishToCentralLibrary(tuples)` → `db.Wblock(blockId)` export mỗi block ra `C:\Temp_BIM_Library\<uniqueName>.dwg` + merge MasterCatalog. `CatalogItem.FilePath` trỏ về file .dwg riêng từng block (tương thích `InsertBlockFromLibrary` workflow).
+- **Bỏ fallback** khi metadata không có view → chỉ xử lý khi có ≥1 view (reference pattern).
+- Bỏ `ComputeMetadataToDwgTransform` (auto-detect scale) — không cần nữa vì extract đã viết tọa độ ở model mm.
+- Bỏ `EntityCacheItem` struct, `BuildEntityCache`, `CreateSingleBlockFromEntities`, `SanitizeBlockName`, `SanitizeViewName` — không còn cần. Thay bằng `allowed` list tuple (Id, Cx, Cy) inline trong 1 hàm.
+
+### Mapping các cải tiến đã apply (13/16 đề xuất)
+
+| # | Tên | Đã apply? |
+|---|---|---|
+| A | GetReferencedModel đọc iProperties từ model | ✅ |
+| B | View coords = sheet*10/scale (model mm) | ✅ |
+| C | OpenVisible=false | ✅ |
+| D | FormatAndRoundMass | ✅ |
+| E | WblockCloneObjects trực tiếp | ✅ |
+| F | Entity type filter | ✅ |
+| G | Layer remap VISIBLE/HIDDEN/CENTER | ✅ |
+| H | Force ColorIndex=256, Linetype/LineWeight=ByLayer | ✅ |
+| I/J | Tolerance 50mm | ✅ |
+| K | CreateViewLabel DBText | ❌ skip (user quyết) |
+| L | UnlockLayer trước CheckAndCreateLayer | ✅ |
+| M | Attribute tag rename | ✅ |
+| N | POS_NUM dynamic lúc insert | ❌ giữ tạo lúc create (user chọn Phase 1+2) |
+| O | PublishToCentralLibrary wblock mỗi block | ✅ |
+| P | View name "View_N" | ✅ |
+| Q | Early-binding Inventor Interop | ❌ giữ late-bind dynamic (user chọn Phase 1+2) |
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Bước tiếp theo
+- Test lại với CAS-0071133.idw:
+  1. iProperties đọc từ model: `PartNumber='2000055530'` vẫn đúng (đã đọc được). Log thêm Mass="X kg" đã làm tròn.
+  2. Views mới có tên `View_1...View_4`, tọa độ **model mm** → bbox khớp entity (số block tạo = số view × entity count).
+  3. Entity filter: chỉ Line/Arc/Circle/... được clone; text trong title block không vào block fitting.
+  4. Layer remap: mỗi entity vào đúng layer `0/_3/_7` theo tên source layer Inventor.
+  5. File `.dwg` riêng xuất ra `C:\Temp_BIM_Library\CAS-0071133_View_1.dwg` v.v.
+  6. MasterCatalog.json có `FilePath` trỏ về file .dwg riêng từng block.
+- Nếu scale factor chưa khớp (block nằm lệch/trống), kiểm `view.Scale` Inventor thực tế vs giả định `sheet.DrawingViews[1].Scale` cho cả sheet.
+
+### Ghi chú API
+- **Inventor `DrawingView.Center`** vs `.Position`: `.Center` là tâm view thật trong sheet coords. `.Position` không phải tâm. Đã đổi sang `.Center`.
+- **Inventor `DrawingView.Scale`**: là `double` — giá trị hiển thị trên title block (1/5 → Scale=0.2). `baseScaleFactor = 1/Scale` để zoom-up sheet-coords về model-coords.
+- **`Database.WblockCloneObjects(srcIds, destOwnerId, IdMapping, DuplicateRecordCloning, bool)`**: gọi trên **source db**, clone các entity có id ∈ srcIds vào BTR có id = destOwnerId (trong db khác). Tự resolve layer/linetype dependencies sang dest.
+- **`ColorIndex=256`**: magic number cho `ByLayer` trong AutoCAD .NET API. 0 là `ByBlock`.
+- **`Database.Wblock(blockId)`**: xuất BTR thành standalone Database (side db), `SaveAs(path, DwgVersion.Current)` để lưu file .dwg.
+- **`DuplicateRecordCloning.Ignore`**: khi clone symbol table records (layer/linetype) có cùng tên ở dest db → dùng bản dest, bỏ bản src. Tránh duplicate symbol records.
+- **`.Close(true)` trên Inventor Document**: arg = `SkipSave` (true = không lưu). Với `drawingDoc.SaveAs(path, true)` (SaveCopyAs keep original), document ref vẫn alive → Close(true) gọi được không lỗi thực sự (chỉ COM 0x80010114 benign khi Inventor auto-unload).
+
+---
+
+## Session 2026-04-22 (3) — Fix unit mismatch + quiet benign COM errors
+
+### Vấn đề từ log
+File `plugin.log`:
+```
+[10:12:24.732] Entity cache: 222 entities.
+[10:12:24.735] Block '2000055530_VIEW1' không có entity nào rơi vào bbox → erase BTR.
+[10:12:24.736] Block '2000055530_VIEW2' không có entity nào rơi vào bbox → erase BTR.
+[10:12:24.736] Block '2000055530_VIEW3' không có entity nào rơi vào bbox → erase BTR.
+[10:12:24.738] Block '2000055530_ISO_VIEW' không có entity nào rơi vào bbox → erase BTR.
+HOÀN TẤT ImportIdwFilesAsync — Thành công: 0, Thất bại: 1.
+```
+→ DWG có 222 entities nhưng 4/4 view không match entity nào. Nguyên nhân: **unit mismatch** giữa metadata Inventor (cm — `DrawingView.Position/Width/Height` trả về database unit của Inventor) và DWG xuất (mm — default của Inventor DWG translator). Bbox `[45cm, 55cm]` không chứa entity tại `500mm`.
+
+Ngoài ra log có 2 COM exception spam nhưng import vẫn success, gây noise: HRESULT 0x80010114 ("requested object does not exist" khi close IDW sau SaveAs) và 0x800706BA ("RPC server unavailable" khi release Inventor sau Quit).
+
+### Đã làm
+- [Services/FittingManagement/Import/FittingManagementService.JsonImport.cs](Services/FittingManagement/Import/FittingManagementService.JsonImport.cs):
+  - `EntityCacheItem` mở rộng thêm `MinX/MinY/MaxX/MaxY` — cache full bbox thay vì chỉ center.
+  - `BuildEntityCache` lưu Min/Max/Center từ `GeometricExtents` — 1 pass/DWG vẫn giữ nguyên.
+  - Thêm `ComputeMetadataToDwgTransform(cache, views) → (scale, offX, offY)`: tính union-bbox entity DWG và union-bbox view metadata, ratio W+H / 2 làm scale, align tâm-vs-tâm làm offset. Degenerate → fallback (1,0,0).
+  - `ImportSingleDwgWithSplit` gọi transform **1 lần/DWG**, mỗi view đổi sang hệ DWG: `dwgC = scale*metaC + off`, `halfW = scale*view.Width/2`. `translate` giờ dùng `(-dwgCX, -dwgCY)` thay vì `(-view.CenterX, -view.CenterY)`.
+  - Log `Meta→DWG transform: scale=10.0000, offset=(...)` để debug.
+- [Services/FittingManagement/Import/FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs):
+  - `ProcessSingleIdwFile` finally-Close: thêm `catch (COMException) when HRESULT ∈ {0x80010114, 0x800706BA}` → log info thay vì `LogException` (không spam "LỖI" nữa).
+  - `ReleaseInventorInstance`: cùng pattern, catch 2 HRESULT benign → log info.
+
+### Thiết kế auto-scale
+Giả định: exported DWG và metadata cùng cover cùng tập hình học (không có 1 bên chứa entity bên kia không có). Nếu cả 2 bên có union-bbox lớn "tương đương", ratio kích thước = hệ số đơn vị.
+- Factor điển hình sẽ là **10.0** (Inventor cm → DWG mm) cho 99% dự án.
+- Nếu Inventor DWG translator cài sang `inch`: factor **0.3937** (cm → inch).
+- Nếu DWG export inch + Inventor cm: factor **2.54**.
+- Nếu cả 2 cùng mm: factor **1**.
+
+Không cần hardcode — tự khớp.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Bước tiếp theo
+- Test lại với CAS-0071133.idw → log phải thấy `scale=10.0000` (hoặc gần), 4 block `2000055530_VIEW1/VIEW2/VIEW3/ISO_VIEW` tạo thành công với entities thực trong mỗi.
+- Verify tâm block: insert 1 reference → phải nằm giữa geometry (do block đã translate về origin).
+- Nếu `scale` tính ra bất thường (ví dụ 0.01 hoặc 100), log xong cần check thủ công metadata JSON để debug.
+
+### Ghi chú API
+- **Inventor database unit**: luôn **cm** cho mọi `Point2d`, `double` mm-like ở geometry APIs (`DrawingView.Position`, `.Width`, `.Height`). Không đổi theo UI unit preset.
+- **Inventor DWG export default**: **mm** (DWG Translator preset `Export_Acad_IniFile` quyết định). Muốn kiểm: mở INI file tại `%PublicDocuments%\Autodesk\Inventor 2023\Design Data\DWG-AutoCAD Export.ini`.
+- **HRESULT 0x80010114** (`RPC_E_DISCONNECTED`): COM proxy đến server process/object đã destroyed. Xảy ra khi close đã-closed Document.
+- **HRESULT 0x800706BA** (`RPC_S_SERVER_UNAVAILABLE`): Process COM đã exit. Xảy ra khi `Marshal.ReleaseComObject(invApp)` sau `invApp.Quit()`.
+- **`COMException.HResult`** thuộc `int` (signed) — so sánh HRESULT ≥ 0x80000000 phải dùng `unchecked((int)0x80010114)` để tránh overflow.
+- **Pattern `catch ... when`** (C# 6+): cho phép filter exception theo HResult ngay trong catch mà không cần re-throw.
+
+---
+
+## Session 2026-04-22 (2) — Async + tối ưu performance cho Import IDW
+
+### Vấn đề
+AutoCAD bị treo khi bấm Import IDW vì:
+1. Click handler chạy đồng bộ trên UI thread của AutoCAD → toàn bộ Phase 1 (Inventor COM) và Phase 2 (db split-view) khoá main thread.
+2. Phase 2 gọi `GeometricExtents` trên từng entity × từng view (O(V×E)) — dư vì tâm bbox không đổi giữa các view.
+3. Inventor khởi động ngầm nhưng `SilentOperation` chưa set → dialog modal nội bộ có thể chặn thread.
+
+### Đã làm
+- [Services/FittingManagement/IFittingManagementService.cs](Services/FittingManagement/IFittingManagementService.cs): `ImportIdwFiles` → `Task<ImportResult> ImportIdwFilesAsync(paths, bomType, IProgress<string> progress = null)`.
+- [Services/FittingManagement/Import/FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs):
+  - `ImportIdwFilesAsync`: Phase 1 (`ExtractAllIdw`) chạy qua `Task.Run` → worker thread → UI AutoCAD không bị khoá trong lúc Inventor open/SaveAs/close. Phase 2 tự quay về thread gốc sau `await`.
+  - `AcquireInventorInstance`: thêm `invApp.SilentOperation = true` (try/catch vì một số build không expose).
+  - `ExtractAllIdw`: nhận `IProgress<string>`, report `[i/N] Extracting: foo.idw` trước mỗi file.
+- [Services/FittingManagement/Import/FittingManagementService.JsonImport.cs](Services/FittingManagement/Import/FittingManagementService.JsonImport.cs):
+  - Thêm struct `EntityCacheItem { Id, CenterX, CenterY, HasExtents }`.
+  - Thêm `BuildEntityCache(tr, tempBtr)`: pre-compute 1 pass/DWG — tránh gọi `GeometricExtents` lặp V lần/entity.
+  - `CreateSingleBlockFromEntities`: đổi param `BlockTableRecord tempBtr` → `List<EntityCacheItem>`. Bbox check dùng `double` so sánh trực tiếp thay vì property access lặp. Dead helper `EntityInsideBbox` xoá.
+  - `CreateBlocksFromExtracted`: nhận `IProgress<string>`, report `[i/N] Creating blocks: foo.idw`.
+- [Views/FittingManagement/FittingManagementView.xaml](Views/FittingManagement/FittingManagementView.xaml): thêm `TxtImportStatus` (TextBlock, italic, màu accent) dưới button Import .idw.
+- [Views/FittingManagement/FittingManagementView.xaml.cs](Views/FittingManagement/FittingManagementView.xaml.cs): `BtnBatchImportInventor_Click` chuyển thành `async void`. Lifecycle: disable button + `Mouse.OverrideCursor = Cursors.AppStarting` + `new Progress<string>(msg => TxtImportStatus.Text = msg)` → `await _service.ImportIdwFilesAsync(...)` → restore cursor/button trong `finally`.
+
+### Phức tạp tiệm cận
+- Build entity cache mỗi DWG: O(E) — call `GeometricExtents` 1 lần/entity.
+- Split view: O(V × E) nhưng thân vòng lặp chỉ là 4 so sánh double (nhanh).
+- Tổng: O(E + V×E_clip) thay vì O(V × E_full_extents).
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Bước tiếp theo
+- Test thực tế trong AutoCAD 2023: bấm Import .idw với nhiều file lớn → UI AutoCAD phải responsive (pan/zoom được) trong lúc Phase 1 chạy; `TxtImportStatus` cập nhật theo file đang xử lý.
+- Theo dõi nếu vẫn chậm ở Phase 2 với file rất lớn (>10k entity) → áp dụng option E: bỏ `db.Insert` temp-block, dùng `sideDb.WblockCloneObjects` clone trực tiếp từ sideDb sang target BTR (tiết kiệm 1 vòng copy).
+
+### Ghi chú API
+- **Inventor COM + Task.Run**: Inventor 2020+ đăng ký COM với threading model cho phép gọi từ MTA worker. Nếu gặp `InvalidCastException` cross-thread, fallback là tạo dedicated STA thread qua `new Thread(() => {...}) { ApartmentState = ApartmentState.STA }`.
+- **`Progress<T>`** capture `SynchronizationContext.Current` tại constructor — nếu khởi tạo trên UI thread, callback `Report` sẽ marshal về UI thread → `TxtImportStatus.Text = msg` an toàn từ worker thread.
+- **AutoCAD db calls từ non-UI thread**: cấm tuyệt đối. `DocumentLock` + db access phải nằm sau `await` (UI thread đã được tái chiếm). Đã verify trong code.
+- **`async void` cho event handler**: WPF pattern chuẩn. Exception bubble lên sẽ crash app nếu không `try/catch` — đã wrap try/catch/finally đầy đủ.
+
+---
+
+## Session 2026-04-22 (1) — Gộp Import IDW thành 1 luồng với split-view
+
+### Đã làm
+Gộp 2 button "Import .idw files" + "Import .json files" thành 1 button `Import .idw` thực hiện full flow: Extract IDW → DWG/JSON → Split từng drawing view thành 1 block riêng → Map layer + inject attributes → Đăng ký MasterCatalog.
+
+- [Services/FittingManagement/IFittingManagementService.cs](Services/FittingManagement/IFittingManagementService.cs): bỏ `BatchImportIdwFiles(string[])` + `ImportJsonAndCreateBlocks(string[], string)`; thêm `ImportIdwFiles(string[] idwPaths, string bomType)`.
+- [Views/FittingManagement/FittingManagementView.xaml](Views/FittingManagement/FittingManagementView.xaml): Admin Expander nay còn 1 TextBlock + 1 RadioButton BOM Type + 1 Button `Import .idw` (bỏ Step 2 JSON + separator).
+- [Views/FittingManagement/FittingManagementView.xaml.cs](Views/FittingManagement/FittingManagementView.xaml.cs): xoá `BtnImportJson_Click`; `BtnBatchImportInventor_Click` đọc `RadioPanelFitting.IsChecked` rồi gọi `_service.ImportIdwFiles(paths, bomType)`.
+- [Services/FittingManagement/Import/FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs): đổi entry point thành `ImportIdwFiles(string[], string)` — PHASE 1 (`ExtractAllIdw`) giữ logic Inventor COM cũ nhưng trả `List<ExtractedIdw>` (inner class: SourceIdwName + DwgPath + FittingMetadata), sau đó gọi `CreateBlocksFromExtracted` làm PHASE 2.
+- [Services/FittingManagement/Import/FittingManagementService.JsonImport.cs](Services/FittingManagement/Import/FittingManagementService.JsonImport.cs): rewrite hoàn toàn. PHASE 2 mở từng DWG, `db.Insert(tempName, sideDb, true)` làm block tạm, rồi với mỗi `ViewMetadata` (center+size) clip entity theo bbox XY, dịch tâm view về `(0,0)` bằng `Matrix3d.Displacement`, gán layer, inject 7 attribute chuẩn + `VIEW_NAME`. Tên block = `<SanitizedPartNumber>_<SanitizedViewName>`. Fallback khi metadata không có view: tạo 1 block = cả DWG, tên = PartNumber.
+
+### Kiến trúc split-view
+- Cross-db clone né tránh bằng cách `db.Insert` vào main db như block tạm `__MCG_TEMP_<guid>`, sau đó iterate BTR tạm và `Entity.Clone()` (same-db) vào từng BTR đích. Temp BTR bị `Erase(true)` ở cuối transaction.
+- Entity thuộc view nếu tâm `GeometricExtents` XY rơi trong bbox view; entity overlap nhiều view sẽ được duplicate-clone sang mỗi view (chấp nhận theo thiết kế).
+- `SanitizeBlockName`: thay `< > / \\ " : ; ? * | , = \` ` + whitespace` bằng `_`. `SanitizeViewName` thêm `_2`, `_3`… nếu trùng tên view trong cùng IDW.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors, 2 warnings (pre-existing: Costura.Fody + PowerShell target bị Group Policy chặn — không liên quan thay đổi).
+
+### Bước tiếp theo
+- Test AutoCAD 2023: load plugin → `MCG_Fitting_Show` → chọn Panel/Detail → `Import .idw` với file IDW multi-view → verify N blocks tạo trong bản vẽ với tên `PART_FRONT`, `PART_TOP`, `PART_ISO`, v.v. và MasterCatalog.json chứa N entry.
+- Kiểm tra edge-case: IDW có view overlap, view rỗng geometry, view name trùng nhau, IDW không có view nào.
+- Kiểm tra đơn vị: Inventor IDW export DWG thường ở mm; view.CenterX/Y và entity coordinate phải cùng đơn vị. Nếu lệch (cm vs mm), block sẽ sai tâm — cần tính conversion.
+
+### Ghi chú API
+- `Vector3d.Zero` **không tồn tại** trong AutoCAD 2023 .NET API — phải dùng `new Vector3d(0,0,0)`.
+- `Database.Insert(name, sideDb, preserveSourceDatabase: true)` tạo **BlockTableRecord** trong main db chứa toàn bộ ModelSpace của sideDb — dùng làm temp BTR để clone same-db thay vì cross-db clone.
+- `Entity.Clone()` tạo deep copy in-memory; phải `AppendEntity` + `AddNewlyCreatedDBObject` để đưa vào db. Clone `BlockReference` trong tempBtr vẫn valid vì BTR definition đã nằm trong main db.
+- `BlockTableRecord.Erase(true)` sau `Add` + clone-out vẫn commit OK trong cùng transaction; entity đã clone sang BTR khác không bị ảnh hưởng.
+- `Extents3d` với Z = `double.NegativeInfinity/PositiveInfinity` để bbox 2D không lọc nhầm entity 3D theo Z.
+
+---
+
 ## Session 2026-04-21 (3) — Rename plugin + đổi command names (FittingManagement)
 
 ### Đã làm

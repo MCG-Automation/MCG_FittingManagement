@@ -86,17 +86,9 @@
                     </Style>
                 </Expander.Style>
                 <StackPanel Margin="0,6,0,0">
-                    <!-- Step 1: IDW Import -->
-                    <TextBlock Text="Step 1 — Extract from Inventor IDW" FontWeight="SemiBold" Foreground="#FF444444" Margin="0,0,0,4"/>
-                    <TextBlock Text="Extract Model Geometry and Properties from Inventor IDW files into JSON/DWG." Style="{StaticResource HelperTextStyle}"/>
-                    <Button x:Name="BtnBatchImportInventor" Content="Import .idw files" Style="{StaticResource PrimaryButtonStyle}" Click="BtnBatchImportInventor_Click"/>
-
-                    <!-- Separator -->
-                    <Separator Margin="0,8,0,8" Background="#FFDDDDDD"/>
-
-                    <!-- Step 2: JSON Import -->
-                    <TextBlock Text="Step 2 — Import JSON to AutoCAD" FontWeight="SemiBold" Foreground="#FF444444" Margin="0,0,0,4"/>
-                    <TextBlock Text="Import the extracted JSON files, split views, map layers, and inject attributes." Style="{StaticResource HelperTextStyle}"/>
+                    <!-- Gộp: Extract IDW → DWG/JSON → Split views → Create Blocks -->
+                    <TextBlock Text="Import from Inventor IDW" FontWeight="SemiBold" Foreground="#FF444444" Margin="0,0,0,4"/>
+                    <TextBlock Text="Extract geometry/properties from .idw, split each drawing view into its own block, map layer, and inject attributes." Style="{StaticResource HelperTextStyle}"/>
 
                     <Border Background="Transparent" BorderBrush="#FFDDDDDD" BorderThickness="1" Padding="6" Margin="0,0,0,8" CornerRadius="2">
                         <StackPanel>
@@ -108,7 +100,8 @@
                         </StackPanel>
                     </Border>
 
-                    <Button x:Name="BtnImportJson" Content="Import .json files" Style="{StaticResource PrimaryButtonStyle}" Click="BtnImportJson_Click"/>
+                    <Button x:Name="BtnBatchImportInventor" Content="Import .idw" Style="{StaticResource PrimaryButtonStyle}" Click="BtnBatchImportInventor_Click"/>
+                    <TextBlock x:Name="TxtImportStatus" Text="" Foreground="#FF005E9E" FontStyle="Italic" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
             </Expander>
 

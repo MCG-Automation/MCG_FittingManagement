@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Win32;
 using MCGCadPlugin.Models.FittingManagement;
 using MCGCadPlugin.Services.FittingManagement;
@@ -22,55 +23,43 @@ namespace MCGCadPlugin.Views.FittingManagement
         }
 
         // =========================================================
-        // STEP 1: IDW EXTRACTION (Inventor COM Interop)
+        // IDW IMPORT (gộp): Extract → Split View → Create Blocks
+        // Async: Phase 1 (Inventor COM) chạy Task.Run để AutoCAD UI không bị khoá.
         // =========================================================
-        private void BtnBatchImportInventor_Click(object sender, RoutedEventArgs e)
+        private async void BtnBatchImportInventor_Click(object sender, RoutedEventArgs e)
         {
+            OpenFileDialog ofd = new OpenFileDialog
+            {
+                Title = "Select Inventor Drawing Files (.idw)",
+                Filter = "Inventor Drawing (*.idw)|*.idw",
+                Multiselect = true
+            };
+
+            if (ofd.ShowDialog() != true || ofd.FileNames.Length == 0) return;
+
+            // Xác định BomType từ RadioButton trên UI
+            string bomType = (RadioPanelFitting.IsChecked == true) ? "PANEL" : "DETAIL";
+
+            // UI feedback: disable button, wait cursor, status text
+            BtnBatchImportInventor.IsEnabled = false;
+            Mouse.OverrideCursor = Cursors.AppStarting;
+            var progress = new Progress<string>(msg => TxtImportStatus.Text = msg);
+
             try
             {
-                OpenFileDialog ofd = new OpenFileDialog
-                {
-                    Title = "Select Inventor Drawing Files (.idw)",
-                    Filter = "Inventor Drawing (*.idw)|*.idw",
-                    Multiselect = true
-                };
-
-                if (ofd.ShowDialog() != true || ofd.FileNames.Length == 0) return;
-
-                ImportResult result = _service.BatchImportIdwFiles(ofd.FileNames);
+                ImportResult result = await _service.ImportIdwFilesAsync(ofd.FileNames, bomType, progress);
+                TxtImportStatus.Text = $"Done. Success={result.SuccessCount}, Failed={result.FailCount}";
                 ShowImportResultDialog("Import IDW", result);
             }
             catch (Exception ex)
             {
+                TxtImportStatus.Text = "Error. See log.";
                 ShowExceptionDialog("Lỗi Import IDW", ex);
             }
-        }
-
-        // =========================================================
-        // STEP 2: JSON IMPORT (Tạo Block + Attributes + Catalog)
-        // =========================================================
-        private void BtnImportJson_Click(object sender, RoutedEventArgs e)
-        {
-            try
+            finally
             {
-                OpenFileDialog ofd = new OpenFileDialog
-                {
-                    Title = "Select Extracted JSON Files",
-                    Filter = "JSON Files (*.json)|*.json",
-                    Multiselect = true
-                };
-
-                if (ofd.ShowDialog() != true || ofd.FileNames.Length == 0) return;
-
-                // Xác định BomType từ RadioButton trên UI
-                string bomType = (RadioPanelFitting.IsChecked == true) ? "PANEL" : "DETAIL";
-
-                ImportResult result = _service.ImportJsonAndCreateBlocks(ofd.FileNames, bomType);
-                ShowImportResultDialog("Import JSON", result);
-            }
-            catch (Exception ex)
-            {
-                ShowExceptionDialog("Lỗi Import JSON", ex);
+                Mouse.OverrideCursor = null;
+                BtnBatchImportInventor.IsEnabled = true;
             }
         }
 

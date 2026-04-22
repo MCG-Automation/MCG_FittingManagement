@@ -1,8 +1,11 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using MCGCadPlugin.Models.FittingManagement;
 using MCGCadPlugin.Utilities;
@@ -16,68 +19,100 @@ namespace MCGCadPlugin.Services.FittingManagement
     public partial class FittingManagementService
     {
         /// <summary>
-        /// Import hàng loạt file .idw từ Inventor, trích xuất metadata và export DWG.
-        /// Yêu cầu: Inventor phải được cài đặt trên máy.
+        /// Gói dữ liệu của 1 file IDW đã extract thành công, dùng làm input cho bước split-view.
+        /// </summary>
+        private class ExtractedIdw
+        {
+            public string SourceIdwName { get; set; }
+            public string DwgPath { get; set; }
+            public FittingMetadata Metadata { get; set; }
+        }
+
+        /// <summary>
+        /// Luồng gộp async: Phase 1 (Inventor COM — chậm) chạy trên worker thread qua <see cref="Task.Run(Action)"/>
+        /// để UI AutoCAD không bị khoá; Phase 2 (AutoCAD db — cần main thread) chạy lại trên thread gốc
+        /// của caller sau `await`. Báo tiến độ qua <paramref name="progress"/> nếu có.
         /// </summary>
         /// <param name="idwPaths">Danh sách đường dẫn file .idw</param>
-        /// <returns>ImportResult chứa số liệu và chi tiết lỗi</returns>
-        public ImportResult BatchImportIdwFiles(string[] idwPaths)
+        /// <param name="bomType">"PANEL" hoặc "DETAIL"</param>
+        /// <param name="progress">Callback nhận thông điệp trạng thái (có thể null).</param>
+        /// <returns>ImportResult tính theo file IDW (thành công khi extract OK và tạo được ≥1 block)</returns>
+        public async Task<ImportResult> ImportIdwFilesAsync(string[] idwPaths, string bomType, IProgress<string> progress = null)
         {
             var result = new ImportResult();
-            FileLogger.LogSessionStart($"BatchImportIdwFiles ({idwPaths.Length} files)");
-            FileLogger.Log(LOG_PREFIX, $"Bắt đầu BatchImportIdwFiles — {idwPaths.Length} file(s)...");
-            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu BatchImportIdwFiles — {idwPaths.Length} file(s)...");
+            FileLogger.LogSessionStart($"ImportIdwFilesAsync ({idwPaths.Length} files, BomType={bomType})");
+            FileLogger.Log(LOG_PREFIX, $"Bắt đầu ImportIdwFilesAsync — {idwPaths.Length} file(s), BomType={bomType}...");
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu ImportIdwFilesAsync — {idwPaths.Length} file(s), BomType={bomType}...");
 
+            // PHASE 1 — worker thread: Inventor COM (Open/SaveAs/Close — chậm)
+            progress?.Report($"Extracting {idwPaths.Length} IDW file(s) via Inventor...");
+            var extractedItems = await Task.Run(() => ExtractAllIdw(idwPaths, result, progress));
+
+            // PHASE 2 — thread gốc: AutoCAD db phải chạy trên main thread
+            if (extractedItems.Count > 0)
+            {
+                progress?.Report($"Creating blocks from {extractedItems.Count} DWG(s)...");
+                CreateBlocksFromExtracted(extractedItems, bomType, result, progress);
+            }
+
+            progress?.Report($"Done. Success={result.SuccessCount}, Failed={result.FailCount}");
+            FileLogger.Log(LOG_PREFIX, $"HOÀN TẤT ImportIdwFilesAsync — Thành công: {result.SuccessCount}, Thất bại: {result.FailCount}.");
+            Debug.WriteLine($"{LOG_PREFIX} HOÀN TẤT ImportIdwFilesAsync — Thành công: {result.SuccessCount}, Thất bại: {result.FailCount}.");
+            return result;
+        }
+
+        /// <summary>
+        /// PHASE 1 — Extract toàn bộ IDW. File extract fail bị ghi vào result.Errors ngay;
+        /// file extract OK được trả về để PHASE 2 dùng. Chạy trên worker thread.
+        /// </summary>
+        private List<ExtractedIdw> ExtractAllIdw(string[] idwPaths, ImportResult result, IProgress<string> progress)
+        {
+            var extracted = new List<ExtractedIdw>();
             bool weStartedInventor = false;
             dynamic invApp = null;
 
             try
             {
-                // 1. Khởi tạo Inventor COM — dùng instance đang chạy hoặc tạo mới
                 invApp = AcquireInventorInstance(out weStartedInventor);
 
-                // 2. Đảm bảo thư mục output tồn tại
                 if (!Directory.Exists(_libraryFolderPath))
                 {
                     Directory.CreateDirectory(_libraryFolderPath);
                     FileLogger.Log(LOG_PREFIX, $"Đã tạo thư mục: {_libraryFolderPath}");
                 }
 
-                // 3. Xử lý từng file IDW
-                foreach (string idwPath in idwPaths)
+                int total = idwPaths.Length;
+                for (int i = 0; i < total; i++)
                 {
+                    string idwPath = idwPaths[i];
                     string fileName = Path.GetFileName(idwPath);
+                    progress?.Report($"[{i + 1}/{total}] Extracting: {fileName}");
+
                     try
                     {
-                        ProcessSingleIdwFile(invApp, idwPath);
-                        result.SuccessCount++;
-                        FileLogger.Log(LOG_PREFIX, $"Import IDW THÀNH CÔNG: {fileName}");
-                        Debug.WriteLine($"{LOG_PREFIX} Import IDW THÀNH CÔNG: {fileName}");
+                        ExtractedIdw item = ProcessSingleIdwFile(invApp, idwPath);
+                        extracted.Add(item);
+                        FileLogger.Log(LOG_PREFIX, $"Extract IDW OK: {fileName} → {item.Metadata.Views?.Count ?? 0} view(s)");
                     }
                     catch (System.Exception ex)
                     {
                         result.FailCount++;
-                        FileLogger.LogException(LOG_PREFIX, $"import IDW '{fileName}'", ex);
-                        Debug.WriteLine($"{LOG_PREFIX} LỖI import IDW '{fileName}': {ex.Message}");
-                        result.AddError(fileName, $"{ex.GetType().Name}: {ex.Message}");
+                        FileLogger.LogException(LOG_PREFIX, $"extract IDW '{fileName}'", ex);
+                        result.AddError(fileName, $"Extract: {ex.GetType().Name}: {ex.Message}");
                     }
                 }
             }
             catch (System.Exception ex)
             {
-                FileLogger.LogException(LOG_PREFIX, "BatchImportIdwFiles (outer)", ex);
-                Debug.WriteLine($"{LOG_PREFIX} LỖI BatchImportIdwFiles: {ex.Message}");
+                FileLogger.LogException(LOG_PREFIX, "ExtractAllIdw (outer)", ex);
                 throw;
             }
             finally
             {
-                // 4. Giải phóng COM — chỉ Quit nếu chính ta khởi tạo Inventor
                 ReleaseInventorInstance(invApp, weStartedInventor);
             }
 
-            FileLogger.Log(LOG_PREFIX, $"HOÀN TẤT — Thành công: {result.SuccessCount}, Thất bại: {result.FailCount}.");
-            Debug.WriteLine($"{LOG_PREFIX} BatchImportIdwFiles HOÀN TẤT — Thành công: {result.SuccessCount}, Thất bại: {result.FailCount}.");
-            return result;
+            return extracted;
         }
 
         #region IDW Import — Private Helpers
@@ -113,6 +148,14 @@ namespace MCGCadPlugin.Services.FittingManagement
                 FileLogger.Log(LOG_PREFIX, "Đã khởi tạo Inventor instance mới (background).");
             }
 
+            // Giảm cơ hội Inventor popup dialog modal (huỷ warning/prompt khi open/save)
+            // — dùng try/catch vì một vài build Inventor không expose property này.
+            try { invApp.SilentOperation = true; }
+            catch (System.Exception ex)
+            {
+                FileLogger.Log(LOG_PREFIX, $"SilentOperation không khả dụng: {ex.Message}");
+            }
+
             return invApp;
         }
 
@@ -132,6 +175,13 @@ namespace MCGCadPlugin.Services.FittingManagement
                 }
                 Marshal.ReleaseComObject(invApp);
             }
+            catch (COMException comEx) when (
+                comEx.HResult == unchecked((int)0x80010114) ||    // "The requested object does not exist"
+                comEx.HResult == unchecked((int)0x800706BA))       // "The RPC server is unavailable"
+            {
+                // Benign — Inventor.exe đã quit trước khi ta release được ref.
+                FileLogger.Log(LOG_PREFIX, $"Inventor COM đã tự giải phóng (Inventor.exe đã thoát, benign 0x{comEx.HResult:X8}).");
+            }
             catch (System.Exception ex)
             {
                 FileLogger.LogException(LOG_PREFIX, "giải phóng Inventor COM", ex);
@@ -139,9 +189,10 @@ namespace MCGCadPlugin.Services.FittingManagement
         }
 
         /// <summary>
-        /// Xử lý 1 file IDW: trích xuất metadata, export DWG, lưu JSON.
+        /// Xử lý 1 file IDW: trích xuất metadata, export DWG, lưu JSON,
+        /// trả về gói <see cref="ExtractedIdw"/> để phase split-view dùng tiếp.
         /// </summary>
-        private void ProcessSingleIdwFile(dynamic invApp, string idwPath)
+        private ExtractedIdw ProcessSingleIdwFile(dynamic invApp, string idwPath)
         {
             FileLogger.Log(LOG_PREFIX, $"Đang xử lý: {Path.GetFileName(idwPath)}...");
 
@@ -149,19 +200,26 @@ namespace MCGCadPlugin.Services.FittingManagement
             string dwgOutputPath = Path.Combine(_libraryFolderPath, baseName + ".dwg");
             string jsonOutputPath = Path.Combine(_libraryFolderPath, baseName + ".json");
 
+            FittingMetadata metadata = null;
             dynamic drawingDoc = null;
             try
             {
-                // Mở file IDW (OpenVisible = TRUE — bắt buộc để SaveCopyAs có thể render views)
-                // Inventor app đã được ẩn (invApp.Visible = false), nhưng document cần có window nội bộ
-                FileLogger.Log(LOG_PREFIX, $"  Bước 1/4: Đang mở file IDW (OpenVisible=true)...");
-                drawingDoc = invApp.Documents.Open(idwPath, true);
+                // Mở IDW background (OpenVisible=false — nhanh hơn, không render UI).
+                // drawingDoc.SaveAs() vẫn export DWG được mà không cần view on-screen.
+                FileLogger.Log(LOG_PREFIX, $"  Bước 1/4: Đang mở file IDW (OpenVisible=false)...");
+                drawingDoc = invApp.Documents.Open(idwPath, false);
 
-                // Trích xuất iProperties
-                FileLogger.Log(LOG_PREFIX, $"  Bước 2/4: Đang trích xuất iProperties...");
-                FittingMetadata metadata = ExtractIProperties(drawingDoc);
+                // Trích xuất iProperties từ Referenced Model (IPT/IAM) — chỗ chứa PN/Mass thật.
+                // Drawing iProperties thường rỗng — chỉ fallback khi không tìm thấy model ref.
+                FileLogger.Log(LOG_PREFIX, $"  Bước 2/4: Đang trích xuất iProperties từ model...");
+                dynamic modelDoc = GetReferencedModel(drawingDoc);
+                if (modelDoc != null)
+                    FileLogger.Log(LOG_PREFIX, "    Đã tìm thấy Referenced Model.");
+                else
+                    FileLogger.Log(LOG_PREFIX, "    CẢNH BÁO: Không tìm thấy Referenced Model — fallback đọc từ drawing.");
+                metadata = ExtractIProperties(modelDoc ?? drawingDoc);
 
-                // Trích xuất thông tin các Drawing Views
+                // Trích xuất drawing views — áp dụng view scale để ra tọa độ model mm
                 FileLogger.Log(LOG_PREFIX, $"  Bước 3/4: Đang trích xuất Drawing Views...");
                 metadata.Views = ExtractDrawingViews(drawingDoc);
 
@@ -169,7 +227,7 @@ namespace MCGCadPlugin.Services.FittingManagement
                 FileLogger.Log(LOG_PREFIX, $"  Bước 4/4: Đang export DWG tới {dwgOutputPath}...");
                 ExportIdwToDwg(invApp, drawingDoc, dwgOutputPath);
 
-                // Lưu metadata ra JSON
+                // Lưu metadata ra JSON (audit trail + tương thích với external tool)
                 string json = JsonConvert.SerializeObject(metadata, Formatting.Indented);
                 File.WriteAllText(jsonOutputPath, json);
                 FileLogger.Log(LOG_PREFIX, $"  Đã lưu JSON: {jsonOutputPath}");
@@ -184,49 +242,107 @@ namespace MCGCadPlugin.Services.FittingManagement
                         drawingDoc.Close(true); // true = skip save
                         Marshal.ReleaseComObject(drawingDoc);
                     }
+                    catch (COMException comEx) when (
+                        comEx.HResult == unchecked((int)0x80010114) ||    // "The requested object does not exist"
+                        comEx.HResult == unchecked((int)0x800706BA))       // "The RPC server is unavailable"
+                    {
+                        // Benign — Inventor tự unload document sau SaveAs; Close() gọi lên ref đã chết.
+                        FileLogger.Log(LOG_PREFIX, $"  IDW document đã tự unload (benign COM 0x{comEx.HResult:X8}).");
+                    }
                     catch (System.Exception ex)
                     {
                         FileLogger.LogException(LOG_PREFIX, "đóng IDW", ex);
                     }
                 }
             }
+
+            return new ExtractedIdw
+            {
+                SourceIdwName = Path.GetFileName(idwPath),
+                DwgPath = dwgOutputPath,
+                Metadata = metadata
+            };
         }
 
         /// <summary>
-        /// Trích xuất iProperties từ DrawingDocument của Inventor.
+        /// Duyệt các sheet/drawing view để tìm ReferencedDocument (IPT/IAM) đầu tiên.
+        /// Trả về null nếu drawing không reference model nào (rare).
         /// </summary>
-        private FittingMetadata ExtractIProperties(dynamic drawingDoc)
+        private dynamic GetReferencedModel(dynamic drawingDoc)
+        {
+            try
+            {
+                foreach (dynamic sheet in drawingDoc.Sheets)
+                {
+                    foreach (dynamic view in sheet.DrawingViews)
+                    {
+                        try
+                        {
+                            dynamic descriptor = view.ReferencedDocumentDescriptor;
+                            if (descriptor == null) continue;
+                            dynamic refDoc = descriptor.ReferencedDocument;
+                            if (refDoc != null) return refDoc;
+                        }
+                        catch { /* view không có ref doc — next */ }
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                FileLogger.LogException(LOG_PREFIX, "GetReferencedModel", ex);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Trích xuất iProperties từ document (ưu tiên model IPT/IAM, fallback drawing).
+        /// Áp dụng FormatAndRoundMass cho Mass để ra dạng "24 kg" thay vì "24.532".
+        /// </summary>
+        private FittingMetadata ExtractIProperties(dynamic doc)
         {
             var metadata = new FittingMetadata();
 
             try
             {
-                dynamic propSets = drawingDoc.PropertySets;
+                dynamic propSets = doc.PropertySets;
 
-                // Design Tracking Properties — chứa Part Number, Description, Mass, Material, etc.
+                // Design Tracking Properties — chứa Part Number, Description, Material, Mass, Designer
                 dynamic designProps = propSets["Design Tracking Properties"];
                 metadata.PartNumber = SafeGetProperty(designProps, "Part Number");
                 metadata.Description = SafeGetProperty(designProps, "Description");
-                metadata.Revision = SafeGetProperty(designProps, "Revision Number");
-                metadata.Designer = SafeGetProperty(designProps, "Designer");
                 metadata.Material = SafeGetProperty(designProps, "Material");
-                metadata.Mass = SafeGetProperty(designProps, "Mass");
+                metadata.Designer = SafeGetProperty(designProps, "Designer");
 
-                // Inventor Summary Information — chứa Title
+                // Mass — làm tròn + giữ unit suffix (24.532 kg → 25 kg)
+                string rawMass = SafeGetProperty(designProps, "Mass");
+                metadata.Mass = FormatAndRoundMass(rawMass);
+
+                // Inventor Summary Information — Title, Revision, (fallback Author cho Designer)
                 dynamic summaryProps = propSets["Inventor Summary Information"];
                 metadata.Title = SafeGetProperty(summaryProps, "Title");
+                metadata.Revision = SafeGetProperty(summaryProps, "Revision Number");
+
+                // Fallback: nếu Design Tracking Properties không có Revision, thử lại trên design
+                if (string.IsNullOrWhiteSpace(metadata.Revision))
+                    metadata.Revision = SafeGetProperty(designProps, "Revision Number");
+
+                // Fallback: nếu Designer rỗng, dùng Author
+                if (string.IsNullOrWhiteSpace(metadata.Designer))
+                    metadata.Designer = SafeGetProperty(summaryProps, "Author");
             }
             catch (System.Exception ex)
             {
                 FileLogger.LogException(LOG_PREFIX, "đọc iProperties", ex);
             }
 
-            FileLogger.Log(LOG_PREFIX, $"  iProperties: PartNumber='{metadata.PartNumber}', Title='{metadata.Title}'");
+            FileLogger.Log(LOG_PREFIX,
+                $"  iProperties: PartNumber='{metadata.PartNumber}', Title='{metadata.Title}', Mass='{metadata.Mass}'");
             return metadata;
         }
 
         /// <summary>
         /// Đọc giá trị property an toàn — trả về chuỗi rỗng nếu không tồn tại.
+        /// Giữ raw string cho double (không F3); caller tự format (ví dụ Mass).
         /// </summary>
         private string SafeGetProperty(dynamic propSet, string propName)
         {
@@ -236,7 +352,8 @@ namespace MCGCadPlugin.Services.FittingManagement
                 object val = prop.Value;
                 if (val == null) return "";
 
-                if (val is double dVal) return dVal.ToString("F3");
+                if (val is double dVal)
+                    return dVal.ToString(CultureInfo.InvariantCulture);
                 return val.ToString();
             }
             catch
@@ -246,30 +363,87 @@ namespace MCGCadPlugin.Services.FittingManagement
         }
 
         /// <summary>
-        /// Trích xuất thông tin các Drawing Views từ tất cả Sheets.
+        /// Parse raw Mass từ Inventor (ví dụ "24.532 kg") → làm tròn số → "25 kg".
+        /// Giữ nguyên unit suffix nếu có; fallback return raw nếu parse fail.
+        /// </summary>
+        private static string FormatAndRoundMass(string rawMass)
+        {
+            if (string.IsNullOrWhiteSpace(rawMass)) return "";
+
+            try
+            {
+                Match match = Regex.Match(rawMass.Trim(), @"^([\d\.,]+)\s*(.*)$");
+                if (match.Success)
+                {
+                    string numberPart = match.Groups[1].Value.Replace(",", ".");
+                    string unitPart = match.Groups[2].Value.Trim();
+
+                    if (double.TryParse(numberPart, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed))
+                    {
+                        double rounded = Math.Round(parsed, 0);
+                        return string.IsNullOrEmpty(unitPart)
+                            ? rounded.ToString(CultureInfo.InvariantCulture)
+                            : $"{rounded.ToString(CultureInfo.InvariantCulture)} {unitPart}";
+                    }
+                }
+                return rawMass;
+            }
+            catch
+            {
+                return rawMass;
+            }
+        }
+
+        /// <summary>
+        /// Duyệt tất cả sheet và drawing view, convert tâm/kích thước từ tọa độ sheet (cm) sang tọa độ model (mm).
+        /// Công thức: model_mm = sheet_cm × 10 ÷ view.Scale.
+        /// View name dùng "View_N" tuần tự (tránh collision và ký tự không hợp lệ trong tên block).
         /// </summary>
         private List<ViewMetadata> ExtractDrawingViews(dynamic drawingDoc)
         {
             var views = new List<ViewMetadata>();
+            int viewIndex = 1;
 
             try
             {
                 foreach (dynamic sheet in drawingDoc.Sheets)
                 {
+                    // baseScaleFactor = 1 / view.Scale — dịch từ sheet-coords về model-coords
+                    // (DWG export giữ geometry ở tỉ lệ model thật, nên metadata cũng phải ở model mm)
+                    double baseScaleFactor = 1.0;
+                    try
+                    {
+                        if (sheet.DrawingViews.Count > 0)
+                        {
+                            double firstScale = (double)sheet.DrawingViews[1].Scale;
+                            if (firstScale > 0) baseScaleFactor = 1.0 / firstScale;
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        FileLogger.Log(LOG_PREFIX, $"  CẢNH BÁO: không đọc được Scale, dùng 1.0: {ex.Message}");
+                    }
+
                     foreach (dynamic drawingView in sheet.DrawingViews)
                     {
                         try
                         {
-                            // Inventor DrawingView.Position trả về Point2d (center của view)
-                            dynamic position = drawingView.Position;
+                            // DrawingView.Center là Point2d ở sheet coords (cm) — lấy *10 ra mm, rồi *baseScaleFactor ra model-mm
+                            dynamic center = drawingView.Center;
+                            double cxSheet = (double)center.X * 10.0;
+                            double cySheet = (double)center.Y * 10.0;
+                            double wSheet = (double)drawingView.Width * 10.0;
+                            double hSheet = (double)drawingView.Height * 10.0;
+
                             views.Add(new ViewMetadata
                             {
-                                Name = (string)drawingView.Name,
-                                CenterX = (double)position.X,
-                                CenterY = (double)position.Y,
-                                Width = (double)drawingView.Width,
-                                Height = (double)drawingView.Height
+                                Name = "View_" + viewIndex,
+                                CenterX = cxSheet * baseScaleFactor,
+                                CenterY = cySheet * baseScaleFactor,
+                                Width = wSheet * baseScaleFactor,
+                                Height = hSheet * baseScaleFactor
                             });
+                            viewIndex++;
                         }
                         catch (System.Exception ex)
                         {
@@ -283,7 +457,7 @@ namespace MCGCadPlugin.Services.FittingManagement
                 FileLogger.LogException(LOG_PREFIX, "duyệt Sheets", ex);
             }
 
-            FileLogger.Log(LOG_PREFIX, $"  Tìm thấy {views.Count} drawing view(s).");
+            FileLogger.Log(LOG_PREFIX, $"  Tìm thấy {views.Count} drawing view(s) (tọa độ model mm).");
             return views;
         }
 
