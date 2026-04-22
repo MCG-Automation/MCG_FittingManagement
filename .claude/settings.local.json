@@ -31,7 +31,8 @@
       "Bash(uuidgen)",
       "Bash(git clone *)",
       "Bash(git checkout *)",
-      "Bash(sed -n '5,12p;120,140p' Commands/PaletteManager.cs)"
+      "Bash(sed -n '5,12p;120,140p' Commands/PaletteManager.cs)",
+      "Bash(powershell.exe -NoProfile -Command '$dll = '\\\\''C:\\\\Program Files\\\\Autodesk\\\\Vault Client 2023\\\\Explorer\\\\Autodesk.DataManagement.Client.Framework.Vault.Forms.dll'\\\\''; if \\(Test-Path $dll\\) { $asm = [System.Reflection.Assembly]::LoadFrom\\($dll\\); $asm.GetTypes\\(\\) | Where-Object { $_.Name -like '\\\\''*Log*'\\\\'' -or $_.Name -like '\\\\''*Auth*'\\\\'' } | Select-Object -ExpandProperty FullName } else { '\\\\''DLL not found'\\\\'' }')"
     ],
     "additionalDirectories": [
       "C:\\Users\\TRANTH\\AppData\\Local\\Temp\\probe4"

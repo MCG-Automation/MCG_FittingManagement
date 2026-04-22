@@ -4,6 +4,140 @@
 
 ---
 
+## Session 2026-04-22 (16) — Tách DrawingCollection thành 6 partial file
+
+### Bối cảnh
+File `Services/FittingManagement/Utilities/FittingManagementService.DrawingCollection.cs` sau nhiều session đã lên 1372 dòng — khó navigate. Refactor thành partial files trong folder `Utilities/DrawingCollection/` theo concern-based split.
+
+### Đã làm
+**1. Tạo folder mới**: `Services/FittingManagement/Utilities/DrawingCollection/`
+
+**2. Split thành 6 file partial** (tất cả cùng `namespace MCGCadPlugin.Services.FittingManagement`, cùng `public partial class FittingManagementService`):
+
+| File | LOC | Nội dung |
+|---|---:|---|
+| [.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.cs) | 326 | **Entry point**: `CollectDrawingsAsync` + constants (COLLECTION_GAP, BBOX_OUTLIER_WARN, BATCH_SIZE_WARN, MEMORY_WARN_MB) + `LogMemoryUsage` helper |
+| [.Preprocess.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Preprocess.cs) | 405 | **Phase 1**: `PreprocessAll`, `LogPreparedFile`, `RenameBlocksInSideDb`, `PurgeUnusedInSideDb`, `CollectPurgeCandidates`, `ComputeModelSpaceExtents` |
+| [.Clone.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Clone.cs) | 220 | **Phase 2**: `CloneToCurrentSpace`, `UnlockAllLayersInDest`, `ComputeInitialOffsetX`, `CollectModelSpaceIds` |
+| [.Summary.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Summary.cs) | 258 | **End-of-run summary**: `WriteFinalSummary`, `FindDuplicateCandidates`, `FindKeepAsIsOverlaps` |
+| [.Helpers.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Helpers.cs) | 97 | **Static helpers**: `KeepAsIsBlocks`, `IsKeepAsIs`, `IsRecoverableCorruptError`, `GetEffectiveBlockName`, `SanitizeBlockNamePart`, `FindTopOutliers`, `Median` |
+| [.Types.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Types.cs) | 138 | **Nested stats types**: `PreparedDrawing`, `RenameStats`, `PurgeStats`, `ExtentsStats`, `EntityExtInfo`, `KeepAsIsRefInfo`, `KeepAsIsClonedInfo`, `KeepAsIsOverlapPair`, `CloneStats` |
+
+**3. Xoá file cũ** `Services/FittingManagement/Utilities/FittingManagementService.DrawingCollection.cs` (1372 dòng) → thay bằng 6 file trong subfolder.
+
+### Thiết kế
+- **Namespace không đổi**: `MCGCadPlugin.Services.FittingManagement` — cần cho partial class lookup. Không đổi theo rule `§3` CLAUDE.md (đã có exception cho utility partial files từ trước).
+- **File naming**: giữ pattern `FittingManagementService.DrawingCollection.<Section>.cs` — nhất quán với pattern các partial file khác của service (`.BomHelpers.cs`, `.BomInterface.cs`, `.IdwImport.cs`, …).
+- **Imports tối giản per file**: mỗi file chỉ `using` các namespace cần cho code của nó — giảm coupling khi navigate.
+- **Nested types tập trung 1 file**: các private classes `PreparedDrawing`, `RenameStats`, … dùng xuyên Preprocess/Clone/Summary → gom 1 chỗ để tránh phân tán, dễ sửa schema.
+- **Public API không thay đổi**: chỉ có `CollectDrawingsAsync` là public; caller (BlockUtilitiesView) không cần sửa gì.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors, 0 warnings mới.
+- **LOC sau refactor:** tổng 1444 dòng (+72 so với 1372 cũ, do thêm using statements + file header comments per partial file).
+
+### Ghi chú API
+- **C# partial class**: tất cả file cùng namespace + cùng class name + `partial` modifier → compiler gộp thành 1 class duy nhất. Constants, static fields, nested types, methods chia sẻ scope.
+- **Nested private class trong partial**: khai báo ở 1 file bất kỳ, access được từ mọi file partial khác cùng class.
+- **File folder không ảnh hưởng namespace**: C# namespace quy định qua `namespace` keyword, không phải folder path. Do đó có thể nest sub-folder tùy ý để tổ chức.
+- **Edit tool với partial refactor**: cần Write (tạo file mới) thay vì Edit vì tạo file trong folder chưa tồn tại. Bash `rm` để xoá file cũ.
+
+---
+
+## Session 2026-04-22 (15) — Drawing Collection: defensive hardening + FATAL logging
+
+### Bối cảnh
+User báo "hay gặp lỗi FATAL" khi dùng Drawing Collection. Không có log cụ thể — cần audit code + apply defensive measures + enhance logging để capture FATAL khi lặp lại.
+
+Các nguyên nhân nghi ngờ (theo mức khả năng):
+- 🔴 Memory pressure với batch lớn (Phase 1 hold N sideDb cùng lúc, ~500MB/file).
+- 🔴 Layer locked/frozen trong dest → `eLayerLocked` khi WblockCloneObjects.
+- 🟡 Native code crash (SEH) trên file corrupt không detect bằng ErrorStatus.
+- 🟡 Dynamic block reference state issue sau clone.
+
+### Đã làm
+[Services/FittingManagement/Utilities/FittingManagementService.DrawingCollection.cs](Services/FittingManagement/Utilities/FittingManagementService.DrawingCollection.cs) — 3 nhóm hardening:
+
+**A1. Unlock layers dest trước Phase 2:**
+- Helper mới `UnlockAllLayersInDest(destDb)`: iterate LayerTable, với mỗi LayerTableRecord IsLocked → set false; IsFrozen (trừ layer "0") → set false. Try/catch per-layer, count changed.
+- Gọi ngay trong `using DocumentLock` trước ComputeInitialOffsetX.
+- Log: `Đã unlock/thaw {N} layer trong dest trước khi clone.`
+
+**A2. Batch size warning + memory tracking:**
+- Const `BATCH_SIZE_WARN = 15`, `MEMORY_WARN_MB = 2048`.
+- Log `CẢNH BÁO batch lớn: X files ...` nếu vượt ngưỡng.
+- Helper `LogMemoryUsage(label)`: log `managed=XMB, workingSet=YMB` từ `GC.GetTotalMemory(false)` + `Process.WorkingSet64`.
+- Log memory tại các điểm: Start, After Phase 1, After Phase 2, After forced GC.
+- Sau mỗi file trong Phase 2 loop, check memory — nếu > MEMORY_WARN_MB → log `⚠ Memory = XMB ...`.
+
+**A3. Force GC sau Phase 2:**
+- `GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();` + log memory pre/post → user thấy memory leak nếu sideDb không dispose sạch.
+
+**C1. Broader exception taxonomy trong Phase 2 per-file loop:**
+- `OutOfMemoryException`: log `FATAL OutOfMemory tại file X (index i/N)`, log memory snapshot, **break** batch (file kế chắc cũng fail).
+- `SEHException` (native crash reach managed): log `FATAL SEHException ... ErrorCode=0x{ErrorCode:X} — native code crash, file có thể corrupt`.
+- `Autodesk.AutoCAD.Runtime.Exception`: log riêng với `ErrorStatus` name — dễ grep trong log.
+- Generic `Exception` fallback.
+- `finally`: wrap `item.SideDb?.Dispose()` trong try/catch riêng, log dispose fail.
+
+**C2. Defensive cleanup outer try/finally:**
+- Bọc toàn bộ Phase 2 (bao gồm using DocumentLock) trong `try/finally`.
+- `finally` iterate `prepared` list → dispose mọi `p.SideDb` chưa `IsDisposed` (idempotent). Log số orphan disposed.
+- Xử lý case OOM break loop hoặc exception ngoài per-file catch (UnlockAllLayersInDest / ComputeInitialOffsetX / ZoomExtents throw).
+
+### Thiết kế
+- **Không catch `AccessViolationException`**: .NET Framework 4.8 mặc định block CSE (Corrupted State Exceptions) — cần `[HandleProcessCorruptedStateExceptions]` attribute hoặc `legacyCorruptedStateExceptionsPolicy` in config. Plugin không control config. Thêm attribute chỉ trên method level async → runtime rewrite state machine, attribute có thể không propagate. Để process crash tự nhiên — AutoCAD có crash log riêng.
+- **OOM break vs continue**: OOM → managed heap đã critical. File kế sẽ allocate tiếp → chắc chắn fail. Break batch để dừng sớm, GC cleanup.
+- **Unlock chỉ layer, không thaw layer "0"**: layer 0 là default/current, thaw có thể throw nếu nó là current layer.
+- **Memory log dùng 2 metric**: `GC.GetTotalMemory(false)` = managed heap (không force collect, phản ánh sau allocate). `Process.WorkingSet64` = RAM thực OS cấp cho process. Cả 2 cần track để phân biệt managed leak vs native/unmanaged leak (sideDb là native wrapper).
+- **Guard rail chỉ log warning**, không block. User có thể chủ động chia batch nếu thấy warning.
+
+### Tác động khi chạy batch bình thường (10 files)
+Log sẽ thêm:
+```
+[Memory] Start: managed=150MB, workingSet=800MB
+CẢNH BÁO batch lớn: ... (nếu ≥15 files)
+Dest doc (nhà kho) path: ...
+[Phase 1 preprocess as before]
+[Memory] After Phase 1 (10 sideDb held): managed=420MB, workingSet=1200MB
+Đã unlock/thaw 3 layer trong dest trước khi clone.
+Scan dest ModelSpace: ...
+[Phase 2 per-file clone as before, + memory log nếu vượt 2GB]
+[Phase 2] xong ...
+[Memory] After Phase 2: managed=380MB, workingSet=1150MB
+[Memory] After forced GC: managed=180MB, workingSet=900MB
+```
+
+### Các nguyên nhân FATAL khó catch được bằng C# alone
+- **Access violation trong native code AutoCAD** (null deref, use-after-free trong acmgd.dll): process crash trực tiếp, C# không catch được kể cả với HandleProcessCorruptedStateExceptions.
+- **Stack overflow**: C# catch được StackOverflowException là uncatchable sau .NET 2.0. Process terminate.
+- **AutoCAD internal assert fail**: process abort.
+
+Khi FATAL thực sự xảy ra, user cần check:
+1. `%APPDATA%\MCGCadPlugin\plugin.log` — managed-side context (memory, last file processing).
+2. `%LOCALAPPDATA%\Autodesk\AutoCAD 2023\R23.1\enu\AcadCoreStack.log` — AutoCAD crash dump.
+3. Windows Event Viewer → Application → `acad.exe` Error entries.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Bước tiếp theo
+- User test lại Drawing Collection với các batch đã gặp FATAL trước đây.
+- Nếu FATAL tiếp diễn, gửi plugin.log (toàn bộ session) + AcadCoreStack.log → phân tích chính xác.
+- Nếu log cho thấy `⚠ Memory > 2GB` trước crash → confirm OOM → implement giải pháp B (interleave Phase 1+2) để giảm peak memory.
+- Nếu log SEHException trên 1 file cụ thể → file corrupt, skip file đó hoặc chạy RECOVER thủ công.
+
+### Ghi chú API
+- **`Database.IsDisposed`**: property check instance đã dispose chưa. Double-dispose Database không throw (benign) nhưng check để đếm đúng.
+- **`SEHException.ErrorCode`**: HRESULT của native crash. Format hex (`:X`) match Windows convention. Vd `0x80004005 = E_FAIL`, `0xC0000005 = ACCESS_VIOLATION`.
+- **`LayerTableRecord.IsFrozen` trên current layer**: throw `eInvalidInput`. Try/catch riêng cho `IsFrozen = false`. Layer "0" đặc biệt — không thể freeze → skip.
+- **`[HandleProcessCorruptedStateExceptions]` trên async method**: không reliable. Runtime rewrite thành state machine class; attribute ở method gốc có thể không áp dụng cho MoveNext() sau rewrite. Nên không dùng.
+- **`Process.WorkingSet64`**: RAM thực process đang giữ. Khác `VirtualMemorySize64` (virtual address space, có thể lớn hơn nhiều nhưng không reflect RAM pressure).
+
+---
+
 ## Session 2026-04-22 (14) — Drawing Collection: append sau A1 hiện hữu trong nhà kho
 
 ### Yêu cầu user
