@@ -4,6 +4,48 @@
 
 ---
 
+## Session 2026-04-22 (5) — Tách Palette thành 4 tab + rename title
+
+### Yêu cầu user
+1. Palette title "MCGCadPlugin - FittingManagement" → "Fitting Management"
+2. Tách thành 4 tab: **Fitting Handle** / **Project Config** / **Template** / **Block Utilities**
+3. Block Utilities: 6 block utility buttons
+4. Template: Import .idw + Open Library
+5. Project Config: Open Library (cùng button, tab khác)
+6. Fitting Handle: Open BOM + Balloon
+
+### Đã làm
+- [Views/FittingManagement/FittingStyles.xaml](Views/FittingManagement/FittingStyles.xaml) — **MỚI**: ResourceDictionary chung chứa 4 Style (HelperTextStyle, GroupBox, Button default, PrimaryButtonStyle). Mỗi UserControl merge qua relative `Source="FittingStyles.xaml"` — WPF resolve qua BaseUri của XAML compiled.
+- [Views/FittingManagement/FittingHandleView.xaml](Views/FittingManagement/FittingHandleView.xaml) + [.xaml.cs](Views/FittingManagement/FittingHandleView.xaml.cs) — **MỚI**: tab "Fitting Handle" với 2 GroupBox — BOM EXPORT (`BtnOpenBomPreview`) + BALLOONING (`BtnAddBalloon`, `BtnMassBalloon`).
+- [Views/FittingManagement/ProjectConfigView.xaml](Views/FittingManagement/ProjectConfigView.xaml) + [.xaml.cs](Views/FittingManagement/ProjectConfigView.xaml.cs) — **MỚI**: tab "Project Config" với 1 button `BtnOpenLibrary`.
+- [Views/FittingManagement/TemplateView.xaml](Views/FittingManagement/TemplateView.xaml) + [.xaml.cs](Views/FittingManagement/TemplateView.xaml.cs) — **MỚI**: tab "Template" với IMPORT TEMPLATE FROM IDW (RadioButton Panel/Detail + `BtnBatchImportInventor` async + `TxtImportStatus` + ShowImportResultDialog/ShowExceptionDialog/OpenLogFolder helpers) + FITTING LIBRARY (`BtnOpenLibrary`).
+- [Views/FittingManagement/BlockUtilitiesView.xaml](Views/FittingManagement/BlockUtilitiesView.xaml) + [.xaml.cs](Views/FittingManagement/BlockUtilitiesView.xaml.cs) — **MỚI**: tab "Block Utilities" với 6 button — Rename/Redefine/Replace/ChangeBasePoint/AddToBlock/ExtractFromBlock.
+- [Commands/PaletteManager.cs](Commands/PaletteManager.cs): title `"MCGCadPlugin - FittingManagement"` → `"Fitting Management"`; 1 `AddVisual` → 4 `AddVisual` theo thứ tự user yêu cầu (FittingHandle, ProjectConfig, Template, BlockUtilities).
+- **Xóa**: `Views/FittingManagement/FittingManagementView.xaml` + `.xaml.cs` (không còn dùng).
+- [CLAUDE.md §9](CLAUDE.md): cập nhật danh sách tab (4 tab thay vì 1), title mới, file tree.
+
+### Kiến trúc
+- Mỗi tab = 1 UserControl độc lập, mỗi tab tự `new FittingManagementService()` trong constructor (service stateless OK).
+- `IFittingManagementService` không đổi — 4 tab share cùng interface.
+- GUID palette (`2b80cfe9-c560-49d6-8a09-9d636260fcf2`) KHÔNG đổi — AutoCAD giữ vị trí dock + thứ tự tab theo GUID. Thứ tự tab giờ đã fix sau deploy.
+- Command CAD `MCG_Fitting_Show/Hide` không đổi.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Bước tiếp theo
+- Test trong AutoCAD 2023: `MCG_Fitting_Show` → xem title bar "Fitting Management" + 4 tab đúng thứ tự + click thử mỗi button để verify service gắn đúng.
+- Kiểm `ResourceDictionary Source="FittingStyles.xaml"` resolve đúng runtime — nếu styles không áp dụng (button trắng-trơn), switch sang absolute URI `"/Views/FittingManagement/FittingStyles.xaml"` hoặc pack URI với `$(PluginName)`.
+
+### Ghi chú API
+- **WPF ResourceDictionary relative URI**: `Source="FittingStyles.xaml"` resolve qua `BaseUri` của XAML compiled. Đối với UserControl trong cùng folder với ResourceDictionary → tự ghép đúng pack URI nội bộ của assembly.
+- **PaletteSet.AddVisual order**: AutoCAD nhớ index tab theo GUID → đổi thứ tự AddVisual sau deploy sẽ khiến user thấy tab hoán vị. Quy tắc: thêm tab MỚI vào CUỐI, không xen giữa.
+- **PaletteSetStyles.ShowTabForSingle**: vẫn giữ để nếu sau này giảm xuống 1 tab, title bar tab vẫn hiển thị.
+- **4 UserControl instance = 4 service instance**: OK vì FittingManagementService không giữ state session (file paths + db access đều stateless). Nếu cần share state, bọc thành singleton sau.
+
+---
+
 ## Session 2026-04-22 (4) — Align Import IDW với reference code ShipAutoCadPlugin
 
 ### Mục tiêu

@@ -231,23 +231,24 @@ if (result.Status == PromptStatus.OK)
 }
 ```
 
-### PaletteSet — Singleton pattern (5 Modules — 5 Tabs)
+### PaletteSet — Singleton pattern (1 Module — 4 Tabs)
 
 > Quyết định kiến trúc đã được chốt. Không thảo luận lại.
 
-- Toàn plugin dùng **DUY NHẤT 1 PaletteSet**, GUID cố định, không bao giờ thay đổi
+- Toàn plugin dùng **DUY NHẤT 1 PaletteSet** title `"Fitting Management"`, GUID cố định, không bao giờ thay đổi
 - `PaletteManager.cs` là Singleton nằm trong `Commands/`
-- 5 Module = 5 tab trong cùng 1 PaletteSet
-- Mỗi tab là 1 UserControl độc lập (ViewModel riêng, Service riêng)
+- 4 tab cùng 1 PaletteSet: **Fitting Handle / Project Config / Template / Block Utilities**
+- Mỗi tab là 1 UserControl độc lập (Service riêng, chia sẻ styles qua `FittingStyles.xaml`)
 - **Cấm** tạo PaletteSet thứ 2 ở bất kỳ file nào khác
+- **Thứ tự tab KHÔNG đổi sau deploy** — AutoCAD nhớ index theo GUID
 
 ```
-Commands/PaletteManager.cs                    ← Singleton duy nhất
-Views/DetailDesign/DetailDesignView.xaml
-Views/FittingManagement/FittingManagementView.xaml
-Views/PanelData/PanelDataView.xaml
-Views/TableOfContent/TableOfContentView.xaml
-Views/Weight/WeightView.xaml
+Commands/PaletteManager.cs                              ← Singleton duy nhất
+Views/FittingManagement/FittingStyles.xaml              ← ResourceDictionary chung
+Views/FittingManagement/FittingHandleView.xaml          ← Tab 1: BOM + Balloon
+Views/FittingManagement/ProjectConfigView.xaml          ← Tab 2: Open Library
+Views/FittingManagement/TemplateView.xaml               ← Tab 3: Import .idw + Open Library
+Views/FittingManagement/BlockUtilitiesView.xaml         ← Tab 4: 6 block utility buttons
 ```
 
 ```csharp
@@ -257,14 +258,13 @@ private static readonly Guid PaletteGuid = new Guid("2b80cfe9-c560-49d6-8a09-9d6
 private void Initialize()
 {
     // 1. Khởi tạo cơ bản với GUID
-    _paletteSet = new PaletteSet("MCGCadPlugin - FittingManagement", PaletteGuid);
+    _paletteSet = new PaletteSet("Fitting Management", PaletteGuid);
 
     // 2. Nạp nội dung — PHẢI thực hiện TRƯỚC khi set Dock/Size
-    _paletteSet.AddVisual("Detail Design",      new DetailDesignView());
-    _paletteSet.AddVisual("Fitting Management", new FittingManagementView());
-    _paletteSet.AddVisual("Panel Data",         new PanelDataView());
-    _paletteSet.AddVisual("Table of Content",   new TableOfContentView());
-    _paletteSet.AddVisual("Weight",             new WeightView());
+    _paletteSet.AddVisual("Fitting Handle",  new FittingHandleView());
+    _paletteSet.AddVisual("Project Config",  new ProjectConfigView());
+    _paletteSet.AddVisual("Template",        new TemplateView());
+    _paletteSet.AddVisual("Block Utilities", new BlockUtilitiesView());
 
     // 3. Thiết lập kích thước và khả năng neo — SAU AddVisual
     _paletteSet.DockEnabled = DockSides.Right | DockSides.Left;

@@ -1,0 +1,42 @@
+<UserControl x:Class="MCGCadPlugin.Views.FittingManagement.TemplateView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#FFF2F2F2"
+             FontSize="11">
+
+    <UserControl.Resources>
+        <ResourceDictionary Source="FittingStyles.xaml"/>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,5,0,0">
+        <StackPanel TextElement.FontWeight="Normal" Margin="4">
+
+            <GroupBox Header="IMPORT TEMPLATE FROM IDW">
+                <StackPanel>
+                    <TextBlock Text="Extract geometry/properties from .idw, split each drawing view into its own block, map layer, and inject attributes." Style="{StaticResource HelperTextStyle}"/>
+
+                    <Border Background="Transparent" BorderBrush="#FFDDDDDD" BorderThickness="1" Padding="6" Margin="0,0,0,8" CornerRadius="2">
+                        <StackPanel>
+                            <TextBlock Text="Target BOM Type:" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="#FF444444"/>
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="RadioPanelFitting" Content="Panel (Structure)" IsChecked="True" Margin="0,0,15,0"/>
+                                <RadioButton x:Name="RadioDetailFitting" Content="Detail (Hull)"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Button x:Name="BtnBatchImportInventor" Content="Import .idw" Style="{StaticResource PrimaryButtonStyle}" Click="BtnBatchImportInventor_Click"/>
+                    <TextBlock x:Name="TxtImportStatus" Text="" Foreground="#FF005E9E" FontStyle="Italic" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="FITTING LIBRARY">
+                <StackPanel>
+                    <TextBlock Text="Browse imported templates in the central library." Style="{StaticResource HelperTextStyle}"/>
+                    <Button x:Name="BtnOpenLibrary" Content="Open Fitting Library" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenLibrary_Click"/>
+                </StackPanel>
+            </GroupBox>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
