@@ -100,13 +100,17 @@ namespace MCGCadPlugin.Commands
 
         #region AutoCAD Commands
 
+        // PHẢI là static — AutoCAD PerDocumentCommandClass.Invoke gọi Activator.CreateInstance(type)
+        // để tạo instance của class chứa [CommandMethod]. Singleton ctor private → crash
+        // MissingMethodException nếu method là instance. Static method không cần instance.
+
         /// <summary>Lệnh hiển thị Palette (gõ MCG_Fitting_Show trong CAD)</summary>
         [CommandMethod("MCG_Fitting_Show", CommandFlags.Modal)]
-        public void McgShow() => Show();
+        public static void McgShow() => Instance.Show();
 
         /// <summary>Lệnh ẩn Palette (gõ MCG_Fitting_Hide trong CAD)</summary>
         [CommandMethod("MCG_Fitting_Hide", CommandFlags.Modal)]
-        public void McgHide() => Hide();
+        public static void McgHide() => Instance.Hide();
 
         #endregion
 

@@ -4,6 +4,35 @@
 
 ---
 
+## Session 2026-04-22 (6) — Fix MissingMethodException khi gõ MCG_Fitting_Show/Hide
+
+### Vấn đề
+AutoCAD crash khi gõ `MCG_Fitting_Hide` (và `Show`):
+```
+System.MissingMethodException: No parameterless constructor defined for this object.
+  at System.Activator.CreateInstance(Type type)
+  at Autodesk.AutoCAD.Runtime.PerDocumentCommandClass.Invoke(MethodInfo mi, Boolean bLispFunction)
+```
+
+**Root cause**: `PaletteManager` là Singleton với `private PaletteManager()`. AutoCAD `PerDocumentCommandClass.Invoke` gọi `Activator.CreateInstance(typeof(PaletteManager))` mỗi lần user chạy lệnh → đụng private ctor → throw.
+
+### Đã làm
+- [Commands/PaletteManager.cs](Commands/PaletteManager.cs): `McgShow()` và `McgHide()` chuyển `public void` → `public static void`, body `Show()` → `Instance.Show()` / `Hide()` → `Instance.Hide()`. Static method không cần instance → AutoCAD không gọi `Activator.CreateInstance` nữa.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Bước tiếp theo
+- Test: `MCG_Fitting_Show` + `MCG_Fitting_Hide` → không còn MissingMethodException, palette toggle được.
+
+### Ghi chú API
+- **`PerDocumentCommandClass`** của AutoCAD: nếu class chứa `[CommandMethod]` dùng **instance method**, AutoCAD tạo 1 instance **mỗi document** qua `Activator.CreateInstance(type)`. Cần `public` parameterless ctor.
+- **Static `[CommandMethod]`**: không cần instance, AutoCAD gọi method trực tiếp qua `MethodInfo.Invoke(null, ...)`. Phù hợp với Singleton/Service pattern.
+- **Rule of thumb**: Command method nên `static` trừ khi thực sự cần state per-document.
+
+---
+
 ## Session 2026-04-22 (5) — Tách Palette thành 4 tab + rename title
 
 ### Yêu cầu user
