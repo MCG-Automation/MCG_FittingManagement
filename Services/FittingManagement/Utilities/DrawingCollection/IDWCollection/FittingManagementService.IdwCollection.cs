@@ -28,8 +28,8 @@ namespace MCGCadPlugin.Services.FittingManagement
                 Directory.CreateDirectory(tempDir);
                 FileLogger.Log(LOG_PREFIX, $"Đã tạo thư mục tạm cho IDW Collection: {tempDir}");
 
-                progress?.Report("Đang khởi động Inventor dưới nền...");
-                
+                progress?.Report("Starting Inventor in background...");
+
                 // Chạy quá trình export IDW sang DWG trên worker thread
                 await Task.Run(() =>
                 {
@@ -39,21 +39,28 @@ namespace MCGCadPlugin.Services.FittingManagement
                     {
                         invApp = AcquireInventorInstance(out weStartedInventor);
 
+                        // Mỗi IDW export vào subfolder index riêng (001/, 002/, …) → không collision
+                        // kể cả khi user chọn nhiều file khác folder cùng tên. Filename của DWG tạm giữ
+                        // nguyên baseName → CollectDrawingsAsync dùng baseName làm prefix block,
+                        // block cuối cùng trong nhà kho giữ đúng intent (vd 'Detail' chứ không phải '001_Detail').
                         for (int i = 0; i < idwPaths.Length; i++)
                         {
                             string idwPath = idwPaths[i];
                             string baseName = Path.GetFileNameWithoutExtension(idwPath);
-                            string tempDwgPath = Path.Combine(tempDir, baseName + ".dwg");
-                            
-                            progress?.Report($"Đang xử lý IDW sang DWG: {baseName} ({i + 1}/{idwPaths.Length})");
-                            FileLogger.Log(LOG_PREFIX, $"[IDW Collection] Xử lý: {idwPath}");
+
+                            string perFileDir = Path.Combine(tempDir, (i + 1).ToString("D3"));
+                            Directory.CreateDirectory(perFileDir);
+                            string tempDwgPath = Path.Combine(perFileDir, baseName + ".dwg");
+
+                            progress?.Report($"[{i + 1}/{idwPaths.Length}] Converting IDW: {baseName}");
+                            FileLogger.Log(LOG_PREFIX, $"[IDW Collection] Xử lý: {idwPath} → {tempDwgPath}");
 
                             dynamic drawingDoc = null;
                             try
                             {
                                 drawingDoc = invApp.Documents.Open(idwPath, false); // OpenVisible=false
                                 ExportIdwToDwg(invApp, drawingDoc, tempDwgPath);
-                                
+
                                 if (File.Exists(tempDwgPath))
                                 {
                                     tempDwgPaths.Add(tempDwgPath);
@@ -61,14 +68,14 @@ namespace MCGCadPlugin.Services.FittingManagement
                                 }
                                 else
                                 {
-                                    result.AddError(baseName, "Lỗi: Không tạo được file DWG.");
+                                    result.AddError(baseName, "Failed to create DWG file.");
                                     result.FailCount++;
                                 }
                             }
                             catch (Exception ex)
                             {
                                 FileLogger.LogException(LOG_PREFIX, $"export {baseName}", ex);
-                                result.AddError(baseName, $"Lỗi export: {ex.Message}");
+                                result.AddError(baseName, $"Export error: {ex.Message}");
                                 result.FailCount++;
                             }
                             finally
@@ -101,13 +108,14 @@ namespace MCGCadPlugin.Services.FittingManagement
 
                 if (tempDwgPaths.Count > 0)
                 {
-                    progress?.Report($"Đang gom {tempDwgPaths.Count} bản vẽ DWG...");
+                    progress?.Report($"Collecting {tempDwgPaths.Count} drawing(s)...");
                     FileLogger.Log(LOG_PREFIX, $"Chuyển qua luồng CollectDrawingsAsync với {tempDwgPaths.Count} file DWG tạm...");
-                    
-                    // Gọi luồng hiện tại để gom DWG.
-                    // CollectDrawingsAsync sẽ lo việc tính toán, wblock và đổi tên block (tên block dùng tên file gốc do file tạm vẫn giữ tên gốc)
+
+                    // Gọi luồng hiện tại để gom DWG. CollectDrawingsAsync dùng tên file làm prefix block;
+                    // temp DWG giữ nguyên baseName (subfolder 001/ 002/ … đã xử lý collision) nên
+                    // block name trong nhà kho = baseName của IDW gốc.
                     ImportResult dwgResult = await CollectDrawingsAsync(tempDwgPaths.ToArray(), progress);
-                    
+
                     // Gộp kết quả
                     result.SuccessCount += dwgResult.SuccessCount;
                     result.FailCount += dwgResult.FailCount;

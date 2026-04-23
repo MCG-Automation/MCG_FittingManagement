@@ -3,6 +3,93 @@
 # Claude Code tự cập nhật file này. Không sửa thủ công phần log.
 
 ---
+
+## Session 2026-04-23 (9) — DrawingCollection: nhận diện title block IDW theo pattern A1/A2/A3
+
+### Bối cảnh
+User report: khung bản vẽ xuất từ IDW **không có tên exact là "A1"** — thay vào đó là block có tên **chứa** "A1"/"A2"/"A3" (ví dụ `A1_Format`, `MCG_A2_Title`, `CAS_A3_Head`). Logic `KeepAsIsBlocks` hiện tại dùng exact-match HashSet với `{"A1", "CAS_HEAD"}` → các title block IDW bị treat như block thường, bị prefix tên file và rename sai → layout bị hỏng, ComputeInitialOffsetX không detect được title block để xếp offsetX đúng.
+
+### Đã làm
+
+**[FittingManagementService.DrawingCollection.Helpers.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Helpers.cs)**:
+- Tách `KeepAsIsBlocks` thành 2 phần:
+  - `ExactKeepAsIsBlocks` = `{"CAS_HEAD"}` — exact match (khung tên riêng MacGregor).
+  - `TitleBlockSizeTokens` = `{"A1", "A2", "A3"}` — pattern substring (title block IDW theo khổ giấy).
+- `IsKeepAsIs(name)` = exact match CAS_HEAD HOẶC chứa một trong A1/A2/A3 (case-insensitive).
+- Helper mới `IsTitleBlockSizeName(name)` — dùng riêng cho RenameBlocks stats để tách A1-pattern counter với CAS_HEAD counter.
+
+**[FittingManagementService.DrawingCollection.Preprocess.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Preprocess.cs)**:
+- RenameBlocksInSideDb: `name.Equals("A1", …)` → `IsTitleBlockSizeName(name)`. CAS_HEAD check exact giữ nguyên.
+- Capture keep-as-is per source: `KeepAsIsBlocks.Contains(effName)` → `IsKeepAsIs(effName)`.
+
+**[FittingManagementService.DrawingCollection.Clone.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Clone.cs)**:
+- Track clone vào dest: `KeepAsIsBlocks.Contains(effName)` → `IsKeepAsIs(effName)`.
+- ComputeInitialOffsetX (scan dest ModelSpace): `!KeepAsIsBlocks.Contains(effName)` → `!IsKeepAsIs(effName)`.
+
+### Kết quả build
+- `dotnet build -c Debug`: **0 Errors**.
+- `KeepAsIsBlocks` legacy identifier đã loại bỏ khỏi codebase — chỉ còn `ExactKeepAsIsBlocks` (riêng CAS_HEAD) và pattern helper.
+
+### Quyết định thiết kế
+- **Substring match** (đúng theo yêu cầu user "chứa A1/A2/A3") thay vì word-boundary regex. Chấp nhận risk nhỏ false-positive với tên như `A10_*` (A10 là khổ giấy ISO nhưng rất nhỏ, hiếm dùng cho title block). Nếu gặp false-positive thực tế → tighten sau.
+- **Giữ stats field `KeepAsIs_A1`** (không rename thành `KeepAsIs_TitleBlock`) — tránh scope creep sang Types.cs/Summary.cs. Semantic drift minor: giờ counter này đếm mọi title block pattern, không chỉ đúng `A1`. Label log/summary tạm giữ nguyên "A1/CAS_HEAD".
+
+### Test cần user verify
+1. Collect IDW chứa title block tên `A1_Format` (hoặc tương tự) → expected: block giữ nguyên tên, không prefix bằng `{fileName}_`.
+2. Multi-file collect với title block IDW khác tên (vd `A1_Format` + `A3_Format`) → expected: DuplicateRecordCloning.Ignore giữ định nghĩa đầu, các reference sau dùng cùng BTR (nếu 2 file cùng tên), HOẶC tạo thêm BTR mới (nếu 2 file khác tên).
+3. ComputeInitialOffsetX detect đúng title block IDW → collect mới nối tiếp sau layout cũ, không overlap.
+
+---
+
+## Session 2026-04-23 (8) — IDW Collection: fix name collision + English UI
+
+### Bối cảnh
+Review module IDW Collection mới thêm (entry trước trong log này). Phát hiện 2 vấn đề:
+1. **Bug name collision**: `tempDwgPath = Path.Combine(tempDir, baseName + ".dwg")`. Nếu user chọn 2 IDW khác folder cùng tên (vd `Detail.idw` từ 2 project), file thứ 2 overwrite file thứ 1 ở `SaveAs` — mất data âm thầm.
+2. **UI messages tiếng Việt** còn lẫn (`Đang xử lý IDW sang DWG`, `Lỗi IDW Collection`, `hoàn tất`, `Chi tiết lỗi`, …) trong khi Session 7 đã English-hoá cho Import IDW → không đồng nhất.
+
+User xác nhận:
+- #1 Fix collision: làm.
+- #2 English UI: làm.
+- #3 Vault integration cho IDW Collection: **không áp dụng**.
+- #4 Block naming theo file name: **đúng ý**.
+
+### Đã làm
+
+**[Services/FittingManagement/Utilities/DrawingCollection/IDWCollection/FittingManagementService.IdwCollection.cs](Services/FittingManagement/Utilities/DrawingCollection/IDWCollection/FittingManagementService.IdwCollection.cs)**:
+- Fix collision: mỗi IDW export vào **subfolder index riêng** (`tempDir/001/`, `tempDir/002/`, …) thay vì prefix filename. Filename DWG tạm giữ nguyên `baseName` → CollectDrawingsAsync dùng `baseName` làm block prefix → block cuối cùng trong nhà kho vẫn `Detail` (không phải `001_Detail`) — đáp ứng đồng thời #1 và #4.
+- Progress messages Vietnamese → English:
+  - `Đang khởi động Inventor dưới nền...` → `Starting Inventor in background...`
+  - `Đang xử lý IDW sang DWG: {name} ({i}/{N})` → `[{i}/{N}] Converting IDW: {name}`
+  - `Đang gom N bản vẽ DWG...` → `Collecting N drawing(s)...`
+- Error messages Vietnamese → English:
+  - `Lỗi: Không tạo được file DWG.` → `Failed to create DWG file.`
+  - `Lỗi export: ...` → `Export error: ...`
+
+**[Views/FittingManagement/BlockUtilitiesView.xaml.cs](Views/FittingManagement/BlockUtilitiesView.xaml.cs)**:
+- Dialog titles Vietnamese → English:
+  - `Lỗi Drawing Collection` / `Lỗi IDW Collection` → `Drawing Collection Error` / `IDW Collection Error`
+- `ShowCollectionResultDialog` và `ShowExceptionDialog`: toàn bộ message English (giống pattern đã làm cho TemplateView ở Session 7 Plus):
+  - `hoàn tất!` → `complete.`; `Thành công`/`Thất bại` → `Success`/`Failed`
+  - `Chi tiết lỗi` → `Error details`; `... và N lỗi khác (xem log).` → `... and N more (see log).`
+  - `Log chi tiết` → `Log`; `Nhấn Yes để mở thư mục chứa log, No để đóng.` → `Click Yes to open the log folder, No to close.`
+  - `Lỗi: {msg}` → `Error: {msg}`; `Không thể mở thư mục log:` → `Cannot open log folder:`
+
+### Kết quả build
+- `dotnet build -c Debug`: **0 Errors**, 5 Warnings (pre-existing).
+
+### Ghi chú thiết kế
+- **Subfolder approach thắng prefix filename**: giữ được block naming theo intent (#4) đồng thời fix collision (#1). Không phải compromise — đây là cách cleanest.
+- **Log messages (FileLogger) vẫn Vietnamese**: log nội bộ dev-facing, không user-facing. CLAUDE.md rule 5 nói log English nhưng project hiện dùng Vietnamese đồng nhất — không scope creep sang đó.
+- **Test plan user cần verify**:
+  1. Select 2 IDW khác folder cùng tên (vd `Detail.idw`) → expected: cả 2 collect thành công, block `Detail` vẫn chỉ 1 trong nhà kho (do DrawingCollection DuplicateRecordCloning.Ignore xử lý).
+  2. Progress bar hiển thị text English suốt flow.
+
+### Bước tiếp theo
+- Chờ user test trong môi trường thật.
+
+---
+
 ## Session 2026-04-23 (IDW Collection Module)
 
 ### Nội dung thực hiện

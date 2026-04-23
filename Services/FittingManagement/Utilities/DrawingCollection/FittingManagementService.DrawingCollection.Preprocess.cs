@@ -207,7 +207,9 @@ namespace MCGCadPlugin.Services.FittingManagement
                         continue;
                     }
 
-                    if (name.Equals("A1", StringComparison.OrdinalIgnoreCase))
+                    // Title block từ IDW có tên chứa A1/A2/A3 (khổ giấy) → giữ nguyên, không prefix.
+                    // CAS_HEAD là khung tên riêng của MacGregor, match exact.
+                    if (IsTitleBlockSizeName(name))
                     {
                         stats.KeepAsIs_A1++;
                         continue;
@@ -372,7 +374,7 @@ namespace MCGCadPlugin.Services.FittingManagement
                         try
                         {
                             string effName = GetEffectiveBlockName(brSrc, tr);
-                            if (effName != null && KeepAsIsBlocks.Contains(effName))
+                            if (IsKeepAsIs(effName))
                             {
                                 stats.KeepAsIsRefsInSource.Add(new KeepAsIsRefInfo
                                 {

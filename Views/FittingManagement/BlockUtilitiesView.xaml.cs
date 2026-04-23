@@ -98,7 +98,7 @@ namespace MCGCadPlugin.Views.FittingManagement
             {
                 TxtCollectionStatus.Text = "Error. See log.";
                 FileLogger.LogException("[BlockUtilitiesView]", "BtnCollectDrawings_Click", ex);
-                ShowExceptionDialog("Lỗi Drawing Collection", ex);
+                ShowExceptionDialog("Drawing Collection Error", ex);
             }
             finally
             {
@@ -136,7 +136,7 @@ namespace MCGCadPlugin.Views.FittingManagement
             {
                 TxtCollectionStatus.Text = "Error. See log.";
                 FileLogger.LogException("[BlockUtilitiesView]", "BtnCollectIdwDrawings_Click", ex);
-                ShowExceptionDialog("Lỗi IDW Collection", ex);
+                ShowExceptionDialog("IDW Collection Error", ex);
             }
             finally
             {
@@ -152,21 +152,21 @@ namespace MCGCadPlugin.Views.FittingManagement
         private void ShowCollectionResultDialog(ImportResult result)
         {
             const string title = "Drawing Collection";
-            string message = $"{title} hoàn tất!\n\n" +
-                             $"✓ Thành công: {result.SuccessCount}\n" +
-                             $"✗ Thất bại:   {result.FailCount}";
+            string message = $"{title} complete.\n\n" +
+                             $"✓ Success: {result.SuccessCount}\n" +
+                             $"✗ Failed:  {result.FailCount}";
 
             if (result.FailCount > 0 && result.Errors.Count > 0)
             {
                 int maxErrorsToShow = 8;
                 var errorsToShow = result.Errors.Take(maxErrorsToShow).ToList();
-                message += "\n\n── Chi tiết lỗi ──\n" + string.Join("\n", errorsToShow);
+                message += "\n\n── Error details ──\n" + string.Join("\n", errorsToShow);
 
                 if (result.Errors.Count > maxErrorsToShow)
-                    message += $"\n\n... và {result.Errors.Count - maxErrorsToShow} lỗi khác (xem log).";
+                    message += $"\n\n... and {result.Errors.Count - maxErrorsToShow} more (see log).";
 
-                message += $"\n\n── Log chi tiết ──\n{FileLogger.LogPath}" +
-                           "\n\nNhấn Yes để mở thư mục chứa log, No để đóng.";
+                message += $"\n\n── Log ──\n{FileLogger.LogPath}" +
+                           "\n\nClick Yes to open the log folder, No to close.";
 
                 var answer = MessageBox.Show(message, $"{title} Result",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning);
@@ -182,9 +182,9 @@ namespace MCGCadPlugin.Views.FittingManagement
 
         private void ShowExceptionDialog(string title, Exception ex)
         {
-            string message = $"Lỗi: {ex.Message}\n\n" +
-                             $"Chi tiết lỗi đã được ghi vào file log:\n{FileLogger.LogPath}" +
-                             "\n\nNhấn Yes để mở thư mục chứa log.";
+            string message = $"Error: {ex.Message}\n\n" +
+                             $"Full details in log:\n{FileLogger.LogPath}" +
+                             "\n\nClick Yes to open the log folder.";
 
             var answer = MessageBox.Show(message, title,
                 MessageBoxButton.YesNo, MessageBoxImage.Error);
@@ -203,7 +203,7 @@ namespace MCGCadPlugin.Views.FittingManagement
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Không thể mở thư mục log: {ex.Message}",
+                MessageBox.Show($"Cannot open log folder: {ex.Message}",
                     "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }

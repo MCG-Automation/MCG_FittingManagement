@@ -13,11 +13,40 @@ namespace MCGCadPlugin.Services.FittingManagement
     {
         #region Helpers
 
-        /// <summary>Các block khung tên cần giữ nguyên, không prefix tên file.</summary>
-        private static readonly HashSet<string> KeepAsIsBlocks =
-            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "A1", "CAS_HEAD" };
+        /// <summary>
+        /// Block exact-match cần giữ nguyên (không prefix tên file).
+        /// IDW export title block có tên CHỨA "A1"/"A2"/"A3" (khổ giấy) — xử lý qua
+        /// <see cref="TitleBlockSizeTokens"/> bên dưới, không nằm trong set này.
+        /// </summary>
+        private static readonly HashSet<string> ExactKeepAsIsBlocks =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "CAS_HEAD" };
 
-        private static bool IsKeepAsIs(string name) => KeepAsIsBlocks.Contains(name);
+        /// <summary>
+        /// Pattern substring cho title block từ IDW — block nào có tên CHỨA một trong các token
+        /// (case-insensitive) sẽ được coi là khung tên và giữ nguyên không prefix.
+        /// Ví dụ: "A1_Format", "MCG_A2_Title", "CAS_A3_Head" đều khớp.
+        /// </summary>
+        private static readonly string[] TitleBlockSizeTokens = { "A1", "A2", "A3" };
+
+        /// <summary>True nếu block name khớp exact CAS_HEAD hoặc chứa A1/A2/A3 (khổ giấy).</summary>
+        private static bool IsKeepAsIs(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            if (ExactKeepAsIsBlocks.Contains(name)) return true;
+            return IsTitleBlockSizeName(name);
+        }
+
+        /// <summary>True nếu name CHỨA "A1" / "A2" / "A3" (case-insensitive) — pattern title block IDW.</summary>
+        private static bool IsTitleBlockSizeName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            foreach (string tok in TitleBlockSizeTokens)
+            {
+                if (name.IndexOf(tok, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            }
+            return false;
+        }
 
         /// <summary>
         /// Error status báo hiệu DWG bị lỗi nội bộ cần chạy AutoCAD RECOVER (eDwgNeedsRecovery, eFileSharingViolation...).

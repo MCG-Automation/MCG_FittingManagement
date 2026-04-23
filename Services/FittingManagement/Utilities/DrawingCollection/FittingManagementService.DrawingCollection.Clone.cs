@@ -80,7 +80,7 @@ namespace MCGCadPlugin.Services.FittingManagement
                             if (ent is BlockReference brDest)
                             {
                                 string effName = GetEffectiveBlockName(brDest, tr);
-                                if (effName != null && KeepAsIsBlocks.Contains(effName))
+                                if (IsKeepAsIs(effName))
                                 {
                                     try
                                     {
@@ -174,7 +174,7 @@ namespace MCGCadPlugin.Services.FittingManagement
                     string effName;
                     try { effName = GetEffectiveBlockName(br, tr); }
                     catch { continue; }
-                    if (effName == null || !KeepAsIsBlocks.Contains(effName)) continue;
+                    if (!IsKeepAsIs(effName)) continue;
 
                     try
                     {
