@@ -59,6 +59,38 @@
     <Reference Include="System.Xaml" />
   </ItemGroup>
 
+  <!--
+    Autodesk Vault VDF SDK — dùng cho pull latest trực tiếp từ Vault (bypass Inventor).
+    Private=False: không copy DLL vào output → Costura KHÔNG embed → bundle plugin vẫn nhẹ.
+    Runtime resolve: VaultAssemblyResolver tự LoadFrom theo Vault version cài trên máy (probe 2020-2026).
+    HintPath dùng Vault Client 2023 để compile — máy build phải có Vault Client/Professional 2023.
+  -->
+  <PropertyGroup>
+    <VaultSdkPath>C:\Program Files\Autodesk\Vault Client 2023\Explorer</VaultSdkPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Autodesk.Connectivity.WebServices">
+      <HintPath>$(VaultSdkPath)\Autodesk.Connectivity.WebServices.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Autodesk.DataManagement.Client.Framework">
+      <HintPath>$(VaultSdkPath)\Autodesk.DataManagement.Client.Framework.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Autodesk.DataManagement.Client.Framework.Vault">
+      <HintPath>$(VaultSdkPath)\Autodesk.DataManagement.Client.Framework.Vault.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Autodesk.DataManagement.Client.Framework.Forms">
+      <HintPath>$(VaultSdkPath)\Autodesk.DataManagement.Client.Framework.Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Autodesk.DataManagement.Client.Framework.Vault.Forms">
+      <HintPath>$(VaultSdkPath)\Autodesk.DataManagement.Client.Framework.Vault.Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Costura.Fody" Version="6.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

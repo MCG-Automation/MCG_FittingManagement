@@ -4,6 +4,397 @@
 
 ---
 
+## Session 2026-04-23 (7) — Fix SDK runtime: path LoginHistory sai + logout quá sớm + noise resolver
+
+### Bối cảnh
+User test Session 6 trên live Vault, lộ 3 bug:
+
+1. **LoginHistory.xml path sai**: log báo `Không tìm thấy LoginHistory.xml` tại `%APPDATA%\Autodesk\VaultCommon\Servers\`. File thật nằm ở `%APPDATA%\Autodesk\VaultCommon\` (không có subfolder `Servers`).
+2. **UI message stale**: dialog kết quả vẫn hiển thị "Mở Inventor → Vault menu → Log In" (từ flow cũ). User đã login Vault Explorer → vẫn thấy message sai → confusing.
+3. **Logout quá sớm**: mỗi import xong `Library.Logout()` xoá cached session → import kế tiếp phải sign-in lại (dù thường silent qua SSO nhưng tốn 1-2s + risk prompt).
+4. **Log noise**: resolver log warning cho `.resources.dll` và `.XmlSerializers.dll` — đây là file OPTIONAL của .NET runtime (localization satellite + XML serializer cache), null return là đúng, không phải lỗi.
+
+### Đã làm
+
+- [Services/FittingManagement/Vault/VaultDirectService.cs](Services/FittingManagement/Vault/VaultDirectService.cs):
+  - `AutoDetectConnection`: probe cả 2 location (`VaultCommon\LoginHistory.xml` trước, `VaultCommon\Servers\LoginHistory.xml` fallback).
+  - `Dispose`: XOÁ `Library.Logout` call. Chỉ release local reference; VDF giữ session đến khi AutoCAD process thoát → next import tái sử dụng session silent.
+  - `EnsureSignedIn`: thêm log chi tiết (ApartmentState, Settings) để dễ diagnose nếu còn fail.
+- [Utilities/VaultAssemblyResolver.cs](Utilities/VaultAssemblyResolver.cs):
+  - Return null SILENT cho `*.resources` và `*.XmlSerializers` assembly names — không log warning nữa. Log warning chỉ cho DLL core thực sự cần.
+- [Views/FittingManagement/TemplateView.xaml.cs](Views/FittingManagement/TemplateView.xaml.cs):
+  - BuildVaultBreakdown: sửa message từ "Mở Inventor → Vault menu" thành "Mở Autodesk Vault (Vault Explorer), login". Thêm hint xem log `[VaultDirectService]` nếu vẫn fail.
+
+### Kết quả log sau fix (import CAS-0057373.idw)
+```
+[VaultDirectService] Tìm thấy LoginHistory.xml: C:\Users\...\VaultCommon\LoginHistory.xml
+[VaultDirectService] Auto-detect OK: VNHPH1-S0006/MacGregor_CAS
+[VaultDirectService] ✓ Sign-in OK — vnhph1-s0006/MacGregor_CAS, User=pham.truong.giang@macgregor.com (ID=94).
+[VaultDirectService] Found: CAS-0057373.idw (MasterId=821573, Ver=11, Size=523776B).
+[VaultDirectService] ✓ Downloaded 527360 bytes → C:\MacGregor_CAS_WF\Designs\...\CAS-0057373.idw.
+[VaultDirectService] Dispose — giữ Vault session sống cho import kế tiếp (không logout).
+HOÀN TẤT — Thành công: 1, Thất bại: 0.
+```
+
+### Ghi chú API
+- **VDF AcquireFiles tôn trọng workspace mapping**: file download về **Vault workspace folder** (`C:\MacGregor_CAS_WF\...`), KHÔNG phải localPath ta pass qua `FilePathAbsolute`. Với user hiện tại không vấn đề vì họ select file từ workspace → extract cùng path. Nếu sau này gặp case file outside workspace, cần post-download copy từ workspace path sang localPath.
+- **PropDefId "ClientFileName" = 9** trong MacGregor_CAS vault (không phải 4 như fallback). `ResolveFileNamePropDefId` dynamic query đã catch đúng.
+- **Session persistence**: VDF giữ `Connection` object sống trong process memory cho đến khi `Library.Logout()` hoặc process exit. Không cần explicit logout — chỉ tốn session khi restart AutoCAD.
+
+### Bước tiếp theo
+- User test 2+ import liên tiếp → verify sign-in chỉ chạy 1 lần, imports sau silent.
+
+---
+
+## Session 2026-04-23 (6) — Vault: chuyển sang VDF SDK direct (bypass Inventor hoàn toàn)
+
+### Bối cảnh
+Phương án Inventor CommandManager (Session 4-5) có 2 hạn chế lớn:
+1. Phụ thuộc user login Vault trong Inventor (command Enabled=false nếu chưa login).
+2. Chậm — mỗi file ~3-5s qua Inventor Open doc + Execute command.
+
+Chuyển sang **Option A**: gọi thẳng VDF SDK (Autodesk Vault Data Framework) — download file về local, không qua Inventor. Nhanh hơn ~10×, không cần Inventor login Vault, reuse cached credentials từ Vault Client.
+
+User approve plan + không giữ UI toggle (commit hoàn toàn cho SDK approach). Chấp nhận risk bypass NTI for Vault AddIn workflow (nếu có custom logic get-latest — hiện chưa biết).
+
+### Đã làm
+
+**MỚI — VDF SDK scaffolding**:
+- [MCGCadPlugin.csproj](MCGCadPlugin.csproj): thêm 5 reference DLL (Private=False → Costura không embed):
+  - `Autodesk.Connectivity.WebServices`
+  - `Autodesk.DataManagement.Client.Framework`
+  - `Autodesk.DataManagement.Client.Framework.Vault`
+  - `Autodesk.DataManagement.Client.Framework.Forms`
+  - `Autodesk.DataManagement.Client.Framework.Vault.Forms`
+  - HintPath: `C:\Program Files\Autodesk\Vault Client 2023\Explorer`.
+- [Utilities/VaultAssemblyResolver.cs](Utilities/VaultAssemblyResolver.cs): runtime `AssemblyResolve` hook, probe Vault Client 2020-2026 trong Program Files, load DLL theo version có cài. Plugin bundle vẫn nhẹ (~5MB).
+- [Models/FittingManagement/VaultConnectionInfo.cs](Models/FittingManagement/VaultConnectionInfo.cs): DTO Server + Vault + UserName.
+- [Services/FittingManagement/Vault/IVaultDirectService.cs](Services/FittingManagement/Vault/IVaultDirectService.cs): interface (AutoDetectConnection, EnsureSignedIn, DownloadLatest, IsSignedIn, Dispose).
+- [Services/FittingManagement/Vault/VaultDirectService.cs](Services/FittingManagement/Vault/VaultDirectService.cs): implementation đầy đủ:
+  - `AutoDetectConnection`: đọc `%APPDATA%\Autodesk\VaultCommon\Servers\LoginHistory.xml` → `LastServerName` + `LastVault`.
+  - `EnsureSignedIn`: `VDF.Vault.Forms.Library.Login(LoginSettings)` với `AutoLoginMode=RestoreAndExecute` (silent nếu cached creds, dialog nếu không).
+  - `DownloadLatest`: `DocumentService.FindFilesBySearchConditions` (search theo `ClientFileName` PropDef, dynamic resolve qua `PropertyService.GetPropertyDefinitionsByEntityClassId("FILE")`) → `FileManager.AcquireFiles` với `FileIteration` + `FilePathAbsolute` → download vào localPath.
+  - Static ctor: `VaultAssemblyResolver.Install()` — guaranteed chạy trước JIT resolve VDF types.
+  - Dispose: `Library.Logout(connection, LogoutSettings, LoginSettings)`.
+
+**SỬA — Integration**:
+- [Services/FittingManagement/Import/FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs):
+  - PHASE 0 (mới): khởi tạo `VaultDirectService` + sign-in TRÊN UI THREAD (trước `Task.Run`). VDF Login dialog cần STA/UI thread. Nếu sign-in fail → dispose, set null, per-file ghi SkippedNotLoggedIn.
+  - PHASE 1: download trong Task.Run qua `vaultService.DownloadLatest(fileName, idwPath)` — WebService call OK trên worker thread.
+  - `vaultService?.Dispose()` trong finally block để đảm bảo logout.
+  - Helper `VaultStatusShortLabel` (private static) thay `StatusShortLabel` của VaultRefresh.cs đã xoá.
+
+**XOÁ — Legacy code**:
+- `Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs` — toàn bộ flow Inventor-based (TryPullLatestFromVault, CheckVaultRefreshReady, TryPullViaCommandManager, EnumerateVaultCommands, ...).
+
+**Docs update**:
+- [Models/FittingManagement/VaultRefreshResult.cs](Models/FittingManagement/VaultRefreshResult.cs): update enum comments — `SkippedNoAddIn` nghĩa mới: "Vault Client/SDK không cài". Message của `SkippedNotLoggedIn` cập nhật cho flow SDK.
+
+### Kết quả build
+- `dotnet build -c Debug`: **0 Errors**, 9 Warnings (pre-existing: file lock AutoCAD + PowerShell post-build).
+- DLL mới: `MCGCadPlugin.FittingManagement_20260423_100506.dll`.
+
+### Khám phá API thật (qua reflection probe)
+VDF API không như tài liệu online phổ biến — nhiều method/type khác tên:
+- `ConnectionManager` KHÔNG tồn tại. Dùng static class `Autodesk.DataManagement.Client.Framework.Vault.Forms.Library` với `Login(LoginSettings)` / `Logout(...)`.
+- `LogInTool` KHÔNG tồn tại. Xem trên.
+- `DownloadFilePart` trên DocumentService KHÔNG tồn tại. Dùng high-level `FileManager.AcquireFiles(AcquireFilesSettings)` với `FileIteration` + `FilePathAbsolute`.
+- `AcquisitionOption` là nested enum `AcquireFilesSettings.AcquisitionOption`, không phải top-level.
+- `FilePathAbsolute` nằm trong `Autodesk.DataManagement.Client.Framework.Currency` (Framework.dll), không phải Vault namespace.
+- `LoginSettings.AutoLoginModeValues`: `None`, `Restore`, `RestoreAndExecute`, `RestoreAndExecuteOrDoNothing` → dùng `RestoreAndExecute` cho silent-with-fallback-dialog.
+
+### Test plan (user cần tự verify — máy dev không có live Vault)
+1. **Test 1 — Vault Client đã login**: mở Vault Explorer, login. Chạy Import với "Pull from Vault" ON.
+   Expected: progress hiển thị "Vault: signed in → VNHPH1-S0006/MacGregor_CAS", mỗi file log `Downloaded X bytes → ...`, tốc độ <500ms/file.
+2. **Test 2 — Vault Client chưa login**: đảm bảo logged out. Chạy Import.
+   Expected: VDF dialog bật lên lần đầu user gõ password → sau đó silent; hoặc user cancel → tất cả file ghi `SkippedNotLoggedIn`, extraction vẫn chạy bình thường với file local.
+3. **Test 3 — File không trong Vault**: file IDW không được upload Vault. Chạy Import.
+   Expected: per-file ghi `SkippedNotInVault`, extraction vẫn OK.
+4. **Test 4 — Vault Client chưa cài**: unlikely trên máy production nhưng test resolver fallback. Expected: log warning "Không tìm thấy X.dll trong Vault Client 2020-2026", sign-in throw → SkippedNotLoggedIn.
+
+### Known risks (theo dõi sau deploy)
+- **NTI for Vault custom workflow**: SDK bypass hoàn toàn Inventor AddIn → nếu NTI có script get-latest riêng, workflow đó sẽ không chạy. Nếu user báo bug "metadata không đồng bộ" / "file thiếu dependency" → có thể do NTI hook bị skip. Lúc đó cân nhắc revert sang Inventor CommandManager approach.
+- **ClientFileName PropDefId = 4 fallback**: `ResolveFileNamePropDefId` dynamic tra PropertyService — nếu Vault server custom schema, fallback `4` có thể sai. Cải thiện nếu gặp: cache mapping ra file settings.
+- **STA thread cho Login dialog**: đã đảm bảo sign-in ở UI thread (trước Task.Run). Nếu sau này refactor sang call-from-background, cần `Application.Current.Dispatcher.Invoke` wrap.
+
+### Bước tiếp theo
+- Chờ user test 4 scenario trên Vault live.
+- Nếu có issue NTI workflow → cân nhắc phương án hybrid (SDK cho tốc độ + Inventor AddIn fallback cho NTI).
+
+---
+
+## Session 2026-04-23 (5) — Vault: fix fallback chain + pre-flight + gate diagnostic
+
+### Bối cảnh
+Diagnostic của Session 4 đã reveal thật tên Vault command trong Inventor 2023: **`VaultGetLatest`** (Display='Refresh'), `RefreshRevisionTop`, `AppRefreshCmd`. 8 command ID cũ trong fallback chain đều KHÔNG tồn tại (throw E_FAIL). Tất cả command Vault đều `Enabled=False` vì user chưa login Vault trong Inventor session.
+
+User yêu cầu sửa cả 4 điểm đề xuất.
+
+### Đã làm
+**[Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs](Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs)**:
+
+1. **Fix fallback chain**: thay 8 command ID sai (`VaultCmd:GetLatestVersion`, `VltInv.cmdRefresh`, ...) bằng 3 ID thật: `VaultGetLatest` → `RefreshRevisionTop` → `AppRefreshCmd`.
+
+2. **Enabled handling**: tách lookup command vs. Execute. Đếm `foundButDisabled`. Nếu có command tồn tại nhưng tất cả Enabled=false → trả **SkippedNotLoggedIn** (thay vì `Failed` khó hiểu). Nếu 0 command tồn tại → `Failed` như cũ.
+
+3. **Gate diagnostic**: `EnumerateVaultCommands` chỉ chạy khi env var `MCG_VAULT_DIAGNOSTIC=1`. Mặc định tắt vì enumerate 2295 ControlDefinitions tốn ~3-4s. Helper mới: `IsVaultDiagnosticEnabled()`.
+
+4. **Pre-flight**: method mới `CheckVaultRefreshReady(invApp)` — lookup `VaultGetLatest` và check `Enabled`. Return `null` = ready, non-null = skip reason cho cả batch.
+
+**[Services/FittingManagement/Import/FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs)**:
+
+5. **Gọi pre-flight 1 lần trước loop**: nếu Vault không ready, mỗi file trong batch sẽ clone skip reason vào `result.VaultResults` mà không thử per-file (tiết kiệm 3-5s × N file). UI `BuildVaultBreakdown` xử lý `SkippedNotLoggedIn` group sẵn.
+
+### Kết quả build
+- `dotnet build -c Debug`: **0 Errors**, warnings chỉ là pre-existing (file lock của AutoCAD đang mở, PowerShell post-build).
+- DLL mới: `MCGCadPlugin.FittingManagement_20260423_092707.dll`.
+
+### Test plan (user cần verify)
+- **Test 1 — chưa login Vault**: chạy Import với "Pull from Vault" = ON khi Inventor chưa mở Vault. Expected: log "pre-flight FAIL — 'VaultGetLatest' Enabled=false", UI summary group "Not Logged In" = N files, extraction vẫn chạy bình thường.
+- **Test 2 — đã login Vault**: open Inventor → Vault menu → Log In → chạy Import. Expected: pre-flight OK, mỗi file log `executing CommandManager 'VaultGetLatest'` → `✓ command executed`.
+- **Test 3 — diagnostic mode**: `set MCG_VAULT_DIAGNOSTIC=1` trước khi start AutoCAD, force Vault không ready (logout) → verify chỉ khi diagnostic=1 mới enumerate 2295 controls.
+
+### Ghi chú API
+- `CommandManager.ControlDefinitions[cid]` **throw E_FAIL** (không phải null) khi `cid` không tồn tại trong Inventor 2023 → cần catch generic `Exception` để `continue`, không chỉ `RuntimeBinderException`.
+- Inventor 2023 Vault InternalName thực tế: `VaultGetLatest`, `VaultCheckinTop`, `VaultCheckoutTop`, `VaultOpenFromVault`, `VaultReviseTop`, v.v. Prefix **`Vault`** (PascalCase liền) + hậu tố thường `Top`. KHÔNG có colon, không `VltInv.`, không `VaultCmd:`.
+- `VaultServer` là command duy nhất luôn `Enabled=true` (mở Options dialog, không cần login) → có thể dùng làm indicator "Vault AddIn có load".
+
+### Bước tiếp theo
+- Chờ user test 3 scenario trên → điều chỉnh nếu có edge case.
+
+---
+
+## Session 2026-04-23 (4) — Vault diagnostic: enumerate ControlDefinitions + AddIn identity
+
+### Bối cảnh
+User báo: Case 3 xảy ra — tất cả 8 command ID trong CommandManager fallback chain đều null (không match). Vault AddIn version đang dùng không expose command với tên chúng ta đoán.
+
+Cần **diagnostic tool** để khám phá command ID thật → tune fallback chain.
+
+### Đã làm
+[Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs](Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs):
+
+**1. Enumerate ControlDefinitions khi fallback fail**:
+- Method mới `EnumerateVaultCommands(invApp)` — iterate toàn bộ `CommandManager.ControlDefinitions`, log những command có InternalName/DisplayName chứa keyword: `"Vault"` / `"Vlt"` / `"GetLatest"` / `"Refresh"` / `"Get Latest"`.
+- Mỗi match log: `Internal='{name}' | Display='{name}' | Enabled={true/false}`.
+- Nếu 0 match → log rõ "Vault AddIn không expose command qua CommandManager — cần đổi approach (VDF SDK direct / Vault CLI)".
+- Gọi trong `TryPullViaCommandManager` sau khi loop 8 ID fail hết.
+
+**2. Helper `ContainsAny(source, params keywords)`** — check string chứa bất kỳ keyword nào (case-insensitive).
+
+**3. Log identity Vault AddIn** trong `FindVaultAddIn`:
+- Sau khi match AddIn, log thêm `ClientId` (GUID) và `FullFileName` (đường dẫn DLL).
+- Giúp user xác định Vault version/provenance (vd Vault Professional 2023 vs 2024 có DLL khác nhau).
+
+### Expected log khi test lại (Case 3)
+```
+Vault: Inventor có 47 ApplicationAddIn(s).
+Vault: Found AddIn 'Autodesk Vault Professional' | ClientId={2B6FF4F0-...} | DLL=C:\Program Files\Autodesk\Vault Client 2024\Bin\VltInv.dll
+Vault: Automation=null → fallback CommandManager-based approach...
+Vault: opening 'CAS-0071132.idw' trong Inventor để run Vault command...
+Vault: (8 command ID all return null, không match)
+Vault DIAGNOSTIC: enumerate CommandManager.ControlDefinitions (1847 total) để tìm command liên quan Vault...
+  [1] Internal='VaultInvCmd.GetLatest' | Display='Get Latest Version' | Enabled=True
+  [2] Internal='VaultInvCmd.CheckIn' | Display='Check In' | Enabled=True
+  [3] Internal='VaultInvCmd.CheckOut' | Display='Check Out' | Enabled=True
+  ...
+Vault DIAGNOSTIC: tìm thấy 12 command(s). Gửi log này về dev để update fallback chain với InternalName thực tế.
+```
+
+Từ log trên, ta biết command ID thật là `VaultInvCmd.GetLatest` (hoặc tương tự) → update fallback chain.
+
+### Thiết kế
+- **Diagnostic chỉ chạy khi cần**: không enumerate mỗi file, chỉ khi 8 fallback đầu fail → O(N files × 1 enumerate max) thay vì O(N × enumerate).
+- **Keywords match rộng**: `Vault`, `Vlt`, `GetLatest`, `Refresh`, `Get Latest` → cover các naming convention khác nhau (VaultCmd, VltInv, Vault., Get Latest Version, Refresh Out-of-Date, ...).
+- **Log `Enabled=true/false`**: user biết command nào khả dụng trong context hiện tại (active doc, logged in Vault).
+- **Log DLL path**: giúp verify đúng Vault Client installed version.
+- **Case-insensitive match**: robust với PascalCase, camelCase, UPPER_CASE.
+
+### Fallback nếu enumerate ra 0 match
+Nếu log `Vault DIAGNOSTIC: KHÔNG có command nào match` → Vault AddIn không expose command public cho CommandManager. Lúc này options còn lại:
+1. **Phương án A nguyên gốc**: reference Vault SDK (VDF) trực tiếp — cần setup Vault Developer SDK.
+2. **Phương án C**: shell to Vault Client CLI (`VaultClient.exe --getLatest ...`) — UX kém nhưng không phụ thuộc Inventor.
+3. **Phương án D**: fallback manual — user Get Latest trong Vault Explorer trước khi import, plugin không auto.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Bước tiếp theo
+User test lại với batch IDW, gửi plugin.log. Tôi đọc section `Vault DIAGNOSTIC` để:
+- Xác định command ID thật → update fallback chain (quick fix).
+- Hoặc confirm không có command → đề xuất Phương án A/C/D.
+
+### Ghi chú API
+- **`CommandManager.ControlDefinitions`**: collection enumerable. Count property (có thể throw trên một số Inventor version — try/catch). Iterate với `foreach dynamic`.
+- **`ControlDefinition.InternalName` vs `DisplayName`**:
+  - `InternalName` = unique ID dùng khi execute (vd "VaultInvCmd.GetLatest").
+  - `DisplayName` = localized text hiển thị UI (vd "Get Latest Version").
+  - Indexer `ControlDefinitions[key]` match theo InternalName.
+- **`ApplicationAddIn.ClientId`**: GUID string unique identifier AddIn. Dùng với `ApplicationAddIns.ItemById(guid)` để access reliable (bypass DisplayName match).
+- **`ApplicationAddIn.FullFileName`**: đường dẫn đầy đủ đến DLL. Vault AddIn phổ biến ở `C:\Program Files\Autodesk\Vault Client 20XX\Bin\VltInv.dll`.
+
+---
+
+## Session 2026-04-23 (3) — Vault fallback: CommandManager khi Automation=null
+
+### Bối cảnh
+User test Vault integration thực tế, log báo:
+```
+Vault AddIn không available. Lý do: Vault AddIn Automation = null
+```
+
+Phân tích: `FindVaultAddIn` đã match được Vault AddIn (pass step 1), `Activated=true` (pass step 2), nhưng `vaultAddIn.Automation` trả null. Vault AddIn version này **không expose** COM Automation interface — một số Vault/Inventor version có behavior này, đặc biệt Vault newer (2023+) shift sang command-based API.
+
+### Đã làm
+[Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs](Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs):
+
+**1. Change behavior khi `Automation=null`**: thay vì return `SkippedNoAddIn` → fallback sang `TryPullViaCommandManager`.
+
+**2. Method mới `TryPullViaCommandManager(invApp, filePath)`:**
+- **Open document** trong Inventor (`invApp.Documents.Open(path, false)`) — cần active doc cho Vault command target.
+- **Fallback chain 8 command IDs**:
+  - `VaultCmd:GetLatestVersion`, `Vault.GetLatestVersion`, `VltInv.cmdGetLatestVersion`
+  - `Vault:RefreshOutOfDate`, `VaultCmd:Refresh`, `Vault.RefreshDocument`
+  - `VltInv.cmdRefresh`, `VltInv.cmdGetLatest`
+- **Với mỗi command**:
+  - `CommandManager.ControlDefinitions[cid]` — null → skip (command không exist).
+  - Check `cmdDef.Enabled` — exist nhưng disabled (vd chưa login) → skip + log.
+  - `cmdDef.Execute()` → `Thread.Sleep(2000)` đợi Vault hoàn tất.
+  - Return `Success` với MethodUsed = `"cmd:<cid>"`.
+- **Error classification** từ exception message:
+  - Contains "not in vault" / "not found" → `SkippedNotInVault`.
+  - Contains "login" / "sign in" / "authenticated" → `SkippedNotLoggedIn`.
+  - Other → continue next command.
+- **Finally**: close doc để `ProcessSingleIdwFile` sau đó mở lại từ disk (file đã updated).
+
+### Thiết kế
+- **Opt-in overhead**: mở doc qua Inventor cost 3-5s/file. Batch 10 files = +30-50s. User đã chọn `pullFromVault=true` = chấp nhận cost để đổi data fresh.
+- **2x open/close**: Vault pull mở doc để trigger command, `ProcessSingleIdwFile` sau đó mở lại để extract. Wasteful nhưng isolated — refactor share session sau nếu cần.
+- **Check `Enabled` trước Execute**: tránh trigger command disabled (popup error). Command Enabled thường = active doc hợp lệ + Vault logged in.
+- **Error pattern matching**: dựa trên message text (dễ vỡ với translation). Version thực tế có thể trả message tiếng Anh khác — cần tune sau khi thấy log thật.
+
+### Flow mới tổng hợp
+```
+TryPullLatestFromVault
+  ├─ Find Vault AddIn → not found → SkippedNoAddIn
+  ├─ Activated = false → SkippedNoAddIn
+  ├─ Automation property:
+  │   ├─ != null → TryPullViaAutomation (original flow)
+  │   │   ├─ Check LoggedIn → auto sign-in nếu cần (session 2)
+  │   │   └─ Fallback chain 6 automation methods
+  │   │
+  │   └─ == null → TryPullViaCommandManager (NEW)
+  │       ├─ Open doc in Inventor
+  │       ├─ Fallback chain 8 command IDs
+  │       └─ Close doc
+  │
+  └─ Return VaultRefreshResult
+```
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Bước tiếp theo
+Test lại với batch IDW trong môi trường Vault:
+1. Đọc log tìm dòng `Vault: executing CommandManager 'X'...` → biết command nào work.
+2. Nếu tất cả 8 command đều không exist (ControlDefinitions return null) → cần research thêm Vault command IDs cho Vault version đang dùng:
+   - Mở Inventor → Tools → Customize → UI commands → search "Vault" → ghi lại command ID.
+   - Hoặc dùng iLogic / VBA snippet list toàn bộ ControlDefinitions của Inventor.
+3. Nếu command Enabled=false vì chưa login → kiểm session 2's auto sign-in chạy đúng chưa (log `Vault: ✓ auto sign-in success via ...`).
+
+### Ghi chú API
+- **`ApplicationAddIn.Automation` null**: một số AddIn (bao gồm Vault newer) không expose COM Automation — thiết kế mới dùng CommandManager/events. Kiểm tra null trước khi cast dynamic.
+- **`CommandDefinition.Enabled`**: property bool, thay đổi theo context (active doc state, login status, selection, ...). Check trước Execute để tránh trigger command in invalid state.
+- **`Documents.Open(path, bVisible)`**: bVisible=false → mở background, không hiển thị UI. Document vẫn active trong Inventor documents collection → CommandManager commands target được.
+- **COM HRESULT 0x80010114 trong `doc.Close(true)`**: benign khi Inventor tự unload document sau operation. Catch + log info, không throw.
+
+---
+
+## Session 2026-04-23 (2) — Vault auto sign-in qua Autodesk ID
+
+### Yêu cầu user
+Vault environment dùng **Autodesk ID SSO** (login không cần nhập password). Plugin hiện chỉ detect "chưa login" rồi skip — user phải mở Inventor → Vault menu → Sign In thủ công. Muốn auto sign-in qua cached Autodesk session.
+
+### Đã làm
+[Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs](Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs):
+
+**1. Cache result sign-in attempt** (per-batch):
+- Instance field `bool? _vaultSignInAttemptResult` (null=chưa thử, true=success, false=fail).
+- `ResetVaultSignInCache()` method — reset về null.
+- Gọi ở đầu `ImportIdwFilesAsync` nếu `pullFromVault=true`.
+- Lý do cache: `TryPullLatestFromVault` gọi per-file → nếu sign-in lần 1 fail, file sau cũng fail → không retry để tiết kiệm 2-5s × N file.
+
+**2. Integrate vào flow login check** trong `TryPullLatestFromVault`:
+- Nếu `loggedIn == false`:
+  - Nếu `_vaultSignInAttemptResult == null` → gọi `TryAutoSignIn` + cache.
+  - Nếu cache=true → re-check `TryGetLoggedInStatus`.
+  - Nếu vẫn !loggedIn → return `SkippedNotLoggedIn`.
+
+**3. `TryAutoSignIn(invApp, vaultAuto)` — 2 approaches fallback chain:**
+
+*Approach 1: Automation methods* (3 methods):
+- `vaultAuto.SignIn()` — Vault API 2023+ với Autodesk ID SSO
+- `vaultAuto.LogOn("", "", "", "")` — empty args, rely cached session
+- `vaultAuto.Connect()` — newer connection method
+
+*Approach 2: Inventor CommandManager* (5 command IDs):
+- `VaultCmd:SignIn`, `Vault.SignIn`, `VltInv.cmdSignIn`, `Vault:LogIn`, `VltInv.cmdLogOn`
+- Execute via `invApp.CommandManager.ControlDefinitions[cid].Execute()`
+
+Sau mỗi attempt: `Thread.Sleep(2000)` để sign-in callback hoàn tất, rồi `TryGetLoggedInStatus` để verify. Return true nếu logged in.
+
+**4. Integration** [Services/FittingManagement/Import/FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs):
+- Gọi `ResetVaultSignInCache()` ở đầu `ImportIdwFilesAsync` nếu `pullFromVault=true`.
+
+### Thiết kế
+- **Fallback chain 2 approach × tổng 8 phương án**: Vault Sign-In API chưa được Autodesk document chính thức cho Inventor AddIn, cover nhiều Vault/Inventor version.
+- **Cache sign-in attempt batch-level**: tiết kiệm thời gian và tránh spam popup dialog nếu môi trường không hỗ trợ auto sign-in.
+- **Thread.Sleep 2s sau mỗi attempt**: Vault sign-in qua Autodesk ID là async qua OAuth flow với Autodesk server → callback cần vài giây.
+- **Graceful: không throw nếu sign-in fail**: chỉ log + continue với status `SkippedNotLoggedIn`, user vẫn import được với file local.
+- **Verbose log mỗi attempt**: user đọc plugin.log biết method/command nào hoạt động để tune sau này.
+
+### Behavior expected
+**Case 1: User đã login Autodesk Desktop App + Inventor**
+- `vaultAuto.SignIn()` → Vault AddIn dùng token cached → silent login → `LoggedIn=true` sau 1-2s.
+- Log: `✓ auto sign-in success via Automation.SignIn.`
+- Import tiếp với file latest từ Vault.
+
+**Case 2: User chưa login Autodesk Desktop App**
+- `vaultAuto.SignIn()` → popup dialog Autodesk Sign-In xuất hiện.
+- User login qua browser OAuth → Vault AddIn nhận token → `LoggedIn=true`.
+- Plugin wait 2s → nếu user chưa kịp login → re-check fail → thử method kế.
+- Nếu tất cả methods fail → cache `_vaultSignInAttemptResult=false` → các file sau skip luôn.
+
+**Case 3: Vault AddIn không support auto sign-in (Vault cũ, chưa Autodesk ID)**
+- Tất cả methods throw `RuntimeBinderException` hoặc fail silent.
+- Cache false → file sau skip với `SkippedNotLoggedIn`.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### Bước tiếp theo
+- Test trong môi trường Vault + Autodesk ID:
+  1. Đảm bảo đã login Autodesk Desktop App.
+  2. Đóng hoàn toàn Inventor (plugin sẽ auto-start).
+  3. AutoCAD → Template tab → Import .idw.
+  4. Đọc plugin.log tìm:
+     - Method nào trong Approach 1 hoạt động (SignIn / LogOn / Connect)?
+     - Hoặc command nào trong Approach 2 hoạt động?
+     - Log dòng `✓ auto sign-in success via ...` để xác định API chính xác.
+- Nếu tất cả fail mặc dù đã login Autodesk ID → log sẽ show method names đã thử → cần nghiên cứu Vault AddIn API docs hoặc reverse engineer qua `ObjectBrowser` trên Vault Inventor AddIn DLL.
+
+### Ghi chú API
+- **Autodesk ID / Single Sign-On**: Vault 2023+ support SSO qua Autodesk Identity Services. User login Autodesk Desktop App 1 lần → token cached → các app desktop (Inventor, Vault) share session.
+- **Vault AddIn OAuth flow**: Sign-In method có thể trigger browser OAuth popup (không nhập password nếu session cached). Duration 1-3s typically.
+- **`RuntimeBinderException` vs runtime exception**: khi dynamic invoke method, RBE = method không exist; other exception = method exist nhưng throw.
+- **`CommandDefinition.Execute()` trong Inventor**: command có thể async. `Thread.Sleep` là workaround — cleaner là dùng event callback nhưng phức tạp hơn cho exploratory phase.
+- **`ApplicationAddIn.CommandManager.ControlDefinitions[key]`**: indexer trả null nếu key không tồn tại (không throw). Check `!= null` trước khi execute.
+
+---
+
 ## Session 2026-04-23 (1) — Vault refresh UX: realtime status + summary breakdown
 
 ### Yêu cầu user

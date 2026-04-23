@@ -32,7 +32,17 @@
       "Bash(git clone *)",
       "Bash(git checkout *)",
       "Bash(sed -n '5,12p;120,140p' Commands/PaletteManager.cs)",
-      "Bash(powershell.exe -NoProfile -Command '$dll = '\\\\''C:\\\\Program Files\\\\Autodesk\\\\Vault Client 2023\\\\Explorer\\\\Autodesk.DataManagement.Client.Framework.Vault.Forms.dll'\\\\''; if \\(Test-Path $dll\\) { $asm = [System.Reflection.Assembly]::LoadFrom\\($dll\\); $asm.GetTypes\\(\\) | Where-Object { $_.Name -like '\\\\''*Log*'\\\\'' -or $_.Name -like '\\\\''*Auth*'\\\\'' } | Select-Object -ExpandProperty FullName } else { '\\\\''DLL not found'\\\\'' }')"
+      "Bash(powershell.exe -NoProfile -Command '$dll = '\\\\''C:\\\\Program Files\\\\Autodesk\\\\Vault Client 2023\\\\Explorer\\\\Autodesk.DataManagement.Client.Framework.Vault.Forms.dll'\\\\''; if \\(Test-Path $dll\\) { $asm = [System.Reflection.Assembly]::LoadFrom\\($dll\\); $asm.GetTypes\\(\\) | Where-Object { $_.Name -like '\\\\''*Log*'\\\\'' -or $_.Name -like '\\\\''*Auth*'\\\\'' } | Select-Object -ExpandProperty FullName } else { '\\\\''DLL not found'\\\\'' }')",
+      "Bash(grep -iE \"^LogIn|^Sign|Settings$\")",
+      "Read(//usr/**)",
+      "Bash(grep -aoE \"Log[A-Za-z]{2,20}\" \"/c/Program Files/Autodesk/Vault Client 2023/Explorer/Autodesk.DataManagement.Client.Framework.Vault.Forms.dll\")",
+      "Bash(grep -viE \"Controls|Settings|Internal|\\\\.resources$\")",
+      "Bash(sed -i 's/var e = /var autoLoginEnum = /; s/if \\(e != null\\) foreach/if \\(autoLoginEnum != null\\) foreach/; s/Enum.GetNames\\(e\\)/Enum.GetNames\\(autoLoginEnum\\)/' /tmp/vdfprobe/Program.cs)",
+      "Read(//tmp/**)",
+      "Read(//c/Users/truonph/AppData/Roaming/MCGCadPlugin/**)",
+      "Bash(awk '/=== SESSION START/{b=NR}END{print b}' \"/c/Users/truonph/AppData/Roaming/MCGCadPlugin/plugin.log\")",
+      "Read(//c/Users/truonph/AppData/Roaming/Autodesk/VaultCommon/**)",
+      "Read(//c/Users/truonph/AppData/Roaming/Autodesk/VaultCommon//**)"
     ],
     "additionalDirectories": [
       "C:\\Users\\TRANTH\\AppData\\Local\\Temp\\probe4"

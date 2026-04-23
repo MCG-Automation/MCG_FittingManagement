@@ -55,7 +55,7 @@ namespace MCGCadPlugin.Views.FittingManagement
             catch (Exception ex)
             {
                 TxtImportStatus.Text = "Error. See log.";
-                ShowExceptionDialog("Lỗi Import IDW", ex);
+                ShowExceptionDialog("Import IDW Error", ex);
             }
             finally
             {
@@ -90,9 +90,9 @@ namespace MCGCadPlugin.Views.FittingManagement
         /// </summary>
         private void ShowImportResultDialog(string title, ImportResult result)
         {
-            string message = $"{title} hoàn tất!\n\n" +
-                             $"✓ Thành công: {result.SuccessCount}\n" +
-                             $"✗ Thất bại:   {result.FailCount}";
+            string message = $"{title} complete.\n\n" +
+                             $"✓ Success: {result.SuccessCount}\n" +
+                             $"✗ Failed:  {result.FailCount}";
 
             // Vault breakdown — hiển thị nếu có Vault results.
             string vaultSection = BuildVaultBreakdown(result);
@@ -104,13 +104,13 @@ namespace MCGCadPlugin.Views.FittingManagement
                 int maxErrorsToShow = 8;
                 var errorsToShow = result.Errors.Take(maxErrorsToShow).ToList();
 
-                message += "\n\n── Chi tiết lỗi ──\n" + string.Join("\n", errorsToShow);
+                message += "\n\n── Error details ──\n" + string.Join("\n", errorsToShow);
 
                 if (result.Errors.Count > maxErrorsToShow)
-                    message += $"\n\n... và {result.Errors.Count - maxErrorsToShow} lỗi khác (xem trong file log).";
+                    message += $"\n\n... and {result.Errors.Count - maxErrorsToShow} more (see log).";
 
-                message += $"\n\n── Log chi tiết ──\n{FileLogger.LogPath}" +
-                           "\n\nNhấn Yes để mở thư mục chứa log, No để đóng.";
+                message += $"\n\n── Log ──\n{FileLogger.LogPath}" +
+                           "\n\nClick Yes to open the log folder, No to close.";
 
                 var answer = MessageBox.Show(message, $"{title} Result",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning);
@@ -147,47 +147,45 @@ namespace MCGCadPlugin.Views.FittingManagement
                 .Where(r => r.Status == VaultRefreshStatus.Failed).ToList();
 
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("── Vault refresh ──");
+            sb.AppendLine("── Vault status ──");
 
             if (successGroup.Count > 0)
             {
-                sb.AppendLine($"✓ Pulled latest: {successGroup.Count} file(s)");
+                sb.AppendLine($"✓ Updated to latest: {successGroup.Count} file(s)");
                 foreach (var r in successGroup.Take(5))
-                    sb.AppendLine($"  • {System.IO.Path.GetFileName(r.FilePath)}" +
-                                  (string.IsNullOrEmpty(r.MethodUsed) ? "" : $" (via {r.MethodUsed})"));
+                    sb.AppendLine($"  • {System.IO.Path.GetFileName(r.FilePath)}");
                 if (successGroup.Count > 5)
-                    sb.AppendLine($"  ... và {successGroup.Count - 5} file(s) khác");
+                    sb.AppendLine($"  ... and {successGroup.Count - 5} more");
             }
 
             if (skipNotInVault.Count > 0)
             {
-                sb.AppendLine($"⚠ Not in vault: {skipNotInVault.Count} file(s) — dùng file local");
+                sb.AppendLine($"⚠ Not in Vault: {skipNotInVault.Count} file(s) — used local copy");
                 foreach (var r in skipNotInVault.Take(3))
                     sb.AppendLine($"  • {System.IO.Path.GetFileName(r.FilePath)}");
                 if (skipNotInVault.Count > 3)
-                    sb.AppendLine($"  ... và {skipNotInVault.Count - 3} file(s) khác");
+                    sb.AppendLine($"  ... and {skipNotInVault.Count - 3} more");
             }
 
             if (skipNoAddIn.Count > 0)
             {
-                // Lý do skipNoAddIn thường đồng loạt cho cả batch → chỉ cần 1 dòng.
-                sb.AppendLine($"⚠ Vault AddIn không available: {skipNoAddIn.Count} file(s) dùng local");
-                sb.AppendLine($"  Lý do: {skipNoAddIn[0].Message}");
+                sb.AppendLine($"⚠ Vault SDK not available: {skipNoAddIn.Count} file(s) — used local copy");
+                sb.AppendLine($"  → Install Autodesk Vault Client to enable Vault refresh.");
             }
 
             if (skipNotLoggedIn.Count > 0)
             {
-                sb.AppendLine($"⚠ Vault chưa login: {skipNotLoggedIn.Count} file(s) dùng local");
-                sb.AppendLine($"  → Mở Inventor → Vault menu → Log In, rồi import lại để get latest.");
+                sb.AppendLine($"⚠ Not signed in to Vault: {skipNotLoggedIn.Count} file(s) — used local copy");
+                sb.AppendLine($"  → Open \"Autodesk Vault\" (Vault Explorer), sign in, then try again.");
             }
 
             if (failedGroup.Count > 0)
             {
-                sb.AppendLine($"✗ Vault lỗi: {failedGroup.Count} file(s) dùng local");
+                sb.AppendLine($"✗ Vault error: {failedGroup.Count} file(s) — used local copy");
                 foreach (var r in failedGroup.Take(3))
                     sb.AppendLine($"  • {System.IO.Path.GetFileName(r.FilePath)}: {r.Message}");
                 if (failedGroup.Count > 3)
-                    sb.AppendLine($"  ... và {failedGroup.Count - 3} file(s) khác (xem log).");
+                    sb.AppendLine($"  ... and {failedGroup.Count - 3} more (see log).");
             }
 
             return sb.ToString().TrimEnd();
@@ -195,9 +193,9 @@ namespace MCGCadPlugin.Views.FittingManagement
 
         private void ShowExceptionDialog(string title, Exception ex)
         {
-            string message = $"Lỗi: {ex.Message}\n\n" +
-                             $"Chi tiết lỗi đã được ghi vào file log:\n{FileLogger.LogPath}" +
-                             "\n\nNhấn Yes để mở thư mục chứa log.";
+            string message = $"Error: {ex.Message}\n\n" +
+                             $"Full details in log:\n{FileLogger.LogPath}" +
+                             "\n\nClick Yes to open the log folder.";
 
             var answer = MessageBox.Show(message, title,
                 MessageBoxButton.YesNo, MessageBoxImage.Error);
@@ -217,7 +215,7 @@ namespace MCGCadPlugin.Views.FittingManagement
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Không thể mở thư mục log: {ex.Message}",
+                MessageBox.Show($"Cannot open log folder: {ex.Message}",
                     "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
