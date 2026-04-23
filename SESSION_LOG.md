@@ -3,6 +3,21 @@
 # Claude Code tự cập nhật file này. Không sửa thủ công phần log.
 
 ---
+## Session 2026-04-23 (IDW Collection Module)
+
+### Nội dung thực hiện
+- **Tách riêng chức năng Collect IDW:** Đã tạo thư mục `IDWCollection` bên trong `Services/FittingManagement/Utilities/DrawingCollection/`.
+- Tạo file `FittingManagementService.IdwCollection.cs` chứa phương thức `CollectIdwDrawingsAsync` nhằm phân tách rõ ràng logic xử lý riêng cho IDW.
+- Cập nhật interface `IFittingManagementService` với signature `Task<ImportResult> CollectIdwDrawingsAsync(string[] idwPaths, IProgress<string> progress = null)`.
+- Luồng xử lý `CollectIdwDrawingsAsync` sử dụng Inventor COM để export ngầm các file IDW thành file DWG tạm thời (`%TEMP%`), sau đó gọi lại `CollectDrawingsAsync` hiện có (tái sử dụng 100% logic Preprocess và Clone) và cuối cùng dọn dẹp các file DWG tạm.
+- **Cập nhật Giao diện (UI):**
+  - Thêm nút `BtnCollectIdwDrawings` ("Collect Drawings (.idw)") vào `Views/FittingManagement/BlockUtilitiesView.xaml` nằm ngay dưới nút Collect DWG.
+  - Thêm xử lý sự kiện `BtnCollectIdwDrawings_Click` trong file `.xaml.cs` tương ứng, hỗ trợ filter chọn nhiều file `.idw` và hiển thị kết quả giống với DWG Collection.
+  - Vô hiệu hóa đồng thời cả 2 nút (`BtnCollectDrawings` và `BtnCollectIdwDrawings`) trong quá trình xử lý để tránh lỗi.
+
+### Tác động & Rủi ro
+- Luồng cũ của DWG Collection không bị ảnh hưởng, chỉ được tái sử dụng bởi IDW Collection.
+- Việc khởi chạy Inventor COM xử lý trong `Task.Run` chạy nền (worker thread) nên UI AutoCAD không bị treo. Tương tự logic `ImportIdwFilesAsync` trước đó.
 
 ## Session 2026-04-23 (7) — Fix SDK runtime: path LoginHistory sai + logout quá sớm + noise resolver
 

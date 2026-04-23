@@ -84,6 +84,7 @@ namespace MCGCadPlugin.Views.FittingManagement
             if (ofd.ShowDialog() != true || ofd.FileNames.Length == 0) return;
 
             BtnCollectDrawings.IsEnabled = false;
+            BtnCollectIdwDrawings.IsEnabled = false;
             Mouse.OverrideCursor = Cursors.AppStarting;
             var progress = new Progress<string>(msg => TxtCollectionStatus.Text = msg);
 
@@ -103,6 +104,45 @@ namespace MCGCadPlugin.Views.FittingManagement
             {
                 Mouse.OverrideCursor = null;
                 BtnCollectDrawings.IsEnabled = true;
+                BtnCollectIdwDrawings.IsEnabled = true;
+            }
+        }
+
+        private async void BtnCollectIdwDrawings_Click(object sender, RoutedEventArgs e)
+        {
+            Autodesk.AutoCAD.Internal.Utils.SetFocusToDwgView();
+
+            OpenFileDialog ofd = new OpenFileDialog
+            {
+                Title = "Select Inventor Drawings to Collect (.idw)",
+                Filter = "Inventor Drawing (*.idw)|*.idw",
+                Multiselect = true
+            };
+
+            if (ofd.ShowDialog() != true || ofd.FileNames.Length == 0) return;
+
+            BtnCollectDrawings.IsEnabled = false;
+            BtnCollectIdwDrawings.IsEnabled = false;
+            Mouse.OverrideCursor = Cursors.AppStarting;
+            var progress = new Progress<string>(msg => TxtCollectionStatus.Text = msg);
+
+            try
+            {
+                ImportResult result = await _service.CollectIdwDrawingsAsync(ofd.FileNames, progress);
+                TxtCollectionStatus.Text = $"Done. Success={result.SuccessCount}, Failed={result.FailCount}";
+                ShowCollectionResultDialog(result);
+            }
+            catch (Exception ex)
+            {
+                TxtCollectionStatus.Text = "Error. See log.";
+                FileLogger.LogException("[BlockUtilitiesView]", "BtnCollectIdwDrawings_Click", ex);
+                ShowExceptionDialog("Lỗi IDW Collection", ex);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+                BtnCollectDrawings.IsEnabled = true;
+                BtnCollectIdwDrawings.IsEnabled = true;
             }
         }
 

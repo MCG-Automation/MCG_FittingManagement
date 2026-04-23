@@ -29,6 +29,7 @@
                     <TextBlock Text="Collect Model Space from multiple .dwg files into the current drawing. Blocks are renamed [FileName]_[BlockName] (A1 and CAS_HEAD preserved), unused definitions are purged, and drawings are laid out horizontally with a 1000-unit gap." Style="{StaticResource HelperTextStyle}"/>
 
                     <Button x:Name="BtnCollectDrawings" Content="Collect Drawings (.dwg)" Style="{StaticResource PrimaryButtonStyle}" Click="BtnCollectDrawings_Click"/>
+                    <Button x:Name="BtnCollectIdwDrawings" Content="Collect Drawings (.idw)" Style="{StaticResource PrimaryButtonStyle}" Click="BtnCollectIdwDrawings_Click" Margin="0,6,0,0"/>
                     <TextBlock x:Name="TxtCollectionStatus" Text="" Foreground="#FF005E9E" FontStyle="Italic" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
             </GroupBox>

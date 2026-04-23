@@ -42,5 +42,6 @@ namespace MCGCadPlugin.Services.FittingManagement
         // - Xếp ngang từ trái sang phải, khoảng hở 1000.
         // - Phase tiền xử lý (side db) chạy trên worker thread; phase clone vào current doc quay về UI thread sau await.
         Task<ImportResult> CollectDrawingsAsync(string[] dwgPaths, IProgress<string> progress = null);
+        Task<ImportResult> CollectIdwDrawingsAsync(string[] idwPaths, IProgress<string> progress = null);
     }
 }
