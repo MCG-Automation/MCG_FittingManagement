@@ -4,6 +4,106 @@
 
 ---
 
+## Session 2026-04-23 (1) — Vault refresh UX: realtime status + summary breakdown
+
+### Yêu cầu user
+Sau khi apply Vault integration (session 17), user muốn hiển thị CHO USER BIẾT file IDW nào đã pull latest, file nào skip, file nào fail — qua UI thay vì chỉ log file.
+
+Chọn **Cách A + B**: realtime progress + summary dialog với Vault breakdown.
+
+### Đã làm
+
+**1. Extend ImportResult** [Models/FittingManagement/ImportResult.cs](Models/FittingManagement/ImportResult.cs):
+- Thêm field `List<VaultRefreshResult> VaultResults = new List<VaultRefreshResult>()`.
+- Empty nếu `pullFromVault=false` (không break backward compat).
+
+**2. Track + realtime progress** [Services/FittingManagement/Import/FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs):
+- Trong `ExtractAllIdw` loop, sau khi `TryPullLatestFromVault` xong:
+  - Bổ sung `FilePath` vào result nếu status skip không có path (SkippedNoAddIn/NotLoggedIn gốc không gắn path).
+  - `result.VaultResults.Add(vaultResult)`.
+  - Emit realtime progress với status icon (✓ success, ⚠ skip, ✗ fail): `progress?.Report($"[{i+1}/{N}] {icon} Vault {statusLabel}: {fileName}")`.
+
+**3. Status short label** [Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs](Services/FittingManagement/Vault/FittingManagementService.VaultRefresh.cs):
+- Thêm `StatusShortLabel(VaultRefreshStatus)`: map enum → text ngắn 1-2 từ cho TxtImportStatus single-line.
+  - `Success` → "latest"
+  - `AlreadyLatest` → "already latest"
+  - `SkippedNoAddIn` → "skip (no AddIn)"
+  - `SkippedNotLoggedIn` → "skip (not logged in)"
+  - `SkippedNotInVault` → "skip (not in vault)"
+  - `Failed` → "failed"
+
+**4. Summary dialog Vault breakdown** [Views/FittingManagement/TemplateView.xaml.cs](Views/FittingManagement/TemplateView.xaml.cs):
+- Helper mới `BuildVaultBreakdown(ImportResult)`: group VaultResults theo status, format section text.
+- Gọi trong `ShowImportResultDialog` → append vào message nếu có data.
+- Mỗi group có header icon + count, liệt kê top-3/top-5 file tiêu biểu:
+  ```
+  ── Vault refresh ──
+  ✓ Pulled latest: 3 file(s)
+    • CAS-0071132.idw (via GetLatestServerVersion)
+    • CAS-0071133.idw (via GetLatestServerVersion)
+    ...
+  ⚠ Not in vault: 1 file(s) — dùng file local
+    • local-only.idw
+  ⚠ Vault chưa login: 2 file(s) dùng local
+    → Mở Inventor → Vault menu → Log In, rồi import lại để get latest.
+  ```
+- `SkippedNoAddIn`: gom 1 dòng + reason (lý do đồng loạt cho cả batch).
+- `Failed`: liệt kê file + error message (top-3).
+
+### Thiết kế
+- **Realtime + summary phối hợp**: realtime cho cảm giác tiến độ từng file (flash qua nhanh), summary persistent cho verify sau import.
+- **Status icon trong progress**: `✓ / ⚠ / ✗` map theo `IsSuccess` + Status. 3 nhóm màu rõ: xanh (success), vàng (skip), đỏ (fail).
+- **Liệt kê top-N per group**: success 5, skip 3, failed 3 — tránh dialog quá dài với batch lớn.
+- **Message actionable cho NotLoggedIn**: hướng dẫn cụ thể "Mở Inventor → Vault menu → Log In" → user biết cần làm gì.
+- **Path bổ sung sau Vault call**: SkippedNoAddIn/NotLoggedIn không có `FilePath` theo design (lý do batch-level, không per-file). Gán path ở caller để summary có thể show file name.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- **Build:** Succeeded — 0 errors.
+
+### UX khi test
+**Batch 5 files, Inventor chạy + Vault login + 3 file trong Vault + 1 file local + 1 file Vault không có:**
+
+Realtime (TxtImportStatus cập nhật qua từng file):
+```
+[1/5] ✓ Vault latest: CAS-0071132.idw
+[1/5] Extracting: CAS-0071132.idw
+[2/5] ✓ Vault latest: CAS-0071133.idw
+...
+[5/5] ⚠ Vault skip (not in vault): local-only.idw
+[5/5] Extracting: local-only.idw
+Done. Success=5, Failed=0
+```
+
+Summary dialog:
+```
+Import IDW hoàn tất!
+✓ Thành công: 5
+✗ Thất bại: 0
+
+── Vault refresh ──
+✓ Pulled latest: 4 file(s)
+  • CAS-0071132.idw (via GetLatestServerVersion)
+  • CAS-0071133.idw (via GetLatestServerVersion)
+  • CAS-0047895.idw (via GetLatestServerVersion)
+  • CAS-0047761.idw (via GetLatestServerVersion)
+⚠ Not in vault: 1 file(s) — dùng file local
+  • local-only.idw
+```
+
+### Bước tiếp theo
+- Test trong môi trường Vault thật — verify:
+  - Realtime status cập nhật đúng sau mỗi Vault call.
+  - Summary dialog phân nhóm đúng theo Status.
+  - User dễ đọc và hiểu file nào đã sync, file nào không.
+
+### Ghi chú API
+- **`System.Text.StringBuilder` qua `BuildVaultBreakdown`**: tránh string concatenation trong loop (O(N²) allocation).
+- **LINQ group qua `.Where(r => r.Status == ...)`**: O(N) per status, tổng O(N × 5 group) = O(N) — acceptable.
+- **Progress.Report trong Task.Run**: `IProgress<string>` capture SynchronizationContext tại constructor (UI thread). Report từ worker thread tự marshal về UI thread → TxtImportStatus.Text update an toàn.
+
+---
+
 ## Session 2026-04-22 (17) — Vault integration (Phương án B): Pull latest qua Inventor AddIn
 
 ### Yêu cầu user

@@ -93,19 +93,32 @@ namespace MCGCadPlugin.Services.FittingManagement
                     if (pullFromVault)
                     {
                         progress?.Report($"[{i + 1}/{total}] Vault refresh: {fileName}");
+                        Models.FittingManagement.VaultRefreshResult vaultResult = null;
                         try
                         {
-                            var vaultResult = TryPullLatestFromVault(invApp, idwPath);
+                            vaultResult = TryPullLatestFromVault(invApp, idwPath);
                             if (vaultResult.Status == Models.FittingManagement.VaultRefreshStatus.Failed)
                             {
-                                // Log warning nhưng vẫn proceed với file local.
                                 FileLogger.Log(LOG_PREFIX, $"  Vault refresh fail (non-fatal) cho '{fileName}': {vaultResult.Message}");
                             }
                         }
                         catch (System.Exception vex)
                         {
                             FileLogger.LogException(LOG_PREFIX, $"TryPullLatestFromVault '{fileName}' (non-fatal)", vex);
+                            vaultResult = Models.FittingManagement.VaultRefreshResult.Failed(idwPath, vex.Message);
                         }
+
+                        // Bổ sung FilePath nếu result chưa có (SkippedNoAddIn/NotLoggedIn không có path).
+                        if (string.IsNullOrEmpty(vaultResult.FilePath))
+                            vaultResult.FilePath = idwPath;
+
+                        result.VaultResults.Add(vaultResult);
+
+                        // Realtime progress với status icon để user thấy ngay kết quả Vault từng file.
+                        string icon = vaultResult.IsSuccess ? "✓" :
+                                      vaultResult.Status == Models.FittingManagement.VaultRefreshStatus.Failed ? "✗" : "⚠";
+                        string statusLabel = StatusShortLabel(vaultResult.Status);
+                        progress?.Report($"[{i + 1}/{total}] {icon} Vault {statusLabel}: {fileName}");
                     }
 
                     progress?.Report($"[{i + 1}/{total}] Extracting: {fileName}");

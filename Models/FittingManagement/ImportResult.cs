@@ -17,6 +17,12 @@ namespace MCGCadPlugin.Models.FittingManagement
         /// <summary>Danh sach thong bao loi tung file (format: "filename: error message").</summary>
         public List<string> Errors { get; set; } = new List<string>();
 
+        /// <summary>
+        /// Ket qua pull latest tu Vault cho tung file (neu enabled).
+        /// Empty neu pullFromVault=false hoac chua chay Vault step.
+        /// </summary>
+        public List<VaultRefreshResult> VaultResults { get; set; } = new List<VaultRefreshResult>();
+
         /// <summary>Them loi vao danh sach.</summary>
         public void AddError(string fileName, string errorMessage)
         {

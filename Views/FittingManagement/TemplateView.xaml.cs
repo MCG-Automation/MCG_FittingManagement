@@ -94,6 +94,11 @@ namespace MCGCadPlugin.Views.FittingManagement
                              $"✓ Thành công: {result.SuccessCount}\n" +
                              $"✗ Thất bại:   {result.FailCount}";
 
+            // Vault breakdown — hiển thị nếu có Vault results.
+            string vaultSection = BuildVaultBreakdown(result);
+            if (!string.IsNullOrEmpty(vaultSection))
+                message += "\n\n" + vaultSection;
+
             if (result.FailCount > 0 && result.Errors.Count > 0)
             {
                 int maxErrorsToShow = 8;
@@ -118,6 +123,74 @@ namespace MCGCadPlugin.Views.FittingManagement
                 MessageBox.Show(message, $"{title} Result",
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
+        }
+
+        /// <summary>
+        /// Build Vault refresh breakdown section cho dialog kết quả.
+        /// Group theo Status: Success/AlreadyLatest → ✓, SkippedNot* → ⚠, Failed → ✗.
+        /// Liệt kê từng file trong mỗi nhóm để user verify rõ ràng.
+        /// </summary>
+        private string BuildVaultBreakdown(ImportResult result)
+        {
+            if (result.VaultResults == null || result.VaultResults.Count == 0)
+                return null;
+
+            var successGroup = result.VaultResults
+                .Where(r => r.IsSuccess).ToList();
+            var skipNotInVault = result.VaultResults
+                .Where(r => r.Status == VaultRefreshStatus.SkippedNotInVault).ToList();
+            var skipNoAddIn = result.VaultResults
+                .Where(r => r.Status == VaultRefreshStatus.SkippedNoAddIn).ToList();
+            var skipNotLoggedIn = result.VaultResults
+                .Where(r => r.Status == VaultRefreshStatus.SkippedNotLoggedIn).ToList();
+            var failedGroup = result.VaultResults
+                .Where(r => r.Status == VaultRefreshStatus.Failed).ToList();
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("── Vault refresh ──");
+
+            if (successGroup.Count > 0)
+            {
+                sb.AppendLine($"✓ Pulled latest: {successGroup.Count} file(s)");
+                foreach (var r in successGroup.Take(5))
+                    sb.AppendLine($"  • {System.IO.Path.GetFileName(r.FilePath)}" +
+                                  (string.IsNullOrEmpty(r.MethodUsed) ? "" : $" (via {r.MethodUsed})"));
+                if (successGroup.Count > 5)
+                    sb.AppendLine($"  ... và {successGroup.Count - 5} file(s) khác");
+            }
+
+            if (skipNotInVault.Count > 0)
+            {
+                sb.AppendLine($"⚠ Not in vault: {skipNotInVault.Count} file(s) — dùng file local");
+                foreach (var r in skipNotInVault.Take(3))
+                    sb.AppendLine($"  • {System.IO.Path.GetFileName(r.FilePath)}");
+                if (skipNotInVault.Count > 3)
+                    sb.AppendLine($"  ... và {skipNotInVault.Count - 3} file(s) khác");
+            }
+
+            if (skipNoAddIn.Count > 0)
+            {
+                // Lý do skipNoAddIn thường đồng loạt cho cả batch → chỉ cần 1 dòng.
+                sb.AppendLine($"⚠ Vault AddIn không available: {skipNoAddIn.Count} file(s) dùng local");
+                sb.AppendLine($"  Lý do: {skipNoAddIn[0].Message}");
+            }
+
+            if (skipNotLoggedIn.Count > 0)
+            {
+                sb.AppendLine($"⚠ Vault chưa login: {skipNotLoggedIn.Count} file(s) dùng local");
+                sb.AppendLine($"  → Mở Inventor → Vault menu → Log In, rồi import lại để get latest.");
+            }
+
+            if (failedGroup.Count > 0)
+            {
+                sb.AppendLine($"✗ Vault lỗi: {failedGroup.Count} file(s) dùng local");
+                foreach (var r in failedGroup.Take(3))
+                    sb.AppendLine($"  • {System.IO.Path.GetFileName(r.FilePath)}: {r.Message}");
+                if (failedGroup.Count > 3)
+                    sb.AppendLine($"  ... và {failedGroup.Count - 3} file(s) khác (xem log).");
+            }
+
+            return sb.ToString().TrimEnd();
         }
 
         private void ShowExceptionDialog(string title, Exception ex)

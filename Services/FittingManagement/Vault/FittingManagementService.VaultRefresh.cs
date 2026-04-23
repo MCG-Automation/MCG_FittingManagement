@@ -174,6 +174,21 @@ namespace MCGCadPlugin.Services.FittingManagement
             return r;
         }
 
+        /// <summary>Label ngắn gọn cho progress text — 1-2 từ để fit trong TxtImportStatus single-line.</summary>
+        internal static string StatusShortLabel(VaultRefreshStatus status)
+        {
+            switch (status)
+            {
+                case VaultRefreshStatus.Success: return "latest";
+                case VaultRefreshStatus.AlreadyLatest: return "already latest";
+                case VaultRefreshStatus.SkippedNoAddIn: return "skip (no AddIn)";
+                case VaultRefreshStatus.SkippedNotLoggedIn: return "skip (not logged in)";
+                case VaultRefreshStatus.SkippedNotInVault: return "skip (not in vault)";
+                case VaultRefreshStatus.Failed: return "failed";
+                default: return status.ToString();
+            }
+        }
+
         #endregion
     }
 }
