@@ -72,7 +72,8 @@ namespace MCGCadPlugin.Utilities
         }
 
         /// <summary>
-        /// Ghi header de phan biet giua cac session/command khac nhau.
+        /// Ghi header phan biet session/command. TRUNCATE log truoc khi ghi — moi session
+        /// bat dau voi log rong de user de debug va share clean log khi bao loi.
         /// </summary>
         public static void LogSessionStart(string sessionName)
         {
@@ -80,10 +81,14 @@ namespace MCGCadPlugin.Utilities
             {
                 lock (_lock)
                 {
-                    RotateLogIfNeeded();
+                    // Truncate: tao file moi de lai, ghi de noi dung cu.
+                    if (File.Exists(_logPath))
+                    {
+                        try { File.Delete(_logPath); } catch { /* file dang mo o tool khac - bo qua */ }
+                    }
+
                     string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
                     string header =
-                        Environment.NewLine +
                         "========================================================" + Environment.NewLine +
                         $"[{timestamp}] === SESSION START: {sessionName} ===" + Environment.NewLine +
                         "========================================================" + Environment.NewLine;

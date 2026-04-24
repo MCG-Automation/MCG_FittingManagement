@@ -47,6 +47,7 @@ namespace MCGCadPlugin.Services.FittingManagement
                 if (pair.IsPrimary)
                 {
                     if (pair.IsCloned) stats.PrimaryCloned++;
+                    else stats.PrimaryNotCloned++;
                 }
                 else
                 {
@@ -54,6 +55,12 @@ namespace MCGCadPlugin.Services.FittingManagement
                     else stats.SymbolsIgnored++;
                 }
             }
+
+            // D1 — Nếu có silent-drop, dump chi tiết IdMapping (first 30 pairs) để diagnose.
+            // Log IsPrimary, IsCloned, source type, source name — cho thấy CHÍNH XÁC symbol nào
+            // bị ignore và liệu renamed anon blocks có thực sự được xử lý như non-anon không.
+            if (stats.PrimaryNotCloned > 0)
+                LogIdMappingDetails(item.SideDb, mapping, maxPairs: 30);
 
             // Tính vector dịch: đưa minX bbox về đúng offsetX, giữ nguyên Y/Z.
             double dx = item.HasExtents ? (offsetX - item.Extents.MinPoint.X) : offsetX;
@@ -80,7 +87,7 @@ namespace MCGCadPlugin.Services.FittingManagement
                             if (ent is BlockReference brDest)
                             {
                                 string effName = GetEffectiveBlockName(brDest, tr);
-                                if (IsKeepAsIs(effName))
+                                if (effName != null && KeepAsIsBlocks.Contains(effName))
                                 {
                                     try
                                     {
@@ -174,7 +181,7 @@ namespace MCGCadPlugin.Services.FittingManagement
                     string effName;
                     try { effName = GetEffectiveBlockName(br, tr); }
                     catch { continue; }
-                    if (!IsKeepAsIs(effName)) continue;
+                    if (effName == null || !KeepAsIsBlocks.Contains(effName)) continue;
 
                     try
                     {
@@ -199,6 +206,80 @@ namespace MCGCadPlugin.Services.FittingManagement
                 $"Scan dest ModelSpace: {existingCount} A1/CAS_HEAD reference(s) existing, Xmax={maxX:F0} " +
                 $"→ initial offsetX = {initial:F0} (collect mới nối tiếp, cách {COLLECTION_GAP:F0}mm).");
             return initial;
+        }
+
+        /// <summary>
+        /// D1 — Dump chi tiết IdMapping sau WblockCloneObjects để diagnose silent-drop.
+        /// Log first N pairs với: IsPrimary, IsCloned, source type, source name (nếu là symbol table record
+        /// hoặc BlockReference), source handle. Giúp thấy CHÍNH XÁC symbol nào bị ignore và tại sao.
+        /// </summary>
+        private static void LogIdMappingDetails(Database sideDb, IdMapping mapping, int maxPairs)
+        {
+            // Count total pairs first (without opening transaction).
+            int total = 0;
+            foreach (IdPair _ in mapping) total++;
+
+            FileLogger.Log(LOG_PREFIX, $"  [D1] IdMapping dump (total={total}, showing first {Math.Min(maxPairs, total)}):");
+
+            int idx = 0;
+            using (var tr = sideDb.TransactionManager.StartTransaction())
+            {
+                foreach (IdPair pair in mapping)
+                {
+                    if (idx >= maxPairs) break;
+                    idx++;
+
+                    string srcType = "?";
+                    string srcDesc = "";
+                    try
+                    {
+                        if (!pair.Key.IsNull)
+                        {
+                            var obj = tr.GetObject(pair.Key, OpenMode.ForRead, false, true);
+                            srcType = obj.GetType().Name;
+
+                            if (obj is BlockTableRecord btr)
+                                srcDesc = $"'{btr.Name}' IsAnon={btr.IsAnonymous}";
+                            else if (obj is LayerTableRecord ltr)
+                                srcDesc = $"'{ltr.Name}'";
+                            else if (obj is LinetypeTableRecord lttr)
+                                srcDesc = $"'{lttr.Name}'";
+                            else if (obj is TextStyleTableRecord tstr)
+                                srcDesc = $"'{tstr.Name}'";
+                            else if (obj is DimStyleTableRecord dstr)
+                                srcDesc = $"'{dstr.Name}'";
+                            else if (obj is RegAppTableRecord rat)
+                                srcDesc = $"'{rat.Name}'";
+                            else if (obj is BlockReference br)
+                            {
+                                try
+                                {
+                                    var refBtr = (BlockTableRecord)tr.GetObject(br.BlockTableRecord, OpenMode.ForRead);
+                                    srcDesc = $"→BTR'{refBtr.Name}' IsAnon={refBtr.IsAnonymous}";
+                                }
+                                catch { srcDesc = "→BTR(?)"; }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        srcType = $"?(err:{ex.GetType().Name})";
+                    }
+
+                    string destHandle = pair.Value.IsNull
+                        ? "null"
+                        : $"h={pair.Value.Handle}";
+                    string srcHandle = pair.Key.IsNull ? "null" : $"h={pair.Key.Handle}";
+
+                    FileLogger.Log(LOG_PREFIX,
+                        $"    [{idx,2}] Prim={pair.IsPrimary,-5} Cloned={pair.IsCloned,-5} " +
+                        $"{srcType,-22} {srcDesc} (src {srcHandle}, dest {destHandle})");
+                }
+                tr.Commit();
+            }
+
+            if (total > maxPairs)
+                FileLogger.Log(LOG_PREFIX, $"    ... và {total - maxPairs} pair(s) khác (tăng maxPairs nếu cần full).");
         }
 
         private ObjectIdCollection CollectModelSpaceIds(Database sideDb)

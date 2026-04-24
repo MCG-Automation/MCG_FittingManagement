@@ -135,13 +135,33 @@ namespace MCGCadPlugin.Services.FittingManagement
                             fileSw.Stop();
 
                             // Label rõ nghĩa: `topLevel` = entity Model Space cấp cao nhất (= srcIds);
-                            // `totalPrimaries` = IdPair.IsPrimary count (bao gồm attribute/vertex/nested sub-entity được kéo theo).
+                            // `primaries` = IdPair IsPrimary (entity): cloned vs dropped.
+                            // `symbols`   = IdPair !IsPrimary (layer/block/linetype/...): cloned vs ignored (trùng dest).
                             FileLogger.Log(LOG_PREFIX,
                                 $"  Clone '{item.FileName}': topLevel={cloneStats.SrcIds} → " +
-                                $"totalPrimaries (incl. nested sub-entities)={cloneStats.PrimaryCloned}, " +
+                                $"primaries [cloned={cloneStats.PrimaryCloned}, dropped={cloneStats.PrimaryNotCloned}], " +
                                 $"symbols [cloned={cloneStats.SymbolsCloned}, ignored={cloneStats.SymbolsIgnored}], " +
                                 $"transformed={cloneStats.Transformed} (failed={cloneStats.TransformFailed}), " +
                                 $"dx={cloneStats.Dx:F2}, took={fileSw.ElapsedMilliseconds}ms");
+
+                            // P0 — Silent drop detection: source có entity nhưng WblockClone trả 0 primary
+                            // = toàn bộ entity bị discard (thường do DuplicateRecordCloning.Ignore + anon block conflict).
+                            // Đánh dấu Failed, KHÔNG advance offsetX, KHÔNG count Success — tránh UI báo nhầm OK.
+                            if (cloneStats.SrcIds > 0 && cloneStats.PrimaryCloned == 0)
+                            {
+                                FileLogger.Log(LOG_PREFIX,
+                                    $"  CẢNH BÁO SILENT DROP: '{item.FileName}' có {cloneStats.SrcIds} entity source " +
+                                    $"nhưng 0 entity được clone vào dest. " +
+                                    $"Nguyên nhân: anonymous block definitions trong src conflict với dest → WblockClone discard. " +
+                                    $"→ File count là FAILED, offsetX KHÔNG advance.");
+                                result.FailCount++;
+                                result.AddError(item.FileName,
+                                    $"0 entity cloned — anonymous blocks conflict với dest template. " +
+                                    $"Cần pre-rename anon blocks (xem P3 trong SESSION_LOG).");
+                                item.Advanced = false;
+                                item.EffectiveWidth = 0;
+                                continue;
+                            }
 
                             // Log vị trí/bbox mỗi A1/CAS_HEAD đã clone + transform vào dest.
                             foreach (var ki in cloneStats.KeepAsIsCloned)

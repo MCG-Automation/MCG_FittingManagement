@@ -48,6 +48,13 @@ namespace MCGCadPlugin.Services.FittingManagement
             public int Skipped_Conflict; // candidate name đã tồn tại
             public int Skipped_Empty;    // name rỗng hoặc '*' (system)
             public int Failed;
+
+            // P3 — Anonymous block rename: tránh silent-drop khi dest template có anon blocks trùng tên.
+            // `AnonRenamed` = anon block được MS-referenced + đổi tên thành công.
+            // `AnonSkipped_Unreferenced` = anon block KHÔNG referenced từ MS → để nguyên (sẽ bị purge).
+            public int AnonRenamed;
+            public int AnonSkipped_Unreferenced;
+            public int AnonFailed;
         }
 
         /// <summary>Stats purge recursive trên 1 side db.</summary>
@@ -72,6 +79,11 @@ namespace MCGCadPlugin.Services.FittingManagement
             // Per-entity info — chỉ dùng cho diagnose outlier khi bbox vượt ngưỡng.
             // Không expose ObjectId vì side db bị dispose sau phase 1.
             public List<EntityExtInfo> EntityInfos = new List<EntityExtInfo>();
+
+            // Type breakdown ModelSpace — count theo GetType().Name, tách with-extents vs no-extents.
+            // Dùng để user verify DWG content và diagnose silent-drop ở Phase 2.
+            public Dictionary<string, int> TypeCountWithExtents = new Dictionary<string, int>();
+            public Dictionary<string, int> TypeCountNoExtents = new Dictionary<string, int>();
 
             // BlockReference có effective name ∈ KeepAsIsBlocks nằm TRỰC TIẾP trong Model Space nguồn.
             // (Không scan Paper Space/Layout — vì phase 2 không clone chúng.)
@@ -123,6 +135,7 @@ namespace MCGCadPlugin.Services.FittingManagement
         {
             public int SrcIds;           // số entity modelspace source
             public int PrimaryCloned;    // IsPrimary && IsCloned — entity thực sự copy
+            public int PrimaryNotCloned; // IsPrimary && !IsCloned — entity BỊ DROP (silent-drop marker)
             public int SymbolsCloned;    // !IsPrimary && IsCloned — symbol table record (layer/block/linetype) mới
             public int SymbolsIgnored;   // !IsPrimary && !IsCloned — trùng tên, dùng bản dest
             public int Transformed;      // TransformBy thành công

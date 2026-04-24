@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
@@ -148,13 +149,28 @@ namespace MCGCadPlugin.Services.FittingManagement
                     BlockTableRecord srcMs = (BlockTableRecord)srcTr.GetObject(
                         SymbolUtilityServices.GetBlockModelSpaceId(sourceDb), OpenMode.ForRead);
 
-                    // Pre-compute allowed entities + center — 1 pass/DWG (tránh GeometricExtents lặp V×E)
+                    // Pre-compute allowed entities + center — 1 pass/DWG (tránh GeometricExtents lặp V×E).
+                    // Đồng thời enumerate TẤT CẢ entity types (kept + filtered + no-extents) để log breakdown
+                    // cho user biết DWG chứa gì và ta đang drop cái nào.
                     var allowed = new List<(ObjectId Id, double Cx, double Cy)>();
+                    var keptBreakdown = new Dictionary<string, int>();
+                    var filteredBreakdown = new Dictionary<string, int>();
+                    var noExtentsBreakdown = new Dictionary<string, int>();
+                    int totalEntities = 0;
+
                     foreach (ObjectId eid in srcMs)
                     {
                         Entity ent = srcTr.GetObject(eid, OpenMode.ForRead) as Entity;
                         if (ent == null) continue;
-                        if (!IsAllowedEntityType(ent)) continue;
+                        totalEntities++;
+
+                        string typeName = ent.GetType().Name;
+
+                        if (!IsAllowedEntityType(ent))
+                        {
+                            IncrementCount(filteredBreakdown, typeName);
+                            continue;
+                        }
 
                         try
                         {
@@ -162,13 +178,16 @@ namespace MCGCadPlugin.Services.FittingManagement
                             double cx = (ext.MinPoint.X + ext.MaxPoint.X) * 0.5;
                             double cy = (ext.MinPoint.Y + ext.MaxPoint.Y) * 0.5;
                             allowed.Add((eid, cx, cy));
+                            IncrementCount(keptBreakdown, typeName);
                         }
                         catch
                         {
-                            // Entity không có extents → skip (không contribute vào view bbox)
+                            // Entity dạng allowed nhưng không lấy được extents (vd empty polyline) → không contribute vào view bbox.
+                            IncrementCount(noExtentsBreakdown, typeName);
                         }
                     }
-                    FileLogger.Log(LOG_PREFIX, $"  DWG có {allowed.Count} entity hợp lệ (Line/Arc/Circle/Polyline/Spline/Ellipse).");
+
+                    LogEntityBreakdown(totalEntities, keptBreakdown, filteredBreakdown, noExtentsBreakdown);
 
                     foreach (var view in metadata.Views)
                     {
@@ -261,6 +280,56 @@ namespace MCGCadPlugin.Services.FittingManagement
                 || ent is Polyline3d
                 || ent is Spline
                 || ent is Ellipse;
+        }
+
+        /// <summary>Tăng counter cho entity type name (tránh TryGetValue pattern ở call site).</summary>
+        private static void IncrementCount(Dictionary<string, int> dict, string key)
+        {
+            if (dict.TryGetValue(key, out int v)) dict[key] = v + 1;
+            else dict[key] = 1;
+        }
+
+        /// <summary>
+        /// Log chi tiết entity breakdown của DWG — dùng để user + dev phân tích data DWG và
+        /// quyết định có cần mở rộng allow-list IsAllowedEntityType không.
+        /// Section [KEEP] / [SKIP] / [NO EXTENTS] sort theo count DESC.
+        /// </summary>
+        private static void LogEntityBreakdown(int total,
+            Dictionary<string, int> kept,
+            Dictionary<string, int> filtered,
+            Dictionary<string, int> noExtents)
+        {
+            int keptTotal = 0; foreach (var v in kept.Values) keptTotal += v;
+            int filteredTotal = 0; foreach (var v in filtered.Values) filteredTotal += v;
+            int noExtTotal = 0; foreach (var v in noExtents.Values) noExtTotal += v;
+
+            FileLogger.Log(LOG_PREFIX,
+                $"  DWG entity breakdown — total={total}, kept={keptTotal}, filtered={filteredTotal}, no-extents={noExtTotal}.");
+
+            if (kept.Count > 0)
+            {
+                FileLogger.Log(LOG_PREFIX, "    [KEEP] (included vào view block):");
+                foreach (var kv in kept.OrderByDescending(x => x.Value))
+                    FileLogger.Log(LOG_PREFIX, $"      • {kv.Key}: {kv.Value}");
+            }
+
+            if (filtered.Count > 0)
+            {
+                FileLogger.Log(LOG_PREFIX,
+                    "    [SKIP] (KHÔNG copy vào view block — text/dim/hatch/blockref thường từ title frame hoặc annotation):");
+                foreach (var kv in filtered.OrderByDescending(x => x.Value))
+                    FileLogger.Log(LOG_PREFIX, $"      • {kv.Key}: {kv.Value}");
+                FileLogger.Log(LOG_PREFIX,
+                    "    → Nếu type lạ/quan trọng xuất hiện ở đây, update IsAllowedEntityType trong JsonImport.cs.");
+            }
+
+            if (noExtents.Count > 0)
+            {
+                FileLogger.Log(LOG_PREFIX,
+                    "    [NO EXTENTS] (type allowed nhưng GeometricExtents throw — thường entity rỗng/degenerate):");
+                foreach (var kv in noExtents.OrderByDescending(x => x.Value))
+                    FileLogger.Log(LOG_PREFIX, $"      • {kv.Key}: {kv.Value}");
+            }
         }
 
         /// <summary>

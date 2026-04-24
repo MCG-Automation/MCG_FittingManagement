@@ -69,6 +69,9 @@ namespace MCGCadPlugin.Services.FittingManagement
 
                     string prefix = SanitizeBlockNamePart(Path.GetFileNameWithoutExtension(path));
                     var renameStats = RenameBlocksInSideDb(sideDb, prefix);
+                    // P3 — pre-rename anonymous blocks được reference từ ModelSpace.
+                    // Tránh silent-drop ở Phase 2 khi dest template có anon blocks trùng tên.
+                    RenameReferencedAnonBlocksInSideDb(sideDb, prefix, renameStats);
                     long renameMs = fileSw.ElapsedMilliseconds - readMs;
 
                     var purgeStats = PurgeUnusedInSideDb(sideDb);
@@ -129,6 +132,9 @@ namespace MCGCadPlugin.Services.FittingManagement
             FileLogger.Log(LOG_PREFIX,
                 $"  Purge: erased={p.TotalErased} across {p.Passes} pass(es)" +
                 (p.HitMaxPasses ? " [CẢNH BÁO: đạt max passes, có thể còn dư]" : ""));
+
+            // Entity type breakdown — giúp user thấy source DWG chứa type gì, tách with-extents vs no-extents.
+            LogModelSpaceTypeBreakdown(e);
 
             if (e.HasExtents)
             {
@@ -207,9 +213,7 @@ namespace MCGCadPlugin.Services.FittingManagement
                         continue;
                     }
 
-                    // Title block từ IDW có tên chứa A1/A2/A3 (khổ giấy) → giữ nguyên, không prefix.
-                    // CAS_HEAD là khung tên riêng của MacGregor, match exact.
-                    if (IsTitleBlockSizeName(name))
+                    if (name.Equals("A1", StringComparison.OrdinalIgnoreCase))
                     {
                         stats.KeepAsIs_A1++;
                         continue;
@@ -245,6 +249,106 @@ namespace MCGCadPlugin.Services.FittingManagement
                 tr.Commit();
             }
             return stats;
+        }
+
+        /// <summary>
+        /// P3 — Rename anonymous BlockTableRecords được reference bởi BlockReference trong ModelSpace.
+        /// Mục đích: tránh WblockCloneObjects silent-drop khi dest template chứa anon blocks trùng tên
+        /// (DuplicateRecordCloning.Ignore discard cả symbol lẫn entity reference tới nó).
+        ///
+        /// Strategy: chỉ rename anon BTR nào được BlockReference trong MS dùng — KHÔNG đụng tới
+        /// anon BTR của Dimension (*D), Hatch (*H), Group (*A) vì chúng không xuất hiện trực tiếp
+        /// trong Clone flow và rename có thể phá dependency.
+        ///
+        /// New name format: `{prefix}_Anon_{counter}` — non-anon, unique per file.
+        /// </summary>
+        private void RenameReferencedAnonBlocksInSideDb(Database sideDb, string prefix, RenameStats stats)
+        {
+            using (var tr = sideDb.TransactionManager.StartTransaction())
+            {
+                var bt = (BlockTable)tr.GetObject(sideDb.BlockTableId, OpenMode.ForRead);
+                if (!bt.Has(BlockTableRecord.ModelSpace)) { tr.Commit(); return; }
+
+                // Step 1: collect anon BTR ObjectIds referenced từ ModelSpace.
+                var refAnonIds = new HashSet<ObjectId>();
+                var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+                foreach (ObjectId eid in ms)
+                {
+                    var br = tr.GetObject(eid, OpenMode.ForRead) as BlockReference;
+                    if (br == null) continue;
+
+                    // DynamicBlockTableRecord nếu dynamic, BlockTableRecord nếu static.
+                    ObjectId btrId = br.IsDynamicBlock ? br.DynamicBlockTableRecord : br.BlockTableRecord;
+                    if (btrId.IsNull) continue;
+
+                    try
+                    {
+                        var btr = (BlockTableRecord)tr.GetObject(btrId, OpenMode.ForRead);
+                        if (btr.IsAnonymous && !btr.IsFromExternalReference)
+                            refAnonIds.Add(btrId);
+                    }
+                    catch { /* BTR invalid — skip */ }
+                }
+
+                // Step 2: collect all anon BTRs để phân loại "referenced vs unreferenced".
+                foreach (ObjectId id in bt)
+                {
+                    try
+                    {
+                        var btr = (BlockTableRecord)tr.GetObject(id, OpenMode.ForRead);
+                        if (!btr.IsAnonymous) continue;
+                        if (btr.IsLayout || btr.IsFromExternalReference) continue;
+
+                        if (!refAnonIds.Contains(id))
+                        {
+                            stats.AnonSkipped_Unreferenced++;
+                            continue;
+                        }
+                    }
+                    catch { continue; }
+                }
+
+                // Step 3: generate unique names + rename. Counter tăng dần để tránh conflict giữa các anon.
+                int counter = 1;
+                foreach (ObjectId id in refAnonIds)
+                {
+                    string candidate;
+                    do
+                    {
+                        candidate = $"{prefix}_Anon_{counter++}";
+                    } while (bt.Has(candidate));
+
+                    try
+                    {
+                        var btr = (BlockTableRecord)tr.GetObject(id, OpenMode.ForWrite);
+                        string oldName = btr.Name;
+                        bool oldAnon = btr.IsAnonymous;
+                        btr.Name = candidate;
+                        // D2 — Read IsAnonymous SAU rename để verify flag internal có đổi không.
+                        // Nếu IsAnonymous vẫn true sau rename → xác nhận Giả thuyết A: AutoCAD giữ flag
+                        // bất kể Name → WblockClone vẫn treat as anon → silent-drop.
+                        bool newAnon = btr.IsAnonymous;
+                        stats.AnonRenamed++;
+                        FileLogger.Log(LOG_PREFIX,
+                            $"    Anon renamed: '{oldName}' (IsAnonymous={oldAnon}) → '{candidate}' (IsAnonymous={newAnon})");
+                    }
+                    catch (Exception ex)
+                    {
+                        stats.AnonFailed++;
+                        FileLogger.Log(LOG_PREFIX, $"    Anon rename FAIL (id={id}): {ex.Message}");
+                    }
+                }
+
+                tr.Commit();
+            }
+
+            if (stats.AnonRenamed > 0 || stats.AnonFailed > 0)
+            {
+                FileLogger.Log(LOG_PREFIX,
+                    $"  Anon rename: {stats.AnonRenamed} renamed, " +
+                    $"{stats.AnonSkipped_Unreferenced} skipped (unreferenced — sẽ purge), " +
+                    $"{stats.AnonFailed} failed.");
+            }
         }
 
         /// <summary>Purge recursively tới khi không còn gì purge được. Trả stats: erased count + số pass.</summary>
@@ -335,6 +439,8 @@ namespace MCGCadPlugin.Services.FittingManagement
                     if (ent == null) continue;
                     stats.TotalEntities++;
 
+                    string typeName = ent.GetType().Name;
+
                     // Tách riêng try/catch cho GeometricExtents để scan keep-as-is vẫn chạy
                     // kể cả khi extents throw (thường xảy ra với BlockReference trong side db chưa graphics-realized).
                     bool hasExt = false;
@@ -344,10 +450,12 @@ namespace MCGCadPlugin.Services.FittingManagement
                         ext = ent.GeometricExtents;
                         hasExt = true;
                         stats.EntitiesWithExtents++;
+                        IncType(stats.TypeCountWithExtents, typeName);
                     }
                     catch
                     {
                         stats.EntitiesNoExtents++;
+                        IncType(stats.TypeCountNoExtents, typeName);
                     }
 
                     if (hasExt)
@@ -374,7 +482,7 @@ namespace MCGCadPlugin.Services.FittingManagement
                         try
                         {
                             string effName = GetEffectiveBlockName(brSrc, tr);
-                            if (IsKeepAsIs(effName))
+                            if (effName != null && KeepAsIsBlocks.Contains(effName))
                             {
                                 stats.KeepAsIsRefsInSource.Add(new KeepAsIsRefInfo
                                 {
@@ -400,6 +508,46 @@ namespace MCGCadPlugin.Services.FittingManagement
                 stats.Height = acc.MaxPoint.Y - acc.MinPoint.Y;
             }
             return stats;
+        }
+
+        /// <summary>Tăng counter cho type name trong dictionary.</summary>
+        private static void IncType(Dictionary<string, int> dict, string key)
+        {
+            if (dict.TryGetValue(key, out int v)) dict[key] = v + 1;
+            else dict[key] = 1;
+        }
+
+        /// <summary>
+        /// Log breakdown entity types trong ModelSpace source — tách [HAS EXTENTS] / [NO EXTENTS].
+        /// Giúp user thấy DWG có type gì, diagnose silent-drop khi bbox nhỏ hơn expected.
+        /// Cảnh báo nếu có nhiều entity no-extents (có thể là anon BlockReference bị AutoCAD suppress graphics).
+        /// </summary>
+        private static void LogModelSpaceTypeBreakdown(ExtentsStats e)
+        {
+            if (e.TotalEntities == 0) return;
+
+            if (e.TypeCountWithExtents.Count > 0)
+            {
+                FileLogger.Log(LOG_PREFIX, "  ModelSpace type breakdown [HAS EXTENTS]:");
+                foreach (var kv in e.TypeCountWithExtents.OrderByDescending(x => x.Value))
+                    FileLogger.Log(LOG_PREFIX, $"    • {kv.Key}: {kv.Value}");
+            }
+
+            if (e.TypeCountNoExtents.Count > 0)
+            {
+                FileLogger.Log(LOG_PREFIX,
+                    "  ModelSpace type breakdown [NO EXTENTS] (entity không render bbox — thường do block def rỗng / hidden):");
+                foreach (var kv in e.TypeCountNoExtents.OrderByDescending(x => x.Value))
+                    FileLogger.Log(LOG_PREFIX, $"    • {kv.Key}: {kv.Value}");
+
+                // Nếu hầu hết entity không có extents → cảnh báo rủi ro silent-drop ở Phase 2.
+                if (e.EntitiesNoExtents >= e.TotalEntities / 2)
+                {
+                    FileLogger.Log(LOG_PREFIX,
+                        $"    CẢNH BÁO: {e.EntitiesNoExtents}/{e.TotalEntities} entity không có extents — " +
+                        $"có thể content ẩn trong anonymous block definitions. Clone có thể silent-drop nếu dest trùng tên.");
+                }
+            }
         }
 
         #endregion
