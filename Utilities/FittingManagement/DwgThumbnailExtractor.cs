@@ -14,7 +14,8 @@ namespace MCGCadPlugin.Utilities.FittingManagement
     /// Priority:
     ///   1. <c>Database.ThumbnailBitmap</c> (file-level — set bởi SaveAs nếu file có thumbnail)
     ///   2. <c>BlockTableRecord.PreviewIcon</c> (block-level — AutoCAD tự generate khi định nghĩa block)
-    ///   3. null → caller hiện placeholder
+    ///   3. <see cref="BlockGeometryRenderer"/> render runtime (Lines/Polyline/Circle/Arc/...) — fallback B-1
+    ///   4. null → caller hiện placeholder
     /// Chuyển <see cref="Bitmap"/> sang <see cref="BitmapSource"/> để bind vào WPF Image.Source.
     /// </summary>
     public static class DwgThumbnailExtractor
@@ -23,7 +24,7 @@ namespace MCGCadPlugin.Utilities.FittingManagement
 
         /// <summary>
         /// Trả về <see cref="BitmapSource"/> đã freeze (an toàn cross-thread).
-        /// Null nếu file không tồn tại / không có thumbnail.
+        /// Null nếu file không tồn tại / block rỗng.
         /// </summary>
         public static BitmapSource Extract(string dwgPath, string preferredBlockName = null)
         {
@@ -50,7 +51,11 @@ namespace MCGCadPlugin.Utilities.FittingManagement
                         if (blockIcon != null) return ToBitmapSource(blockIcon);
                     }
 
-                    Debug.WriteLine($"{LOG_PREFIX} Không có thumbnail/icon: {dwgPath}");
+                    // Priority 3: render runtime từ entities trong cùng db
+                    Bitmap rendered = BlockGeometryRenderer.RenderFromDb(db, preferredBlockName);
+                    if (rendered != null) return ToBitmapSource(rendered);
+
+                    Debug.WriteLine($"{LOG_PREFIX} Không có thumbnail/icon/geometry: {dwgPath}");
                     return null;
                 }
             }
