@@ -131,6 +131,83 @@ namespace MCGCadPlugin.Services.FittingManagement
             }
         }
 
+        public PushUpdateResult PushBlocksFromCurrentDrawing(IList<CatalogItem> items)
+        {
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu PushBlocksFromCurrentDrawing ({items?.Count ?? 0} items)...");
+            var result = new PushUpdateResult();
+            if (items == null || items.Count == 0) return result;
+
+            try
+            {
+                Document doc = Application.DocumentManager.MdiActiveDocument;
+                if (doc == null) throw new InvalidOperationException("Không có drawing nào đang mở.");
+                Database db = doc.Database;
+
+                using (DocumentLock loc = doc.LockDocument())
+                {
+                    // 1. Resolve BlockName -> BTR ObjectId trong drawing đang mở
+                    var lookup = new Dictionary<string, ObjectId>(StringComparer.OrdinalIgnoreCase);
+                    using (var tr = db.TransactionManager.StartTransaction())
+                    {
+                        BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+                        foreach (var item in items)
+                        {
+                            if (string.IsNullOrEmpty(item?.BlockName)) continue;
+                            if (bt.Has(item.BlockName) && !lookup.ContainsKey(item.BlockName))
+                                lookup[item.BlockName] = bt[item.BlockName];
+                        }
+                        tr.Commit();
+                    }
+
+                    // 2. Wblock từng cái ra file .dwg trong Library (Wblock tự handle transaction nội bộ)
+                    foreach (var item in items)
+                    {
+                        string blockName = item?.BlockName ?? "<empty>";
+                        try
+                        {
+                            if (string.IsNullOrEmpty(item?.BlockName) || string.IsNullOrEmpty(item?.FilePath))
+                            {
+                                result.NotFoundInDrawing.Add(blockName);
+                                continue;
+                            }
+
+                            if (!lookup.TryGetValue(item.BlockName, out ObjectId btrId))
+                            {
+                                result.NotFoundInDrawing.Add(item.BlockName);
+                                Debug.WriteLine($"{LOG_PREFIX} Skip (không có trong drawing): {item.BlockName}");
+                                continue;
+                            }
+
+                            string folder = Path.GetDirectoryName(item.FilePath);
+                            if (!string.IsNullOrEmpty(folder) && !Directory.Exists(folder)) Directory.CreateDirectory(folder);
+
+                            using (Database exportDb = db.Wblock(btrId))
+                            {
+                                exportDb.Insunits = UnitsValue.Millimeters;
+                                if (File.Exists(item.FilePath)) File.Delete(item.FilePath);
+                                exportDb.SaveAs(item.FilePath, DwgVersion.Current);
+                            }
+                            result.Updated.Add(item.BlockName);
+                            Debug.WriteLine($"{LOG_PREFIX} Pushed: {item.BlockName} -> {item.FilePath}");
+                        }
+                        catch (Exception ex)
+                        {
+                            result.AddError(blockName, ex.Message);
+                            Debug.WriteLine($"{LOG_PREFIX} LỖI push {blockName}: {ex.Message}");
+                        }
+                    }
+                }
+
+                Debug.WriteLine($"{LOG_PREFIX} PushBlocksFromCurrentDrawing XONG. OK={result.SuccessCount}, Skipped={result.SkippedCount}, Failed={result.FailCount}.");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"{LOG_PREFIX} LỖI PushBlocksFromCurrentDrawing: {ex.Message}");
+                throw;
+            }
+        }
+
         public void InsertBlockFromLibrary(string dwgPath, string blockName)
         {
             Debug.WriteLine($"{LOG_PREFIX} Bắt đầu lệnh InsertBlockFromLibrary: {blockName}...");

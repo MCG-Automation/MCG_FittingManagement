@@ -28,5 +28,12 @@ namespace MCGCadPlugin.Services.FittingManagement
 
         /// <summary>Wblock từng block trong AutoCAD ra file .dwg và ghi metadata vào MasterCatalog.json.</summary>
         Tuple<int, int> PublishToCentralLibrary(List<Tuple<ObjectId, CatalogItem>> itemsToPublish);
+
+        /// <summary>
+        /// Push Update — Wblock định nghĩa block hiện tại của drawing đang mở GHI ĐÈ file .dwg
+        /// trong Master Library theo từng item user chọn.
+        /// Chỉ ghi đè file .dwg, không sửa metadata trong MasterCatalog.json.
+        /// </summary>
+        PushUpdateResult PushBlocksFromCurrentDrawing(IList<CatalogItem> items);
     }
 }

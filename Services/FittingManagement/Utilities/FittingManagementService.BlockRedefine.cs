@@ -12,9 +12,15 @@ namespace MCGCadPlugin.Services.FittingManagement
 {
     public partial class FittingManagementService
     {
-        public void RedefineBlocksFromLibrary()
+        /// <summary>
+        /// Đồng bộ định nghĩa Block giữa hai drawing đang mở: chọn block trong drawing hiện tại,
+        /// pick 1 drawing khác đang mở làm source, dùng <c>WblockCloneObjects</c> với
+        /// <c>DuplicateRecordCloning.Replace</c> để overwrite block table record.
+        /// KHÔNG đụng tới file .dwg trong Master Library.
+        /// </summary>
+        public void RedefineBlocksFromOpenDrawing()
         {
-            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu RedefineBlocksFromLibrary...");
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu RedefineBlocksFromOpenDrawing...");
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database destDb = doc.Database;
             Editor ed = doc.Editor;

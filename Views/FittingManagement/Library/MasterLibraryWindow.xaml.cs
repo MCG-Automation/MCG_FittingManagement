@@ -205,12 +205,71 @@ namespace MCGCadPlugin.Views.FittingManagement
         }
 
         // =========================================================
-        // Push Update — placeholder; redirected sang RedefineBlocksFromLibrary
+        // Push Update — Wblock block từ drawing đang mở GHI ĐÈ file .dwg trong Master Library.
+        // Khác với "Redefine Blocks" (drawing -> drawing khác đang mở): Push Update là drawing -> file .dwg trong Library.
         // =========================================================
         private void BtnUpdateLibrary_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("This feature has been upgraded to 'Redefine Blocks' in the Block Utilities panel.",
-                "Upgraded", MessageBoxButton.OK, MessageBoxImage.Information);
+            var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().ToList();
+            if (selected.Count == 0)
+            {
+                MessageBox.Show("Select item(s) in the grid first.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Chỉ áp dụng cho item type Block (Accessory/Virtual không có .dwg để ghi đè)
+            var blockItems = selected.Where(i => i.EntityType == "Block" && !string.IsNullOrEmpty(i.BlockName) && !string.IsNullOrEmpty(i.FilePath)).ToList();
+            if (blockItems.Count == 0)
+            {
+                MessageBox.Show("No Block-type items selected (Push Update only applies to Block entries).",
+                    "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Push current drawing definition of {blockItems.Count} block(s) back to Master Library?\n\n" +
+                "This will OVERWRITE the .dwg file(s) in the Library folder with the block definition\n" +
+                "from the currently open drawing.",
+                "Confirm Push Update", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes) return;
+
+            try
+            {
+                var result = _masterService.PushBlocksFromCurrentDrawing(blockItems);
+                ShowPushUpdateResult(result);
+                LoadCatalog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ShowPushUpdateResult(Models.FittingManagement.PushUpdateResult result)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"✓ Updated:  {result.SuccessCount}");
+            sb.AppendLine($"⚠ Skipped:  {result.SkippedCount}  (block not in current drawing)");
+            sb.AppendLine($"✗ Failed:   {result.FailCount}");
+
+            if (result.NotFoundInDrawing.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("── Not found in drawing ──");
+                foreach (var n in result.NotFoundInDrawing.Take(8)) sb.AppendLine($"  • {n}");
+                if (result.NotFoundInDrawing.Count > 8) sb.AppendLine($"  ... and {result.NotFoundInDrawing.Count - 8} more");
+            }
+
+            if (result.Errors.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("── Errors ──");
+                foreach (var e in result.Errors.Take(8)) sb.AppendLine(e);
+                if (result.Errors.Count > 8) sb.AppendLine($"  ... and {result.Errors.Count - 8} more (see log).");
+            }
+
+            var icon = result.FailCount > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information;
+            MessageBox.Show(sb.ToString(), "Push Update Result", MessageBoxButton.OK, icon);
         }
     }
 }

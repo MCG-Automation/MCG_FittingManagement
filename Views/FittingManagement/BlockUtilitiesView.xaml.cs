@@ -35,7 +35,7 @@ namespace MCGCadPlugin.Views.FittingManagement
         private void BtnRedefineBlocks_Click(object sender, RoutedEventArgs e)
         {
             Autodesk.AutoCAD.Internal.Utils.SetFocusToDwgView();
-            try { _service.RedefineBlocksFromLibrary(); }
+            try { _service.RedefineBlocksFromOpenDrawing(); }
             catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
         }
 

@@ -29,7 +29,7 @@ namespace MCGCadPlugin.Services.FittingManagement
         // --- Giai đoạn 3.3: Block Utilities ---
         void InteractiveBlockRenameClone();
         void SmartReplaceBlocks();
-        void RedefineBlocksFromLibrary();
+        void RedefineBlocksFromOpenDrawing();
         void ExtractEntitiesFromBlock();
         void ChangeBlockBasePoint();
         void AddEntitiesToBlock();
