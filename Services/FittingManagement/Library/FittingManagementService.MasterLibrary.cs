@@ -1,8 +1,8 @@
 using System;
-using System.IO;
 using System.Collections.Generic;
-using System.Linq;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
@@ -13,12 +13,15 @@ using MCGCadPlugin.Utilities.FittingManagement;
 namespace MCGCadPlugin.Services.FittingManagement
 {
     /// <summary>
-    /// Chuyên xử lý Đọc/Ghi dữ liệu JSON và chèn Block từ Master/Project Library.
+    /// Phần partial xử lý Master Library — đọc MasterCatalog.json, publish block, insert block.
     /// </summary>
-    public partial class FittingManagementService : IFittingManagementService
+    public partial class FittingManagementService : IFittingManagementService, IMasterLibraryService
     {
         private const string LOG_PREFIX = "[FittingManagementService]";
         private readonly string _libraryFolderPath = @"C:\Temp_BIM_Library";
+
+        public string MasterLibraryFolder => _libraryFolderPath;
+        public string MasterCatalogPath => Path.Combine(_libraryFolderPath, "MasterCatalog.json");
 
         public FittingManagementService()
         {
@@ -30,14 +33,13 @@ namespace MCGCadPlugin.Services.FittingManagement
             Debug.WriteLine($"{LOG_PREFIX} Bắt đầu lấy dữ liệu Master Catalog...");
             try
             {
-                string catalogPath = Path.Combine(_libraryFolderPath, "MasterCatalog.json");
-                if (!File.Exists(catalogPath))
+                if (!File.Exists(MasterCatalogPath))
                 {
                     Debug.WriteLine($"{LOG_PREFIX} CẢNH BÁO: Không tìm thấy file MasterCatalog.json.");
                     return new List<CatalogItem>();
                 }
 
-                string json = File.ReadAllText(catalogPath);
+                string json = File.ReadAllText(MasterCatalogPath);
                 var items = JsonConvert.DeserializeObject<List<CatalogItem>>(json) ?? new List<CatalogItem>();
                 Debug.WriteLine($"{LOG_PREFIX} Đọc THÀNH CÔNG {items.Count} items từ Master Catalog.");
                 return items;
@@ -49,18 +51,35 @@ namespace MCGCadPlugin.Services.FittingManagement
             }
         }
 
-        public Tuple<int, int> AddItemsToProjectCatalog(string projectJsonPath, List<CatalogItem> itemsToAdd)
+        public Tuple<int, int> MergeIntoMaster(List<CatalogItem> items)
         {
-            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu lưu item vào Project Catalog...");
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu MergeIntoMaster ({items?.Count ?? 0} items)...");
             try
             {
-                var result = MergeItemsToJson(projectJsonPath, itemsToAdd);
-                Debug.WriteLine($"{LOG_PREFIX} Lưu Project Catalog THÀNH CÔNG (Mới: {result.Item1}, Sửa: {result.Item2}).");
+                if (!Directory.Exists(_libraryFolderPath)) Directory.CreateDirectory(_libraryFolderPath);
+                var result = CatalogJsonStore.MergeItems(MasterCatalogPath, items);
+                Debug.WriteLine($"{LOG_PREFIX} MergeIntoMaster THÀNH CÔNG (Mới: {result.Item1}, Sửa: {result.Item2}).");
                 return result;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"{LOG_PREFIX} LỖI AddItemsToProjectCatalog: {ex.Message}");
+                Debug.WriteLine($"{LOG_PREFIX} LỖI MergeIntoMaster: {ex.Message}");
+                throw;
+            }
+        }
+
+        public int RemoveFromMaster(IEnumerable<string> blockNames)
+        {
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu RemoveFromMaster...");
+            try
+            {
+                int removed = CatalogJsonStore.RemoveItems(MasterCatalogPath, blockNames);
+                Debug.WriteLine($"{LOG_PREFIX} RemoveFromMaster THÀNH CÔNG ({removed} items).");
+                return removed;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"{LOG_PREFIX} LỖI RemoveFromMaster: {ex.Message}");
                 throw;
             }
         }
@@ -98,8 +117,7 @@ namespace MCGCadPlugin.Services.FittingManagement
 
                 if (successItems.Count > 0)
                 {
-                    string catalogPath = Path.Combine(_libraryFolderPath, "MasterCatalog.json");
-                    var result = MergeItemsToJson(catalogPath, successItems);
+                    var result = CatalogJsonStore.MergeItems(MasterCatalogPath, successItems);
                     Debug.WriteLine($"{LOG_PREFIX} Publish THÀNH CÔNG {successItems.Count} items.");
                     return result;
                 }
@@ -111,42 +129,6 @@ namespace MCGCadPlugin.Services.FittingManagement
                 Debug.WriteLine($"{LOG_PREFIX} LỖI PublishToCentralLibrary: {ex.Message}");
                 throw;
             }
-        }
-
-        private Tuple<int, int> MergeItemsToJson(string jsonPath, List<CatalogItem> newItems)
-        {
-            List<CatalogItem> catalog = new List<CatalogItem>();
-            int newCount = 0;
-            int updatedCount = 0;
-
-            if (File.Exists(jsonPath))
-            {
-                try
-                {
-                    string oldJson = File.ReadAllText(jsonPath);
-                    catalog = JsonConvert.DeserializeObject<List<CatalogItem>>(oldJson) ?? new List<CatalogItem>();
-                }
-                catch { catalog = new List<CatalogItem>(); }
-            }
-
-            foreach (var newItem in newItems)
-            {
-                var existingItem = catalog.FirstOrDefault(x => x.BlockName == newItem.BlockName);
-                if (existingItem == null)
-                {
-                    newCount++;
-                    catalog.Add(newItem);
-                }
-                else
-                {
-                    if (existingItem.Revision != newItem.Revision) updatedCount++;
-                    catalog.Remove(existingItem);
-                    catalog.Add(newItem);
-                }
-            }
-
-            File.WriteAllText(jsonPath, JsonConvert.SerializeObject(catalog, Formatting.Indented));
-            return new Tuple<int, int>(newCount, updatedCount);
         }
 
         public void InsertBlockFromLibrary(string dwgPath, string blockName)

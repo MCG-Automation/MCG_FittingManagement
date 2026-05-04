@@ -9,14 +9,13 @@ namespace MCGCadPlugin.Views.FittingManagement
 {
     public partial class NewAccessoryWindow : Window
     {
-        private readonly IFittingManagementService _service;
-        private readonly string _masterCatalogPath = @"C:\Temp_BIM_Library\MasterCatalog.json";
-        public string CreatedPartId { get; private set; } 
+        private readonly IMasterLibraryService _masterService;
+        public string CreatedPartId { get; private set; }
 
-        public NewAccessoryWindow(IFittingManagementService service)
+        public NewAccessoryWindow(IMasterLibraryService masterService)
         {
             InitializeComponent();
-            _service = service;
+            _masterService = masterService;
         }
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -43,8 +42,8 @@ namespace MCGCadPlugin.Views.FittingManagement
 
             try
             {
-                _service.AddItemsToProjectCatalog(_masterCatalogPath, new List<CatalogItem> { newItem });
-                this.DialogResult = true; 
+                _masterService.MergeIntoMaster(new List<CatalogItem> { newItem });
+                this.DialogResult = true;
                 this.Close();
             }
             catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }

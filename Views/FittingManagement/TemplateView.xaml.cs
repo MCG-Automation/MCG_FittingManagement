@@ -17,12 +17,18 @@ namespace MCGCadPlugin.Views.FittingManagement
     /// </summary>
     public partial class TemplateView : UserControl
     {
+        private readonly FittingManagementService _serviceImpl;
         private readonly IFittingManagementService _service;
+        private readonly IMasterLibraryService _masterService;
+        private readonly IProjectLibraryService _projectService;
 
         public TemplateView()
         {
             InitializeComponent();
-            _service = new FittingManagementService();
+            _serviceImpl = new FittingManagementService();
+            _service = _serviceImpl;
+            _masterService = _serviceImpl;
+            _projectService = _serviceImpl;
         }
 
         // =========================================================
@@ -65,14 +71,27 @@ namespace MCGCadPlugin.Views.FittingManagement
         }
 
         // =========================================================
-        // OPEN LIBRARY — duyệt template đã import
+        // OPEN LIBRARY — Master vs Project (2 window độc lập)
         // =========================================================
-        private void BtnOpenLibrary_Click(object sender, RoutedEventArgs e)
+        private void BtnOpenMasterLibrary_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                FittingLibraryWindow libraryWindow = new FittingLibraryWindow(_service);
-                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(libraryWindow);
+                var win = new MasterLibraryWindow(_masterService, _projectService, _service);
+                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(win);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnOpenProjectLibrary_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var win = new ProjectLibraryWindow(_projectService, _service);
+                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(win);
             }
             catch (Exception ex)
             {

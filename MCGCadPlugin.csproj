@@ -21,31 +21,29 @@
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
 
-  <!-- ✅ THÊM ĐOẠN NÀY: Tự động update PackageContents.xml sau mỗi lần build -->
+  <!--
+    Sau mỗi build: ghi tên DLL ra _current_dll_name.txt (build-and-launch.bat đọc),
+    và sync ModuleName trong PackageContents.xml nếu file tồn tại. Dùng XmlPoke (built-in)
+    thay cho PowerShell vì PS có thể bị Group Policy chặn (exit 9009) trên một số máy.
+  -->
   <Target Name="UpdatePackageContents" AfterTargets="Build">
     <PropertyGroup>
-      <!-- Đường dẫn đến PackageContents.xml — chỉnh lại nếu khác -->
       <PackageContentsPath>$(MSBuildProjectDirectory)\PackageContents.xml</PackageContentsPath>
     </PropertyGroup>
 
-    <!-- Ghi tên DLL mới ra file tạm để PowerShell đọc -->
     <WriteLinesToFile
       File="$(OutputPath)_current_dll_name.txt"
       Lines="$(AssemblyName)"
       Overwrite="true" />
 
-    <!-- Chạy PowerShell để thay thế tên DLL trong PackageContents.xml -->
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;
-      $dllName = '$(AssemblyName).dll';
-      $xmlPath = '$(PackageContentsPath)';
-      $content = Get-Content $xmlPath -Raw;
-      $updated = $content -replace 'MCGCadPlugin[^&quot;]*\.dll', $dllName;
-      Set-Content $xmlPath $updated -Encoding UTF8;
-      Write-Host '[MCGCadPlugin Build] PackageContents.xml updated: ' + $dllName;
-    &quot;"
-    ContinueOnError="true" />
+    <XmlPoke
+      Condition="Exists('$(PackageContentsPath)')"
+      XmlInputPath="$(PackageContentsPath)"
+      Query="//ComponentEntry[contains(@ModuleName,'.dll')]/@ModuleName"
+      Value="$(AssemblyName).dll" />
 
-    <Message Text="✅ [MCGCadPlugin Build] DLL Name: $(AssemblyName).dll — PackageContents.xml synced." Importance="High" />
+    <Message Text="[MCGCadPlugin Build] DLL Name: $(AssemblyName).dll" Importance="High" />
+    <Message Condition="!Exists('$(PackageContentsPath)')" Text="[MCGCadPlugin Build] PackageContents.xml not found — skipped sync." Importance="High" />
   </Target>
   <ItemGroup>
     <Reference Include="System.Windows.Forms" />
@@ -93,7 +91,6 @@
 
   <ItemGroup>
     <PackageReference Include="Costura.Fody" Version="6.0.0">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="AutoCAD.NET" Version="23.1.0" ExcludeAssets="runtime" />

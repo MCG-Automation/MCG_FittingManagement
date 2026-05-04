@@ -6,24 +6,28 @@ using MCGCadPlugin.Services.FittingManagement;
 namespace MCGCadPlugin.Views.FittingManagement
 {
     /// <summary>
-    /// Tab "Project Config" — setup cho project: mở Fitting Library để duyệt/chèn fitting đã cấu hình.
+    /// Tab "Project Config" — setup cho project: mở Project Library để duyệt/chèn fitting đã cấu hình cho project hiện tại.
     /// </summary>
     public partial class ProjectConfigView : UserControl
     {
+        private readonly FittingManagementService _serviceImpl;
         private readonly IFittingManagementService _service;
+        private readonly IProjectLibraryService _projectService;
 
         public ProjectConfigView()
         {
             InitializeComponent();
-            _service = new FittingManagementService();
+            _serviceImpl = new FittingManagementService();
+            _service = _serviceImpl;
+            _projectService = _serviceImpl;
         }
 
         private void BtnOpenLibrary_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                FittingLibraryWindow libraryWindow = new FittingLibraryWindow(_service);
-                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(libraryWindow);
+                var win = new ProjectLibraryWindow(_projectService, _service);
+                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(win);
             }
             catch (Exception ex)
             {

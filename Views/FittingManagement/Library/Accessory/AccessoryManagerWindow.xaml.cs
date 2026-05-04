@@ -15,10 +15,9 @@ namespace MCGCadPlugin.Views.FittingManagement
 {
     public partial class AccessoryManagerWindow : Window
     {
-        private readonly IFittingManagementService _service;
+        private readonly IMasterLibraryService _masterService;
         private CatalogItem _parentItem;
         private List<CatalogItem> _fullCatalog;
-        private readonly string _masterCatalogPath = @"C:\Temp_BIM_Library\MasterCatalog.json";
         private ObservableCollection<AccessoryItem> _localAccessories;
 
         public class ComboItem
@@ -27,10 +26,10 @@ namespace MCGCadPlugin.Views.FittingManagement
             public string DisplayLabel { get; set; }
         }
 
-        public AccessoryManagerWindow(IFittingManagementService service, CatalogItem parentItem)
+        public AccessoryManagerWindow(IMasterLibraryService masterService, CatalogItem parentItem)
         {
             InitializeComponent();
-            _service = service;
+            _masterService = masterService;
             _parentItem = parentItem;
 
             if (_parentItem.Accessories == null) _parentItem.Accessories = new List<AccessoryItem>();
@@ -43,7 +42,7 @@ namespace MCGCadPlugin.Views.FittingManagement
 
         private void LoadMasterCatalog()
         {
-            _fullCatalog = _service.GetMasterCatalogItems();
+            _fullCatalog = _masterService.GetMasterCatalogItems();
             var distinctCatalog = _fullCatalog
                 .Where(x => x.PartNumber != _parentItem.PartNumber && !string.IsNullOrEmpty(x.PartNumber))
                 .GroupBy(x => x.PartNumber).Select(g => g.First()).ToList();
@@ -76,7 +75,7 @@ namespace MCGCadPlugin.Views.FittingManagement
 
         private void BtnCreateNew_Click(object sender, RoutedEventArgs e)
         {
-            NewAccessoryWindow newAccWin = new NewAccessoryWindow(_service) { Owner = this };
+            NewAccessoryWindow newAccWin = new NewAccessoryWindow(_masterService) { Owner = this };
             if (newAccWin.ShowDialog() == true)
             {
                 LoadMasterCatalog();
@@ -113,7 +112,7 @@ namespace MCGCadPlugin.Views.FittingManagement
             _parentItem.Accessories = _localAccessories.ToList();
             try
             {
-                _service.AddItemsToProjectCatalog(_masterCatalogPath, new List<CatalogItem> { _parentItem });
+                _masterService.MergeIntoMaster(new List<CatalogItem> { _parentItem });
                 this.DialogResult = true; this.Close();
             }
             catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }

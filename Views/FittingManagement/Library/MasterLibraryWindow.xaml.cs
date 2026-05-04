@@ -1,0 +1,216 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using MCGCadPlugin.Models.FittingManagement;
+using MCGCadPlugin.Services.FittingManagement;
+
+namespace MCGCadPlugin.Views.FittingManagement
+{
+    /// <summary>
+    /// Window quản lý Master Library — nguồn template gốc tại MasterCatalog.json.
+    /// Workflow: thêm fitting từ CAD, edit accessories, publish block, push sang Active Project.
+    /// </summary>
+    public partial class MasterLibraryWindow : Window
+    {
+        private const string LOG_PREFIX = "[MasterLibraryWindow]";
+
+        private readonly IMasterLibraryService _masterService;
+        private readonly IProjectLibraryService _projectService;
+        private readonly IFittingManagementService _fittingService;
+        private readonly ActiveProjectContext _projectContext;
+        private List<CatalogItem> _fullCatalog;
+
+        public MasterLibraryWindow(IMasterLibraryService masterService,
+                                   IProjectLibraryService projectService,
+                                   IFittingManagementService fittingService)
+        {
+            InitializeComponent();
+            _masterService = masterService;
+            _projectService = projectService;
+            _fittingService = fittingService;
+            _projectContext = ActiveProjectContext.Instance;
+
+            _projectContext.ProjectChanged += OnActiveProjectChanged;
+            this.Closed += (_, __) => _projectContext.ProjectChanged -= OnActiveProjectChanged;
+
+            UpdateActiveProjectLabel();
+            LoadCatalog();
+        }
+
+        private void OnActiveProjectChanged(object sender, EventArgs e)
+        {
+            Dispatcher.Invoke(UpdateActiveProjectLabel);
+        }
+
+        private void UpdateActiveProjectLabel()
+        {
+            bool hasProject = _projectContext.HasActiveProject;
+            TxtActiveProject.Text = hasProject ? _projectContext.ProjectDisplayName : "(none)";
+            BtnAddToProject.IsEnabled = hasProject;
+            BtnAddToProject.ToolTip = hasProject
+                ? $"Add to: {_projectContext.ProjectFilePath}"
+                : "Open a Project Library window to set the active project.";
+        }
+
+        private void LoadCatalog()
+        {
+            Debug.WriteLine($"{LOG_PREFIX} LoadCatalog từ {_masterService.MasterCatalogPath}");
+            try
+            {
+                _fullCatalog = _masterService.GetMasterCatalogItems();
+                BuildCategoryTree();
+                ApplyFilters();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Cannot load Master Library: " + ex.Message);
+                _fullCatalog = new List<CatalogItem>();
+            }
+        }
+
+        private void BuildCategoryTree()
+        {
+            TreeCategories.ItemsSource = CatalogTreeBuilder.Build(_fullCatalog);
+        }
+
+        private void TreeCategories_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e) => ApplyFilters();
+        private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e) => ApplyFilters();
+
+        private void ApplyFilters()
+        {
+            if (_fullCatalog == null) return;
+            IEnumerable<CatalogItem> source = _fullCatalog;
+            if (TreeCategories.SelectedItem is CategoryNode node && node.CategoryName != "All Fittings")
+                source = node.Items;
+            GridCatalog.ItemsSource = CatalogTreeBuilder.ApplySearch(source, TxtSearch.Text ?? "");
+        }
+
+        // =========================================================
+        // Add from CAD — pick virtual item & save to master
+        // =========================================================
+        private void BtnAddFromCad_Click(object sender, RoutedEventArgs e)
+        {
+            this.Hide();
+            Autodesk.AutoCAD.Internal.Utils.SetFocusToDwgView();
+            Autodesk.AutoCAD.ApplicationServices.Application.Idle += OnAutoCadIdle;
+        }
+
+        private void OnAutoCadIdle(object sender, EventArgs e)
+        {
+            Autodesk.AutoCAD.ApplicationServices.Application.Idle -= OnAutoCadIdle;
+            try
+            {
+                var draftItem = _fittingService.PickGeometricFeatureFromCad();
+                if (draftItem != null)
+                {
+                    var virtualWin = new VirtualItemWindow(_masterService, draftItem) { Owner = this };
+                    if (virtualWin.ShowDialog() == true) LoadCatalog();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                this.Show();
+            }
+        }
+
+        private void BtnManageAccessory_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().ToList();
+            if (selected.Count != 1) return;
+            try
+            {
+                var accWin = new AccessoryManagerWindow(_masterService, selected[0]);
+                if (accWin.ShowDialog() == true) LoadCatalog();
+            }
+            catch (Exception ex) { MessageBox.Show(ex.Message); }
+        }
+
+        // =========================================================
+        // Insert / Refresh
+        // =========================================================
+        private void BtnInsert_Click(object sender, RoutedEventArgs e) => InsertSelected();
+        private void GridCatalog_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => InsertSelected();
+
+        private void InsertSelected()
+        {
+            var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().ToList();
+            if (selected.Count == 0) return;
+
+            Autodesk.AutoCAD.Internal.Utils.SetFocusToDwgView();
+            try
+            {
+                foreach (var item in selected)
+                {
+                    if (item.EntityType != "Block")
+                    {
+                        MessageBox.Show($"Cannot insert {item.EntityType} as Block.");
+                        continue;
+                    }
+                    _fittingService.InsertBlockFromLibrary(item.FilePath, item.BlockName);
+                }
+            }
+            catch (Exception ex) { MessageBox.Show(ex.Message); }
+        }
+
+        private void BtnRefresh_Click(object sender, RoutedEventArgs e) => LoadCatalog();
+
+        // =========================================================
+        // Add to Active Project
+        // =========================================================
+        private void BtnAddToProject_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_projectContext.HasActiveProject)
+            {
+                MessageBox.Show("No active project. Open a Project Library window and load/create one first.",
+                    "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().ToList();
+            if (selected.Count == 0) return;
+
+            try
+            {
+                var result = _projectService.MergeIntoProject(_projectContext.ProjectFilePath, selected);
+                MessageBox.Show($"Added to project '{_projectContext.ProjectDisplayName}'.\nNew: {result.Item1} | Updated: {result.Item2}",
+                    "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex) { MessageBox.Show(ex.Message); }
+        }
+
+        // =========================================================
+        // Remove
+        // =========================================================
+        private void BtnRemoveSelected_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().ToList();
+            if (selected.Count == 0) return;
+
+            if (MessageBox.Show($"Remove {selected.Count} item(s) from Master Library?", "Confirm",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+
+            try
+            {
+                _masterService.RemoveFromMaster(selected.Select(s => s.BlockName));
+                LoadCatalog();
+            }
+            catch (Exception ex) { MessageBox.Show(ex.Message); }
+        }
+
+        // =========================================================
+        // Push Update — placeholder; redirected sang RedefineBlocksFromLibrary
+        // =========================================================
+        private void BtnUpdateLibrary_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("This feature has been upgraded to 'Redefine Blocks' in the Block Utilities panel.",
+                "Upgraded", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+}

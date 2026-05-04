@@ -32,8 +32,9 @@
 
             <GroupBox Header="FITTING LIBRARY">
                 <StackPanel>
-                    <TextBlock Text="Browse imported templates in the central library." Style="{StaticResource HelperTextStyle}"/>
-                    <Button x:Name="BtnOpenLibrary" Content="Open Fitting Library" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenLibrary_Click"/>
+                    <TextBlock Text="Master = nguồn template gốc. Project = catalog gắn với 1 project cụ thể." Style="{StaticResource HelperTextStyle}"/>
+                    <Button x:Name="BtnOpenMasterLibrary" Content="Open Master Library" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenMasterLibrary_Click" Margin="0,0,0,6"/>
+                    <Button x:Name="BtnOpenProjectLibrary" Content="Open Project Library" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenProjectLibrary_Click"/>
                 </StackPanel>
             </GroupBox>
 

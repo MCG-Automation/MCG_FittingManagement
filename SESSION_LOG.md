@@ -4,6 +4,71 @@
 
 ---
 
+## Session 2026-05-04 (1) — Tách Master Library và Project Library thành 2 window độc lập
+
+### Bối cảnh
+[FittingLibraryWindow](Views/FittingManagement/Library/FittingLibraryWindow.xaml) cũ gánh cả Master + Project, switch bằng `RadioMasterMode` / `RadioProjectMode`. Code-behind dày `if (RadioProjectMode.IsChecked)`, button enable/disable theo mode → vi phạm SRP, user phải nhớ mode đang chọn. User chốt phương án tách 2 window độc lập, mỗi window 1 trách nhiệm.
+
+### 4 quyết định kiến trúc đã chốt
+1. Add to Project: chỉ cần `ActiveProjectContext` có path là OK (Project window có thể đang đóng).
+2. `ProjectCatalogItem : CatalogItem` — subclass marker (giữ JSON shape cũ tương thích cho BOM Harvester đang đọc `ProjectPosNum` từ master catalog).
+3. Push Update button chỉ giữ ở Master window.
+4. Palette UX: 2 nút riêng "Open Master Library" / "Open Project Library".
+
+### Đã làm
+
+**MỚI — Models/Services/Utilities**:
+- [Models/FittingManagement/ProjectCatalogItem.cs](Models/FittingManagement/ProjectCatalogItem.cs): subclass marker, không thêm field.
+- [Services/FittingManagement/Library/IMasterLibraryService.cs](Services/FittingManagement/Library/IMasterLibraryService.cs): `MasterCatalogPath`, `MasterLibraryFolder`, `GetMasterCatalogItems`, `MergeIntoMaster`, `RemoveFromMaster`, `PublishToCentralLibrary`.
+- [Services/FittingManagement/Library/IProjectLibraryService.cs](Services/FittingManagement/Library/IProjectLibraryService.cs): `LoadProjectCatalog`, `CreateProjectCatalog`, `MergeIntoProject`, `SaveProjectCatalog`, `RemoveFromProject`, `AutoAssignPositions`.
+- [Services/FittingManagement/Library/ActiveProjectContext.cs](Services/FittingManagement/Library/ActiveProjectContext.cs): Singleton lưu project path đang active + event `ProjectChanged` cho cross-window sync.
+- [Utilities/FittingManagement/CatalogJsonStore.cs](Utilities/FittingManagement/CatalogJsonStore.cs): generic `Read<T>`, `Write<T>`, `MergeItems`, `RemoveItems` — dùng chung Master + Project.
+
+**TÁCH — Service partial**:
+- XOÁ [Services/FittingManagement/Library/FittingManagementService.Library.cs](Services/FittingManagement/Library/FittingManagementService.Library.cs).
+- THÊM [Services/FittingManagement/Library/FittingManagementService.MasterLibrary.cs](Services/FittingManagement/Library/FittingManagementService.MasterLibrary.cs): implement `IMasterLibraryService` + `InsertBlockFromLibrary`. `LOG_PREFIX` + ctor giữ ở đây.
+- THÊM [Services/FittingManagement/Library/FittingManagementService.ProjectLibrary.cs](Services/FittingManagement/Library/FittingManagementService.ProjectLibrary.cs): implement `IProjectLibraryService`.
+
+**SỬA — IFittingManagementService**:
+- Gỡ `GetMasterCatalogItems`, `AddItemsToProjectCatalog`, `PublishToCentralLibrary`. Giữ `InsertBlockFromLibrary`, `PickGeometricFeatureFromCad` (cross-cutting với CAD).
+
+**MỚI — Views/Library**:
+- [Views/FittingManagement/Library/Shared/CategoryNode.cs](Views/FittingManagement/Library/Shared/CategoryNode.cs): tách ra khỏi xaml.cs cũ.
+- [Views/FittingManagement/Library/Shared/CatalogTreeBuilder.cs](Views/FittingManagement/Library/Shared/CatalogTreeBuilder.cs): static helper `Build` + `ApplySearch` dùng chung 2 window.
+- [Views/FittingManagement/Library/MasterLibraryWindow.xaml](Views/FittingManagement/Library/MasterLibraryWindow.xaml) + .cs: badge xanh "MASTER", buttons Add from CAD / Sub-BOM / Remove / **Add to Active Project** / Push Update / Refresh / Insert. Subscribe `ActiveProjectContext.ProjectChanged` để enable/disable Add-to-Project + label.
+- [Views/FittingManagement/Library/ProjectLibraryWindow.xaml](Views/FittingManagement/Library/ProjectLibraryWindow.xaml) + .cs: badge đỏ "PROJECT", `Load Project` / `Create Project` set `ActiveProjectContext.ProjectFilePath`. `ColProjectPos` always editable. Buttons Auto-Assign Pos / Remove / Refresh / Insert. Bỏ Push Update.
+
+**SỬA — Cross-window dependencies**:
+- [Views/FittingManagement/Library/Accessory/AccessoryManagerWindow.xaml.cs](Views/FittingManagement/Library/Accessory/AccessoryManagerWindow.xaml.cs): ctor đổi sang `IMasterLibraryService`. `_service.AddItemsToProjectCatalog(_masterCatalogPath, ...)` → `_masterService.MergeIntoMaster(...)`.
+- [Views/FittingManagement/Library/Accessory/NewAccessoryWindow.xaml.cs](Views/FittingManagement/Library/Accessory/NewAccessoryWindow.xaml.cs): tương tự.
+- [Views/FittingManagement/Library/VirtualItemWindow.xaml.cs](Views/FittingManagement/Library/VirtualItemWindow.xaml.cs): tương tự.
+- XOÁ hardcoded `_masterCatalogPath` ở 3 file trên — service tự biết path qua `MasterCatalogPath` property.
+
+**SỬA — Palette tabs**:
+- [Views/FittingManagement/TemplateView.xaml](Views/FittingManagement/TemplateView.xaml): 1 nút "Open Fitting Library" → 2 nút "Open Master Library" + "Open Project Library".
+- [Views/FittingManagement/TemplateView.xaml.cs](Views/FittingManagement/TemplateView.xaml.cs): inject 3 interface (`IFittingManagementService` + `IMasterLibraryService` + `IProjectLibraryService`) từ cùng 1 instance `FittingManagementService`.
+- [Views/FittingManagement/ProjectConfigView.xaml](Views/FittingManagement/ProjectConfigView.xaml) + .cs: tab "Project Config" mở thẳng ProjectLibraryWindow (đúng ngữ nghĩa tab).
+
+**XOÁ — Legacy**:
+- [Views/FittingManagement/Library/FittingLibraryWindow.xaml](Views/FittingManagement/Library/FittingLibraryWindow.xaml) + .cs.
+
+### Kết quả build
+- `dotnet build -c Debug`: **0 Errors**, 2 Warnings (Costura.Fody IncludeAssets + PowerShell post-build script bị group policy chặn — pre-existing, không liên quan).
+- DLL mới: `MCGCadPlugin.FittingManagement_20260504_141140.dll`.
+
+### Ghi chú API/kiến trúc
+- `FittingManagementService` giờ implement 3 interface (`IFittingManagementService`, `IMasterLibraryService`, `IProjectLibraryService`) qua 4 file partial (Master/Project Library + các phần BOM/Block/IDW Import vẫn nguyên). Caller chỉ nhận interface mỏng → DIP sạch.
+- `ProjectPosNum` vẫn ở base `CatalogItem` (không move xuống `ProjectCatalogItem`) vì `BomStructure.cs` + `BomInterface.cs` đang đọc field này từ master catalog. Move sẽ break BOM Harvester. `ProjectCatalogItem` hiện chỉ đóng vai marker semantic.
+- `CatalogJsonStore` deserialize project file dạng `List<ProjectCatalogItem>`. Vì subclass không có field mới → JSON shape trùng `CatalogItem` → backward compatible với file project cũ.
+- `ActiveProjectContext` không persist xuống disk, reset khi AutoCAD tắt — đúng yêu cầu user.
+
+### Bước tiếp theo
+- User test luồng: open Master + open Project (cả 2 cùng lúc) → load project file → quay sang Master, click "Add to Active Project" → verify item được merge vào project file đúng.
+- Test edge case: đóng Project window trong khi Master đang mở → `ActiveProjectContext` vẫn giữ path → Add to Project vẫn hoạt động.
+- Test BOM Harvester sau split: chạy `MCG_Fitting_Show` → harvest BOM trên panel có fitting → verify `ProjectPosNum` vẫn xuất hiện đúng (ProjectPosNum vẫn được đọc từ MasterCatalog.json như cũ).
+
+---
+
 ## Session 2026-04-23 (7) — Fix SDK runtime: path LoginHistory sai + logout quá sớm + noise resolver
 
 ### Bối cảnh

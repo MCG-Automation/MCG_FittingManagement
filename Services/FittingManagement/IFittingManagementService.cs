@@ -1,23 +1,22 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Autodesk.AutoCAD.DatabaseServices;
 using MCGCadPlugin.Models.FittingManagement;
 
 namespace MCGCadPlugin.Services.FittingManagement
 {
+    /// <summary>
+    /// Hợp đồng chính cho FittingManagement: import IDW, BOM harvest, balloon, block utilities,
+    /// drawing collection và 2 thao tác library "thuộc tính chéo" (Insert + Pick virtual item).
+    /// Library CRUD đã tách ra <see cref="IMasterLibraryService"/> và <see cref="IProjectLibraryService"/>.
+    /// </summary>
     public interface IFittingManagementService
     {
-        // --- Giai đoạn 1+2 (đã gộp): IDW → Extract DWG/JSON → Split View → Create Blocks ---
-        // Phase 1 (Inventor COM) chạy trên worker thread để UI AutoCAD không bị khoá;
-        // Phase 2 (AutoCAD db) tự quay về thread gốc của caller (UI thread) sau await.
-        // pullFromVault=true → gọi Vault AddIn của Inventor để GetLatest mỗi file trước khi extract.
+        // --- Giai đoạn 1+2: IDW → Extract DWG/JSON → Split View → Create Blocks ---
         Task<ImportResult> ImportIdwFilesAsync(string[] idwPaths, string bomType, bool pullFromVault = false, IProgress<string> progress = null);
 
-        // --- Giai đoạn 3.1: Library & Virtual Items ---
-        List<CatalogItem> GetMasterCatalogItems();
-        Tuple<int, int> AddItemsToProjectCatalog(string projectJsonPath, List<CatalogItem> itemsToAdd);
-        Tuple<int, int> PublishToCentralLibrary(List<Tuple<ObjectId, CatalogItem>> itemsToPublish);
+        // --- Giai đoạn 3.1: Library — operations chéo (Insert vào CAD, Pick từ CAD) ---
+        // Đọc/ghi catalog đã chuyển sang IMasterLibraryService / IProjectLibraryService.
         void InsertBlockFromLibrary(string dwgPath, string blockName);
         CatalogItem PickGeometricFeatureFromCad();
 
@@ -36,11 +35,6 @@ namespace MCGCadPlugin.Services.FittingManagement
         void AddEntitiesToBlock();
 
         // --- Giai đoạn 3.4: Drawing Collection ---
-        // Gom Model Space của nhiều file .dwg vào bản vẽ hiện hành:
-        // - Đổi tên block theo [TênFile]_[TênBlock] (giữ nguyên A1, CAS_HEAD).
-        // - Purge rác trước khi clone.
-        // - Xếp ngang từ trái sang phải, khoảng hở 1000.
-        // - Phase tiền xử lý (side db) chạy trên worker thread; phase clone vào current doc quay về UI thread sau await.
         Task<ImportResult> CollectDrawingsAsync(string[] dwgPaths, IProgress<string> progress = null);
         Task<ImportResult> CollectIdwDrawingsAsync(string[] idwPaths, IProgress<string> progress = null);
     }

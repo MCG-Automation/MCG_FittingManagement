@@ -9,14 +9,13 @@ namespace MCGCadPlugin.Views.FittingManagement
 {
     public partial class VirtualItemWindow : Window
     {
-        private readonly IFittingManagementService _service;
+        private readonly IMasterLibraryService _masterService;
         private CatalogItem _draftItem;
-        private readonly string _masterCatalogPath = @"C:\Temp_BIM_Library\MasterCatalog.json";
 
-        public VirtualItemWindow(IFittingManagementService service, CatalogItem draftItem)
+        public VirtualItemWindow(IMasterLibraryService masterService, CatalogItem draftItem)
         {
             InitializeComponent();
-            _service = service;
+            _masterService = masterService;
             _draftItem = draftItem;
             LoadDraftDataToUI();
         }
@@ -65,9 +64,9 @@ namespace MCGCadPlugin.Views.FittingManagement
 
             try
             {
-                var result = _service.AddItemsToProjectCatalog(_masterCatalogPath, new List<CatalogItem> { _draftItem });
+                _masterService.MergeIntoMaster(new List<CatalogItem> { _draftItem });
                 MessageBox.Show("Saved to Master Library successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                this.DialogResult = true; 
+                this.DialogResult = true;
                 this.Close();
             }
             catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
