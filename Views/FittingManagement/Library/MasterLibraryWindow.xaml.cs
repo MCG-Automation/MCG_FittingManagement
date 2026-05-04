@@ -20,6 +20,7 @@ namespace MCGCadPlugin.Views.FittingManagement
         private readonly IMasterLibraryService _masterService;
         private readonly IProjectLibraryService _projectService;
         private readonly IFittingManagementService _fittingService;
+        private readonly IFittingPreviewService _previewService;
         private readonly ActiveProjectContext _projectContext;
         private List<CatalogItem> _fullCatalog;
 
@@ -31,13 +32,28 @@ namespace MCGCadPlugin.Views.FittingManagement
             _masterService = masterService;
             _projectService = projectService;
             _fittingService = fittingService;
+            _previewService = new FittingPreviewService();
             _projectContext = ActiveProjectContext.Instance;
 
             _projectContext.ProjectChanged += OnActiveProjectChanged;
-            this.Closed += (_, __) => _projectContext.ProjectChanged -= OnActiveProjectChanged;
+            this.Closed += (_, __) =>
+            {
+                _projectContext.ProjectChanged -= OnActiveProjectChanged;
+                _previewService.ClearAllCache();
+            };
+
+            PreviewPane.Initialize(_previewService);
+            GridCatalog.SelectionChanged += GridCatalog_SelectionChanged;
 
             UpdateActiveProjectLabel();
             LoadCatalog();
+        }
+
+        private void GridCatalog_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Khi multi-select: hiện preview của item ĐẦU TIÊN selected (representative)
+            var first = GridCatalog.SelectedItems.Cast<CatalogItem>().FirstOrDefault();
+            PreviewPane.ShowItem(first);
         }
 
         private void OnActiveProjectChanged(object sender, EventArgs e)
@@ -63,6 +79,7 @@ namespace MCGCadPlugin.Views.FittingManagement
                 _fullCatalog = _masterService.GetMasterCatalogItems();
                 BuildCategoryTree();
                 ApplyFilters();
+                PreviewPane.Clear();
             }
             catch (Exception ex)
             {
@@ -236,6 +253,8 @@ namespace MCGCadPlugin.Views.FittingManagement
             try
             {
                 var result = _masterService.PushBlocksFromCurrentDrawing(blockItems);
+                // Invalidate preview cache cho tất cả item user vừa Push (file .dwg vừa thay đổi)
+                foreach (var it in blockItems) _previewService.InvalidatePreview(it);
                 ShowPushUpdateResult(result);
                 LoadCatalog();
             }

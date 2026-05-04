@@ -22,6 +22,7 @@ namespace MCGCadPlugin.Views.FittingManagement
 
         private readonly IProjectLibraryService _projectService;
         private readonly IFittingManagementService _fittingService;
+        private readonly IFittingPreviewService _previewService;
         private readonly ActiveProjectContext _projectContext;
         private List<ProjectCatalogItem> _fullCatalog = new List<ProjectCatalogItem>();
 
@@ -31,7 +32,12 @@ namespace MCGCadPlugin.Views.FittingManagement
             InitializeComponent();
             _projectService = projectService;
             _fittingService = fittingService;
+            _previewService = new FittingPreviewService();
             _projectContext = ActiveProjectContext.Instance;
+
+            PreviewPane.Initialize(_previewService);
+            GridCatalog.SelectionChanged += GridCatalog_SelectionChanged;
+            this.Closed += (_, __) => _previewService.ClearAllCache();
 
             // Nếu đã có project active từ trước → tự load
             if (_projectContext.HasActiveProject)
@@ -39,6 +45,12 @@ namespace MCGCadPlugin.Views.FittingManagement
                 TxtCurrentProject.Text = _projectContext.ProjectDisplayName;
                 LoadCatalog();
             }
+        }
+
+        private void GridCatalog_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var first = GridCatalog.SelectedItems.Cast<CatalogItem>().FirstOrDefault();
+            PreviewPane.ShowItem(first);
         }
 
         private void LoadCatalog()
@@ -52,6 +64,7 @@ namespace MCGCadPlugin.Views.FittingManagement
                     : _projectService.LoadProjectCatalog(path);
                 BuildCategoryTree();
                 ApplyFilters();
+                PreviewPane.Clear();
             }
             catch (Exception ex)
             {

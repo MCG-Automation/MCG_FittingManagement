@@ -104,6 +104,12 @@ namespace MCGCadPlugin.Services.FittingManagement
                         using (Database exportDb = db.Wblock(blockId))
                         {
                             exportDb.Insunits = UnitsValue.Millimeters;
+
+                            // B-2: copy block preview icon -> thumbnail của file mới
+                            // → file .dwg sau Save sẽ có sẵn preview, không cần render runtime.
+                            var icon = DwgThumbnailExtractor.GetBlockPreviewIcon(db, blockId);
+                            if (icon != null) exportDb.ThumbnailBitmap = icon;
+
                             if (File.Exists(info.FilePath)) File.Delete(info.FilePath);
                             exportDb.SaveAs(info.FilePath, DwgVersion.Current);
                         }
@@ -184,6 +190,11 @@ namespace MCGCadPlugin.Services.FittingManagement
                             using (Database exportDb = db.Wblock(btrId))
                             {
                                 exportDb.Insunits = UnitsValue.Millimeters;
+
+                                // B-2: copy block preview icon -> thumbnail file
+                                var icon = DwgThumbnailExtractor.GetBlockPreviewIcon(db, btrId);
+                                if (icon != null) exportDb.ThumbnailBitmap = icon;
+
                                 if (File.Exists(item.FilePath)) File.Delete(item.FilePath);
                                 exportDb.SaveAs(item.FilePath, DwgVersion.Current);
                             }
