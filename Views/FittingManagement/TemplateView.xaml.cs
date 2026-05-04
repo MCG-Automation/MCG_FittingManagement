@@ -71,26 +71,13 @@ namespace MCGCadPlugin.Views.FittingManagement
         }
 
         // =========================================================
-        // OPEN LIBRARY — Master vs Project (2 window độc lập)
+        // OPEN MASTER LIBRARY — Project Library nằm ở tab "Project Config"
         // =========================================================
         private void BtnOpenMasterLibrary_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 var win = new MasterLibraryWindow(_masterService, _projectService, _service);
-                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(win);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private void BtnOpenProjectLibrary_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var win = new ProjectLibraryWindow(_projectService, _service);
                 Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(win);
             }
             catch (Exception ex)
