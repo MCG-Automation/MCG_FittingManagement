@@ -104,9 +104,8 @@ namespace MCGCadPlugin.Commands
         // để tạo instance của class chứa [CommandMethod]. Singleton ctor private → crash
         // MissingMethodException nếu method là instance. Static method không cần instance.
 
-        /// <summary>Lệnh hiển thị Palette (gõ MCG_Fitting_Show trong CAD)</summary>
-        [CommandMethod("MCG_Fitting_Show", CommandFlags.Modal)]
-        public static void McgShow() => Instance.Show();
+        // Lệnh hiển thị Palette: dùng MCG_Fitting (xem Commands/FittingManagement/FittingManagementCommand.cs).
+        // KHÔNG đăng ký MCG_Fitting_Show ở đây (tránh duplicate command).
 
         /// <summary>Lệnh ẩn Palette (gõ MCG_Fitting_Hide trong CAD)</summary>
         [CommandMethod("MCG_Fitting_Hide", CommandFlags.Modal)]

@@ -33,9 +33,9 @@ namespace MCGCadPlugin.Services.FittingManagement
 
                     using (var tr = db.TransactionManager.StartTransaction())
                     {
-                        double mleaderScale = 25.0; 
+                        const double FALLBACK_SCALE = 25.0;
                         List<ObjectId> selectedIds = new List<ObjectId>(psr.Value.GetObjectIds());
-                        
+
                         List<DiscoveredFitting> foundFittings = new List<DiscoveredFitting>();
                         HashSet<string> balloonedPos = new HashSet<string>();
 
@@ -54,16 +54,23 @@ namespace MCGCadPlugin.Services.FittingManagement
                             return;
                         }
 
+                        // Per-fitting scale theo A1 chứa fitting đó. Slot layout dùng max scale
+                        // (đảm bảo slot đủ rộng cho balloon size lớn nhất trong cluster).
+                        var perFittingScale = new Dictionary<DiscoveredFitting, double>();
+                        double maxScale = 0;
                         double minX = double.MaxValue;
                         double maxX = double.MinValue;
                         foreach (var f in foundFittings)
                         {
+                            double s = ComputeA1Scale(tr, db, f.ArrowPoint) ?? FALLBACK_SCALE;
+                            perFittingScale[f] = s;
+                            if (s > maxScale) maxScale = s;
                             if (f.ArrowPoint.X < minX) minX = f.ArrowPoint.X;
                             if (f.ArrowPoint.X > maxX) maxX = f.ArrowPoint.X;
                         }
 
-                        double margin = 20.0 * mleaderScale;   
-                        double slotSpacing = 12.0 * mleaderScale; 
+                        double margin = 20.0 * maxScale;
+                        double slotSpacing = 12.0 * maxScale;
                         double leftBoundary = minX - margin;
                         double rightBoundary = maxX + margin;
 
@@ -74,7 +81,7 @@ namespace MCGCadPlugin.Services.FittingManagement
                         {
                             double distLeft = Math.Abs(f.ArrowPoint.X - leftBoundary);
                             double distRight = Math.Abs(rightBoundary - f.ArrowPoint.X);
-                            
+
                             double targetX = (distLeft < distRight) ? leftBoundary : rightBoundary;
                             double targetY = f.ArrowPoint.Y;
 
@@ -84,12 +91,12 @@ namespace MCGCadPlugin.Services.FittingManagement
                             while (IsSlotOccupied(candidate, occupiedSlots, slotSpacing))
                             {
                                 double offset = slotSpacing * ((attempt + 1) / 2);
-                                if (attempt % 2 != 0) offset = -offset; 
+                                if (attempt % 2 != 0) offset = -offset;
                                 candidate = new Point3d(targetX, targetY + offset, 0);
                                 attempt++;
                             }
 
-                            DrawMagneticMLeader(tr, currentSpace, db, f.ArrowPoint, candidate, f.PosNum, mleaderScale);
+                            DrawMagneticMLeader(tr, currentSpace, db, f.ArrowPoint, candidate, f.PosNum, perFittingScale[f]);
                             occupiedSlots.Add(candidate);
                         }
 

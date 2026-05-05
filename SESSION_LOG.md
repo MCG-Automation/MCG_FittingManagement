@@ -4,6 +4,195 @@
 
 ---
 
+## Session 2026-05-05 (10) — MLeader BlockScale=1 (drive size qua Scale tổng)
+
+### Bối cảnh
+Session 7 set cả `mleader.Scale = scale` và `mleader.BlockScale = new Scale3d(scale)` → 2 multiplier cùng = A1 → visual size = scale². Vd A1=25 → balloon radius hiển thị ~625mm, quá to. User chốt: trong Properties palette → tab Block phải hiển thị Scale = 1, còn visual scale của block trong MLeader vẫn = A1 (qua overall `mleader.Scale`).
+
+### Đã làm
+- [Services/FittingManagement/Balloon/FittingManagementService.BalloonHelpers.cs](Services/FittingManagement/Balloon/FittingManagementService.BalloonHelpers.cs#L99-L101): đổi `mleader.BlockScale = new Scale3d(scale)` → `new Scale3d(1.0)`. Giữ `mleader.Scale = scale`.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded**.
+- ⚠ User restart AutoCAD → place balloon mới → verify radius giờ ≈ A1mm (vd 25mm cho A1=25), không còn 625mm.
+
+### Bước tiếp theo
+- Test trên A1 scale=25:
+  - Balloon đặt mới → radius ~25mm (1 × 25 × 1).
+  - Properties palette: Specify Scale = 25 (Leader Structure tab); Block → Scale = 1 (Content tab).
+  - So sánh với balloon cũ (Session 7) bị to → balloon mới phải nhỏ hơn 25× lần.
+
+### Ghi chú API
+- Visual size cuối của block content trong MLeader = `blockRadius × MLeader.Scale × MLeader.BlockScale`. Setting cả 2 = scale gây nhân đôi (scale²). Conventional usage: 1 trong 2 = 1, cái kia = scale thực sự.
+- `MLeader.BlockScale` là `Scale3d` (X,Y,Z component). `new Scale3d(1.0)` = (1,1,1) uniform.
+- Vẫn để `mleader.Scale = scale` thay vì = 1 vì:
+  - Arrow size effective = `mleader.ArrowSize × mleader.Scale = 3 × 25 = 75mm` ở A1=25 — visible đẹp khi zoom.
+  - Dogleg length effective = `0.001 × scale` — vẫn collapse như mong đợi.
+  - "Specify Scale" trong Properties palette show A1 — user dễ verify.
+
+---
+
+## Session 2026-05-05 (9) — TagCircle text màu vàng + bỏ command MCG_Fitting_Show
+
+### Bối cảnh
+- User yêu cầu MText/Text trong `_TagCircle` mặc định màu vàng (highlight số POS dễ nhìn).
+- Trùng lặp command: `MCG_Fitting` (Commands/FittingManagement/FittingManagementCommand.cs) và `MCG_Fitting_Show` (Commands/PaletteManager.cs) cùng làm việc Show. User chốt giữ `MCG_Fitting` + `MCG_Fitting_Hide`, bỏ `MCG_Fitting_Show`.
+
+### Đã làm
+- [Services/FittingManagement/Balloon/FittingManagementService.BalloonHelpers.cs](Services/FittingManagement/Balloon/FittingManagementService.BalloonHelpers.cs#L186-L210): normalize loop branch theo type:
+  - `AttributeDefinition / MText / DBText` → `ColorIndex = 2` (yellow).
+  - Còn lại (Circle...) → `ColorIndex = 256` (ByLayer).
+  - Layer="0", Linetype="ByLayer", LineWeight=ByLayer giữ chung cho mọi entity.
+- [Commands/PaletteManager.cs](Commands/PaletteManager.cs#L107-L113): xoá `[CommandMethod("MCG_Fitting_Show")]` + `McgShow()`. Giữ `MCG_Fitting_Hide`. Comment giải thích Show được handle bởi `MCG_Fitting` ở file khác.
+- [CLAUDE.md](CLAUDE.md#L297-L299): cập nhật mục 9 — list lại 2 lệnh CAD: `MCG_Fitting` (show) + `MCG_Fitting_Hide` (hide), kèm chỉ dẫn file đăng ký.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded** (Debug, dotnet build OK).
+- ⚠ User restart AutoCAD → place balloon → text vàng tự apply (block cũ self-heal qua Session 8 logic).
+
+### Bước tiếp theo
+- Test:
+  - Place balloon → verify text "POS_NUM" hiển thị màu vàng (color index 2).
+  - Verify Circle vẫn ByLayer (theo Layer của BlockReference).
+  - Gõ `MCG_Fitting_Show` → AutoCAD báo "Unknown command". Gõ `MCG_Fitting` → palette hiển thị. Gõ `MCG_Fitting_Hide` → palette ẩn.
+
+### Ghi chú API
+- ColorIndex AutoCAD: 1=Red, 2=Yellow, 3=Green, 4=Cyan, 5=Blue, 6=Magenta, 7=White/Black (theo theme); 0=ByBlock, 256=ByLayer.
+- AutoCAD không cho duplicate `[CommandMethod]` cùng tên trong cùng plugin domain — sẽ throw runtime hoặc 1 trong 2 wins. Bỏ duplicate `MCG_Fitting_Show` an toàn.
+
+---
+
+## Session 2026-05-05 (8) — `_TagCircle` self-heal: normalize entities về Layer="0" + ByLayer mỗi lần dùng
+
+### Bối cảnh
+Session 7 fix Color/LT/LW = ByLayer cho entities mới tạo trong `_TagCircle`. Nhưng `EnsureTagCircleBlock` skip toàn bộ logic nếu block đã tồn tại từ Session 6 (chưa có ByLayer). User báo block cũ vẫn còn property sai → balloon vẽ ra với Color/Layer không như mong đợi.
+
+### Đã làm
+- [Services/FittingManagement/Balloon/FittingManagementService.BalloonHelpers.cs](Services/FittingManagement/Balloon/FittingManagementService.BalloonHelpers.cs#L138-L209): refactor `EnsureTagCircleBlock`:
+  - Tách 2 bước: (a) tạo block + entities nếu chưa có, (b) **luôn** normalize entities trong block về `Layer="0"`, `ColorIndex=256` (ByLayer), `Linetype="ByLayer"`, `LineWeight=ByLayer`.
+  - Block cũ đã tồn tại từ Session 6 sẽ tự self-heal lần đầu user place balloon sau khi reload DLL — không cần purge thủ công.
+  - Try/catch bao quanh từng entity normalize để 1 entity fail không block các entity khác (vd entity type lạ không cho set 1 trong các property).
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded** (Debug, dotnet build OK).
+- ⚠ User restart AutoCAD → place balloon lần đầu → block `_TagCircle` cũ tự được normalize property → balloon mới và cả balloon cũ trong drawing đều render với Color/LT/LW = ByLayer (vì cùng share BlockTableRecord).
+
+### Bước tiếp theo
+- Test trên drawing có sẵn balloon từ Session 6/7:
+  - Mở drawing → place 1 balloon mới.
+  - Verify Properties palette của balloon CŨ: Color = ByLayer, Linetype = ByLayer, LineWeight = ByLayer (entity in block ref được render theo property mới).
+  - Trong block editor (`_BEDIT _TagCircle`): verify Circle + AttDef Layer="0" + Color/LT/LW = ByLayer.
+
+### Ghi chú API
+- BlockTableRecord entities mở `OpenMode.ForWrite` để set property — phải vẫn ở trong scope transaction đang chạy của caller. OK vì `EnsureTagCircleBlock` được gọi trong `DrawMagneticMLeader` đã có active transaction.
+- Khi modify entities trong BlockTableRecord, mọi BlockReference đang insert block đó **tự cập nhật visual** ngay (AutoCAD invalidate render). Tức là ballloon cũ trong drawing không cần xóa+vẽ lại, chỉ cần regen (`_REGEN`) là thấy property mới.
+- Dynamic block / anonymous block: `_TagCircle` không phải dynamic → check `bt["_TagCircle"]` trả về unique BTR, không phải dynamic anonymous.
+
+---
+
+## Session 2026-05-05 (7) — MLeader style fix: BlockScale + ByLayer cho mọi visual property
+
+### Bối cảnh
+Sau Session 6 user thấy Block Circle render bé tí (radius=1mm bất kể A1 scale). Lý do: `mleader.Scale = scale` chỉ áp cho arrow/dogleg/text — KHÔNG tự multiply sang block content. Block content scale phải set qua `mleader.BlockScale` (Scale3d) riêng. Đồng thời user yêu cầu Color/Linetype/Layer-related properties về ByLayer (chuẩn CAD convention: entity sit trên Layer, Color/LT/LW = ByLayer kế thừa từ Layer).
+
+### Đã làm
+- [Services/FittingManagement/Balloon/FittingManagementService.BalloonHelpers.cs](Services/FittingManagement/Balloon/FittingManagementService.BalloonHelpers.cs):
+  - Thêm `using Autodesk.AutoCAD.Colors;` cho `Color.FromColorIndex(ColorMethod.ByLayer, 256)`.
+  - **MLeader entity**: thêm `mleader.BlockScale = new Scale3d(scale)` (Block Circle render đúng size theo A1); set `ColorIndex=256`, `Linetype="ByLayer"`, `LineWeight=ByLayer`; set `BlockColor = Color.FromColorIndex(ColorMethod.ByLayer, 256)` (Content tab "Color" → ByLayer).
+  - **`_TagCircle` block internals**: Circle + AttributeDef set `Layer="0"` (chuẩn block — inherit từ BlockReference layer), `ColorIndex=256`, `Linetype="ByLayer"`, `LineWeight=ByLayer`.
+  - **Stacked BlockReference** (cho multi-pos balloon): set `ColorIndex=256`, `Linetype="ByLayer"`, `LineWeight=ByLayer` (Layer giữ "Mechanical-AM_5" như cũ).
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded** (Debug, dotnet build OK; warning DLL lock chỉ vì AutoCAD đang chạy).
+- ⚠ User phải đóng AutoCAD và mở lại để load DLL mới.
+
+### Bước tiếp theo
+- Test trong drawing có A1 scale=25:
+  - Verify Block Circle visual radius ≈ 25mm (không còn 1mm).
+  - Verify Properties palette: Block Scale = 25, Color = ByLayer, Linetype = ByLayer, Lineweight = ByLayer.
+  - Verify entity Layer = Mechanical-AM_5 (nếu drawing có), nhưng Color/LT/LW = ByLayer kế thừa từ layer.
+- ⚠ `_TagCircle` block đã tạo trong Session 6 với Color/LT/LW chưa ByLayer sẽ TỒN TẠI sẵn — `EnsureTagCircleBlock` skip tạo lại. Nếu user muốn refresh: `purge` block `_TagCircle` (qua `_purge` command hoặc xóa balloon đã đặt + purge), lần sau gọi sẽ tạo lại với property ByLayer mới.
+
+### Ghi chú API
+- `MLeader.Scale` (double): áp cho arrow, dogleg, text (annotation aspects). KHÔNG áp tự động cho block content.
+- `MLeader.BlockScale` (Scale3d, KHÔNG phải Vector3d): scale của block content trong tab Content "Scale". Set độc lập với `MLeader.Scale`. Nếu cả 2 đều set → kết quả: arrow size = arrowSize × Scale; block visual size = blockSize × BlockScale (2 trục độc lập).
+- `MLeader.BlockColor` (Autodesk.AutoCAD.Colors.Color): tab Content "Color" cho block content. Tách biệt với `MLeader.ColorIndex` (color của leader line + arrow + frame).
+- ColorIndex=256 = ByLayer; ColorIndex=0 = ByBlock. AttDef/Entity inside block: nên Layer="0" để inherit BlockReference layer khi insert.
+
+---
+
+## Session 2026-05-05 (6) — MLeader style: Block+Circle + Scale theo A1 chứa fitting
+
+### Bối cảnh
+User chốt MLeader style mới: Content tab dùng Block với Source Block = Circle (built-in `_TagCircle`); Leader Structure tab dùng Specify Scale = ScaleFactors.X của A1 BlockReference chứa fitting đó. Behavior cũ: scale hardcode 25.0, fallback MText nếu drawing chưa có `_TagCircle`.
+
+### 4 quyết định đã chốt
+1. **Scale interpretation**: dùng `BlockReference.ScaleFactors.X` của A1 (đơn giản, đúng nghĩa "Scale insert").
+2. **`_TagCircle` không có**: tự tạo programmatically (Circle r=1 + AttributeDef tag `TAGNUMBER` h=1, MiddleCenter, BlockScaling.Uniform).
+3. **Mass balloon**: per-fitting scale cho mleader; max scale across cluster cho slot spacing/margin (slot đủ rộng cho balloon to nhất).
+4. **Fitting ngoài A1**: fallback scale = 25.0 (giữ behavior cũ).
+
+### Đã làm
+- [Services/FittingManagement/Balloon/FittingManagementService.BalloonHelpers.cs](Services/FittingManagement/Balloon/FittingManagementService.BalloonHelpers.cs):
+  - `DrawMagneticMLeader`: bỏ branch MText fallback; luôn `ContentType.BlockContent` + `BlockContentId = EnsureTagCircleBlock(...)`. Single-pos vẫn append qua MLeader; multi-pos stack thêm BlockReference riêng (cũ — giữ).
+  - **Mới** `EnsureTagCircleBlock(db, tr)`: tạo `_TagCircle` BTR nếu thiếu (Circle radius=1 + AttributeDefinition tag `TAGNUMBER`, height=1, justify=MiddleCenter, BlockScaling=Uniform). Trả ObjectId.
+  - **Mới** `ComputeA1Scale(tr, db, pt)`: iterate CurrentSpace BlockReferences, match name == "A1" (case-insensitive, dynamic-block-aware qua `BlockReference.Name`), check `pt` nằm trong `GeometricExtents`, trả `Math.Abs(ScaleFactors.X)`. Trả null nếu không match.
+- [Services/FittingManagement/Balloon/FittingManagementService.BalloonInteractive.cs](Services/FittingManagement/Balloon/FittingManagementService.BalloonInteractive.cs#L74-L78): `mleaderScale = ComputeA1Scale(tr, db, arrowHeadPoint) ?? 25.0` thay cho hardcode.
+- [Services/FittingManagement/Balloon/FittingManagementService.BalloonMass.cs](Services/FittingManagement/Balloon/FittingManagementService.BalloonMass.cs): dùng `Dictionary<DiscoveredFitting, double> perFittingScale` + `maxScale`. Slot layout (`margin = 20×maxScale`, `slotSpacing = 12×maxScale`) dùng max scale; mỗi mleader dùng scale per fitting.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded** (Debug, dotnet build OK; warning DLL lock chỉ vì AutoCAD đang chạy).
+- ⚠ User phải đóng AutoCAD và mở lại để load DLL mới.
+
+### Bước tiếp theo
+- Test trong drawing có nhiều A1 frame khác scale (vd 1:25, 1:50):
+  - Pick fitting trong A1 scale=25 → balloon size theo scale 25.
+  - Pick fitting trong A1 scale=50 → balloon size theo scale 50.
+  - Pick fitting NGOÀI A1 → fallback scale 25 (log debug `[FittingManagementService] ComputeA1Scale...` sẽ không có dòng A1 match).
+- Mass balloon trên cluster nằm trong A1 scale=50 + A1 scale=25 → verify slot spacing đủ cho balloon to (size theo 50) không chồng nhau.
+- Drawing chưa có `_TagCircle` → verify lần đầu place balloon tự tạo block, các lần sau reuse.
+
+### Ghi chú API
+- `BlockReference.Name` modern AutoCAD .NET trả về tên gốc của dynamic block (không phải `*Uxxx` anonymous) → check `== "A1"` work cho cả static và dynamic A1.
+- `EnsureTagCircleBlock` upgrade BlockTable lên `OpenForWrite` chỉ khi cần Add. Block created với `BlockScaling.Uniform` để mleader scale uniform — tránh lệch tỷ lệ X/Y.
+- `_TagCircle` AttributeDefinition đặt `Position` và `AlignmentPoint` cùng = origin với `Justify = MiddleCenter` → text căn giữa circle khi mleader render.
+- `Math.Abs(ScaleFactors.X)` để tránh case A1 mirror (scaleX âm) ra scale 0 hoặc âm cho mleader.
+
+---
+
+## Session 2026-05-05 (5) — Fix eLockViolation ở Place Balloon (Interactive)
+
+### Bối cảnh
+User báo `eLockViolation` khi click button "Place Balloon" trên Palette tab Fitting Handle. Trace: `BtnAddBalloon_Click` (WPF) → `_service.InteractivePlaceBalloon()` → `db.TransactionManager.StartTransaction()` → `tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite)` → throw eLockViolation.
+
+### Nguyên nhân gốc
+Method `InteractivePlaceBalloon` mở transaction ghi mà **không có `doc.LockDocument()`**. Khi gọi qua `[CommandMethod]`, AutoCAD tự lock document. Nhưng gọi từ Palette button (WPF UI thread), **không có auto-lock** → mọi transaction ghi đều fail. Method anh em `MassAutoBalloon` đã đúng (wrap `using (DocumentLock docLock = doc.LockDocument())`), `InteractivePlaceBalloon` thiếu nhất quán.
+
+### Đã làm
+- [Services/FittingManagement/Balloon/FittingManagementService.BalloonInteractive.cs](Services/FittingManagement/Balloon/FittingManagementService.BalloonInteractive.cs#L24-L29): wrap `while (true) { ... }` trong `using (DocumentLock docLock = doc.LockDocument()) { ... }`. Lock giữ trong toàn bộ vòng lặp interactive — Lock acquire 1 lần duy nhất, các iteration sau chỉ tốn cost transaction nội bộ. Thêm comment giải thích lý do.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded** (Debug, dotnet build OK).
+- ⚠ User phải đóng AutoCAD và mở lại để load DLL mới — DLL đang load là bản trước cả Session 3/4/5.
+
+### Bước tiếp theo
+- Restart AutoCAD → click "Place Balloon" → pick fitting → đặt balloon point → verify không còn eLockViolation, mleader được tạo.
+- Audit các method service khác gọi từ Palette button có cùng bug không (write transaction thiếu LockDocument). Candidates: `PickGeometricFeatureFromCad` (đã có lock), `InsertBlockFromLibrary` (đã có lock), `PushBlocksFromCurrentDrawing` (đã có lock). `InteractivePlaceBalloon` là case lẻ duy nhất phát hiện trong session này.
+
+### Ghi chú API
+- `[CommandMethod(..., CommandFlags.Modal)]` → AutoCAD tự lock document trước khi invoke.
+- Code chạy từ Palette button / WPF event handler → KHÔNG có auto-lock. Phải explicit `doc.LockDocument()`.
+- `LockDocument()` returns `IDisposable` — wrap trong `using` để release đúng. Lock giữ qua interactive prompt OK (`ed.GetNestedEntity` / `ed.GetPoint` không cần unlock-and-relock).
+- `eLockViolation` raise ngay tại dòng `OpenMode.ForWrite` đầu tiên — `OpenMode.ForRead` không cần lock.
+
+---
+
 ## Session 2026-05-05 (4) — 3D detection robust hơn: thêm heuristic camera vector
 
 ### Bối cảnh

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
@@ -66,12 +68,13 @@ namespace MCGCadPlugin.Services.FittingManagement
 
         private void DrawMagneticMLeader(Transaction tr, BlockTableRecord btrSpace, Database db, Point3d arrowPt, Point3d balloonPt, string rawPosNum, double scale)
         {
-            BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
             string[] posNumbers = rawPosNum.Split(new char[] { ',', ' ', ';' }, StringSplitOptions.RemoveEmptyEntries);
             if (posNumbers.Length == 0) return;
 
             Vector3d doglegDir = (balloonPt.X > arrowPt.X) ? Vector3d.XAxis : -Vector3d.XAxis;
-            bool useCircleBlock = bt.Has("_TagCircle");
+
+            // Bắt buộc dùng Block + Circle theo style chuẩn — tự tạo _TagCircle nếu drawing chưa có.
+            ObjectId tagCircleId = EnsureTagCircleBlock(db, tr);
 
             using (MLeader mleader = new MLeader())
             {
@@ -79,10 +82,15 @@ namespace MCGCadPlugin.Services.FittingManagement
                 mleader.Scale = scale;
                 mleader.ArrowSize = 3.0;
                 mleader.EnableDogleg = true;
-                mleader.DoglegLength = 0.001; 
+                mleader.DoglegLength = 0.001;
 
                 LayerTable lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
                 if (lt.Has("Mechanical-AM_5")) mleader.Layer = "Mechanical-AM_5";
+
+                // Mleader entity properties → ByLayer (Color/Linetype/LineWeight kế thừa từ Layer trên).
+                mleader.ColorIndex = 256;                       // 256 = ByLayer
+                mleader.Linetype = "ByLayer";
+                mleader.LineWeight = LineWeight.ByLayer;
 
                 int leaderIndex = mleader.AddLeader();
                 int leaderLineIndex = mleader.AddLeaderLine(leaderIndex);
@@ -90,45 +98,39 @@ namespace MCGCadPlugin.Services.FittingManagement
                 mleader.AddLastVertex(leaderLineIndex, balloonPt);
                 mleader.SetDogleg(leaderIndex, doglegDir);
 
-                if (useCircleBlock)
-                {
-                    mleader.ContentType = ContentType.BlockContent;
-                    mleader.BlockContentId = bt["_TagCircle"];
-                    mleader.BlockConnectionType = BlockConnectionType.ConnectExtents;
-                    mleader.BlockPosition = balloonPt;
-                }
-                else
-                {
-                    mleader.ContentType = ContentType.MTextContent;
-                    MText mText = new MText();
-                    mText.SetDatabaseDefaults();
-                    mText.Contents = posNumbers[0];
-                    mText.TextHeight = 2.5;
-                    mleader.MText = mText;
-                    mleader.EnableFrameText = true;
-                    mleader.TextLocation = balloonPt;
-                }
+                mleader.ContentType = ContentType.BlockContent;
+                mleader.BlockContentId = tagCircleId;
+                mleader.BlockConnectionType = BlockConnectionType.ConnectExtents;
+                mleader.BlockPosition = balloonPt;
+                // BlockScale = 1 (Properties → Block → Scale). Visual size cuối = blockRadius × mleader.Scale × BlockScale
+                // = 1 × A1 × 1 = A1mm. Drive size qua mleader.Scale ở trên (=scale=A1).
+                mleader.BlockScale = new Scale3d(1.0);
+                mleader.BlockColor = Color.FromColorIndex(ColorMethod.ByLayer, 256);
 
                 btrSpace.AppendEntity(mleader);
                 tr.AddNewlyCreatedDBObject(mleader, true);
 
-                if (useCircleBlock)
-                {
-                    SetBlockAttributeInternal(tr, bt["_TagCircle"], mleader, posNumbers[0]);
-                }
+                SetBlockAttributeInternal(tr, tagCircleId, mleader, posNumbers[0]);
             }
 
-            if (useCircleBlock && posNumbers.Length > 1)
+            if (posNumbers.Length > 1)
             {
-                double circleSpacing = 14.0 * scale; 
+                double circleSpacing = 14.0 * scale;
+                LayerTable lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
+                bool hasMechLayer = lt.Has("Mechanical-AM_5");
+
                 for (int i = 1; i < posNumbers.Length; i++)
                 {
                     Point3d nextPt = balloonPt + doglegDir * (circleSpacing * i);
-                    using (BlockReference stackedBlk = new BlockReference(nextPt, bt["_TagCircle"]))
+                    using (BlockReference stackedBlk = new BlockReference(nextPt, tagCircleId))
                     {
                         stackedBlk.ScaleFactors = new Scale3d(scale);
-                        LayerTable lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
-                        if (lt.Has("Mechanical-AM_5")) stackedBlk.Layer = "Mechanical-AM_5";
+                        if (hasMechLayer) stackedBlk.Layer = "Mechanical-AM_5";
+
+                        // Stacked block — ByLayer cho mọi visual property.
+                        stackedBlk.ColorIndex = 256;
+                        stackedBlk.Linetype = "ByLayer";
+                        stackedBlk.LineWeight = LineWeight.ByLayer;
 
                         btrSpace.AppendEntity(stackedBlk);
                         tr.AddNewlyCreatedDBObject(stackedBlk, true);
@@ -137,6 +139,123 @@ namespace MCGCadPlugin.Services.FittingManagement
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Trả về ObjectId của block <c>_TagCircle</c>. Tạo nếu chưa có (Circle radius=1 + AttributeDefinition
+        /// tag <c>TAGNUMBER</c> height=1 căn giữa). Sau đó normalize entities BÊN TRONG block về
+        /// Layer="0" + Color ByLayer (self-heal cho block tạo ở session cũ chưa có ByLayer).
+        /// </summary>
+        private ObjectId EnsureTagCircleBlock(Database db, Transaction tr)
+        {
+            BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+
+            ObjectId btrId;
+            if (bt.Has("_TagCircle"))
+            {
+                btrId = bt["_TagCircle"];
+            }
+            else
+            {
+                bt.UpgradeOpen();
+                using (BlockTableRecord newBtr = new BlockTableRecord())
+                {
+                    newBtr.Name = "_TagCircle";
+                    newBtr.Origin = Point3d.Origin;
+                    newBtr.BlockScaling = BlockScaling.Uniform;
+
+                    btrId = bt.Add(newBtr);
+                    tr.AddNewlyCreatedDBObject(newBtr, true);
+
+                    using (Circle circle = new Circle(Point3d.Origin, Vector3d.ZAxis, 1.0))
+                    {
+                        circle.SetDatabaseDefaults();
+                        newBtr.AppendEntity(circle);
+                        tr.AddNewlyCreatedDBObject(circle, true);
+                    }
+
+                    using (AttributeDefinition attDef = new AttributeDefinition())
+                    {
+                        attDef.SetDatabaseDefaults();
+                        attDef.Tag = "TAGNUMBER";
+                        attDef.Prompt = "Tag number";
+                        attDef.TextString = "";
+                        attDef.Height = 1.0;
+                        attDef.Justify = AttachmentPoint.MiddleCenter;
+                        attDef.AlignmentPoint = Point3d.Origin;
+                        attDef.Position = Point3d.Origin;
+                        attDef.Invisible = false;
+                        newBtr.AppendEntity(attDef);
+                        tr.AddNewlyCreatedDBObject(attDef, true);
+                    }
+                    Debug.WriteLine($"{LOG_PREFIX} Đã tự tạo block _TagCircle (lần đầu drawing dùng MLeader-Circle).");
+                }
+            }
+
+            // Normalize entities trong block — Layer="0" + Linetype/LineWeight ByLayer.
+            // Color: text/MText → vàng (ColorIndex=2); Circle và entity khác → ByLayer.
+            // Áp dụng cho cả block mới tạo và block cũ đã tồn tại (self-heal session cũ).
+            BlockTableRecord btr = (BlockTableRecord)tr.GetObject(btrId, OpenMode.ForRead);
+            foreach (ObjectId entId in btr)
+            {
+                Entity ent = tr.GetObject(entId, OpenMode.ForWrite) as Entity;
+                if (ent == null) continue;
+                try
+                {
+                    ent.Layer = "0";
+                    ent.Linetype = "ByLayer";
+                    ent.LineWeight = LineWeight.ByLayer;
+
+                    // Text-like entities → màu vàng. Khác → ByLayer.
+                    bool isTextLike = ent is AttributeDefinition || ent is MText || ent is DBText;
+                    ent.ColorIndex = isTextLike ? 2 : 256;
+                }
+                catch (System.Exception exNorm)
+                {
+                    Debug.WriteLine($"{LOG_PREFIX} Normalize _TagCircle entity '{ent.GetType().Name}' fail (non-fatal): {exNorm.Message}");
+                }
+            }
+
+            return btrId;
+        }
+
+        /// <summary>
+        /// Tìm A1 BlockReference (KeepAsIs name == "A1") trong CurrentSpace có bbox chứa <paramref name="pt"/>,
+        /// trả về <c>ScaleFactors.X</c> của nó. Trả null nếu không A1 nào chứa pt — caller dùng fallback.
+        /// </summary>
+        private double? ComputeA1Scale(Transaction tr, Database db, Point3d pt)
+        {
+            try
+            {
+                BlockTableRecord ms = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForRead);
+                foreach (ObjectId id in ms)
+                {
+                    if (!id.ObjectClass.IsDerivedFrom(RXObject.GetClass(typeof(BlockReference)))) continue;
+                    BlockReference br = tr.GetObject(id, OpenMode.ForRead) as BlockReference;
+                    if (br == null) continue;
+
+                    // BlockReference.Name resolve về tên gốc của dynamic block — không phải *Uxxx anonymous.
+                    string name = br.Name;
+                    if (!string.Equals(name, "A1", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    Extents3d ext;
+                    try { ext = br.GeometricExtents; }
+                    catch { continue; }
+
+                    if (pt.X >= ext.MinPoint.X && pt.X <= ext.MaxPoint.X &&
+                        pt.Y >= ext.MinPoint.Y && pt.Y <= ext.MaxPoint.Y)
+                    {
+                        double s = Math.Abs(br.ScaleFactors.X);
+                        Debug.WriteLine($"{LOG_PREFIX} ComputeA1Scale: arrowPt={pt} → A1 '{name}' ScaleX={s:F3}.");
+                        return s;
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.WriteLine($"{LOG_PREFIX} ComputeA1Scale LỖI (non-fatal): {ex.Message}");
+            }
+            return null;
         }
 
         private void SetBlockAttributeInternal(Transaction tr, ObjectId blockId, MLeader leader, string value)

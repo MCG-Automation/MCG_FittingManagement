@@ -295,8 +295,8 @@ Autodesk.AutoCAD.Internal.Utils.SetFocusToDwgView();
 > cần tương tác với bản vẽ (pick point, select entity, zoom, v.v.)
 
 **Lệnh CAD:**
-- `MCG_Fitting_Show` → hiển thị PaletteSet
-- `MCG_Fitting_Hide` → ẩn PaletteSet
+- `MCG_Fitting` → hiển thị PaletteSet (đăng ký trong `Commands/FittingManagement/FittingManagementCommand.cs`)
+- `MCG_Fitting_Hide` → ẩn PaletteSet (đăng ký trong `Commands/PaletteManager.cs`)
 
 ---
 

@@ -21,6 +21,11 @@ namespace MCGCadPlugin.Services.FittingManagement
                 Database db = doc.Database;
                 Editor ed = doc.Editor;
 
+                // Method này gọi từ Palette button (WPF context) — KHÔNG có auto-lock như [CommandMethod].
+                // Phải LockDocument trước khi mở transaction ghi, nếu không sẽ throw eLockViolation
+                // tại dòng OpenMode.ForWrite ở BlockTableRecord btrSpace.
+                using (DocumentLock docLock = doc.LockDocument())
+                {
                 while (true)
                 {
                     PromptNestedEntityOptions pneo = new PromptNestedEntityOptions("\nSelect Fitting to balloon (or press ESC to exit): ");
@@ -74,13 +79,17 @@ namespace MCGCadPlugin.Services.FittingManagement
                         if (ppr.Status != PromptStatus.OK) break;
 
                         Point3d balloonPoint = ppr.Value;
-                        double mleaderScale = 25.0; 
-                        
+
+                        // Lấy scale từ A1 BlockReference chứa arrowHeadPoint (ScaleFactors.X).
+                        // Không tìm thấy A1 → fallback 25.0 (giữ behavior cũ).
+                        double mleaderScale = ComputeA1Scale(tr, db, arrowHeadPoint) ?? 25.0;
+
                         BlockTableRecord btrSpace = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
                         DrawMagneticMLeader(tr, btrSpace, db, arrowHeadPoint, balloonPoint, rawPosNumber, mleaderScale);
 
                         tr.Commit();
                     }
+                }
                 }
                 Debug.WriteLine($"{LOG_PREFIX} Thoát InteractivePlaceBalloon an toàn.");
             }
