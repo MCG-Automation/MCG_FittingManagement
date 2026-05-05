@@ -129,6 +129,7 @@ namespace MCGCadPlugin.Services.FittingManagement
 
             string baseFileName = Path.GetFileNameWithoutExtension(dwgPath);
 
+            int skipped3D = 0;
             using (var sourceDb = new Database(false, true))
             {
                 sourceDb.ReadDwgFile(dwgPath, FileShare.Read, true, "");
@@ -192,6 +193,14 @@ namespace MCGCadPlugin.Services.FittingManagement
                     foreach (var view in metadata.Views)
                     {
                         if (view == null) continue;
+
+                        // Yêu cầu: chỉ block hoá view 2D ortho. View 3D iso/arbitrary skip — không vào Master Library.
+                        if (view.Is3D)
+                        {
+                            skipped3D++;
+                            FileLogger.Log(LOG_PREFIX, $"  Bỏ qua '{view.Name}' — view 3D (iso/arbitrary), không publish vào Master.");
+                            continue;
+                        }
 
                         double minX = view.CenterX - view.Width * 0.5 - BBOX_TOLERANCE_MM;
                         double maxX = view.CenterX + view.Width * 0.5 + BBOX_TOLERANCE_MM;
@@ -260,6 +269,9 @@ namespace MCGCadPlugin.Services.FittingManagement
                     destTr.Commit();
                     // srcTr là read-only — dispose là đủ
                 }
+
+                FileLogger.Log(LOG_PREFIX,
+                    $"  '{Path.GetFileName(dwgPath)}' summary — Tạo {results.Count} block 2D, bỏ qua {skipped3D} view 3D.");
             }
 
             return results;

@@ -5,6 +5,8 @@ namespace MCGCadPlugin.Models.FittingManagement
 {
     /// <summary>
     /// Chứa thông tin hình học của từng hình chiếu trích xuất từ Inventor.
+    /// <c>Is3D</c> phân loại ortho (2D) vs iso/arbitrary (3D) — phía split-view skip view 3D
+    /// để chỉ block hoá các hình chiếu 2D vào Master Library.
     /// </summary>
     public class ViewMetadata
     {
@@ -13,6 +15,9 @@ namespace MCGCadPlugin.Models.FittingManagement
         public double CenterY { get; set; }
         public double Width { get; set; }
         public double Height { get; set; }
+
+        /// <summary>true = view iso/arbitrary 3D (skip publish); false = view ortho 2D (publish vào Master).</summary>
+        public bool Is3D { get; set; }
     }
 
     /// <summary>

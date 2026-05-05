@@ -4,6 +4,70 @@
 
 ---
 
+## Session 2026-05-05 (4) — 3D detection robust hơn: thêm heuristic camera vector
+
+### Bối cảnh
+Sau Session 3 user test thấy MasterCatalog VẪN chứa iso block. 2 nguyên nhân khả dĩ: (a) AutoCAD đang load DLL cũ (build mới `_090038.dll` nhưng AutoCAD lock `_081835.dll` + `_090038.dll`); (b) view iso thực tế của user trả về orient code KHÁC iso enum (10309-10312)/arbitrary (10301) — có thể `kCurrent` (10303) hoặc `kDefault` (10313) khi child view kế thừa từ parent.
+
+### Đã làm
+- [Services/FittingManagement/Import/FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs#L527-L568): rewrite phân loại với 2 heuristic độc lập (OR):
+  - **(1) ViewOrientationType enum**: Iso (10309-10312) hoặc Arbitrary (10301).
+  - **(2) Camera direction vector**: đọc `Eye/Target`, normalize. Ortho 2D có max component ≈ 1; iso 3D (vd (1,1,1)/√3) có max ≈ 0.577. Threshold `maxComp < 0.95` → 3D.
+- Mỗi view log 1 dòng debug: `View_N: orient=X, dir=(nx,ny,nz), isoByEnum=B1, isoByVector=B2 → 2D/3D` để user gửi log diagnose nếu detection còn miss.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded** (Debug, dotnet build OK).
+- ⚠ **User phải đóng AutoCAD và mở lại** để load DLL mới — DLL trong AutoCAD đang là bản trước cả Session 3.
+- ⚠ Iso block đã có trong MasterCatalog từ trước phải user tự Remove qua Master Library window — code mới chỉ ngăn publish mới.
+
+### Bước tiếp theo
+- User restart AutoCAD → re-import 1 file .idw → check `%APPDATA%\MCGCadPlugin\plugin.log` cho dòng `View_N: orient=..., dir=...`. Nếu còn iso vào catalog, gửi log lại.
+- Nếu heuristic vector miss case "iso nhưng max component cao do camera setup khác" → giảm threshold xuống 0.90 hoặc dùng thêm `Camera.Projection == kPerspective`.
+
+### Ghi chú API
+- Inventor `Camera` có `Eye` (Point) và `Target` (Point). Direction = Target − Eye, normalize. Drawing iso views thực tế camera nhìn theo (1,1,1)-ish.
+- Threshold 0.95: chấp nhận sai số nhỏ trong ortho view (vd Inventor có thể set 0.999 thay vì đúng 1.0). Iso (1,1,1)/√3 ≈ 0.577 — cách rất xa 0.95 → an toàn.
+- View edge case: section/detail/auxiliary view có thể có camera direction lệch trục — sẽ bị flag 3D nhầm. User test trên dataset thật rồi mới biết có cần whitelist `ViewType` (kSectionDrawingView etc.) không.
+
+---
+
+## Session 2026-05-05 (3) — Master Library: chỉ block hoá view 2D, skip view 3D
+
+### Bối cảnh
+User audit lại luồng tạo Master Library (Session trước phân tích 2 luồng: JSON Import + Add from CAD). Yêu cầu: khi import .idw từ Inventor, **không tạo Block cho các view 3D iso/perspective**, chỉ tạo Block cho view 2D ortho và đưa vào Master Library. Hiện tại `ExtractDrawingViews` gộp tất cả `DrawingView` không phân biệt loại → mỗi view 3D iso vẫn bị wblock + publish, dẫn tới Master chứa block "không sử dụng được" cho việc chèn 2D vào layout.
+
+### 3 quyết định đã chốt với user
+1. `kArbitraryViewOrientation` (10301) → treat as 3D (skip).
+2. Backward compat OK: `Is3D` mặc định `false` → JSON cũ deserialize ra 2D → behavior cũ giữ nguyên cho file đã có.
+3. Chỉ ghi log file, không thay đổi UI summary.
+
+### Đã làm
+- [Models/FittingManagement/FittingManagementModel.cs](Models/FittingManagement/FittingManagementModel.cs#L18-L24): `ViewMetadata` thêm `Is3D` (bool, default false). XML doc giải thích semantics 2D ortho vs 3D iso/arbitrary.
+- [Services/FittingManagement/Import/FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs#L516-L549): `ExtractDrawingViews` đọc `drawingView.Camera.ViewOrientationType` (int via dynamic). Code phân loại: `is3D = (orient == 10301) || (orient ∈ [10309..10312])`. Lỗi đọc orient → fallback 2D (an toàn). Log summary đổi từ `Tìm thấy N drawing view(s)` → `Tìm thấy N drawing view(s) — X 2D ortho, Y 3D iso/arbitrary`.
+- [Services/FittingManagement/Import/FittingManagementService.JsonImport.cs](Services/FittingManagement/Import/FittingManagementService.JsonImport.cs#L132-L275): khai báo `int skipped3D` ở scope ngoài (sourceDb-using) để dùng được trong cả foreach view và log summary cuối; foreach skip view nếu `view.Is3D == true` + log dòng `Bỏ qua '{view.Name}' — view 3D (iso/arbitrary), không publish vào Master`. Thêm log per-file: `'{file}' summary — Tạo {n2D} block 2D, bỏ qua {n3D} view 3D`.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded** (Debug, dotnet build OK; warning DLL lock chỉ vì AutoCAD đang chạy).
+- Chưa test trên file .idw thật có cả view ortho + iso.
+
+### Bước tiếp theo
+- User test với 1 file .idw có view 3D iso (ví dụ Front + Top + IsoTopRight) → verify log:
+  - `Tìm thấy 3 drawing view(s) — 2 2D ortho, 1 3D iso/arbitrary`.
+  - `Bỏ qua 'View_3' — view 3D (iso/arbitrary), không publish vào Master`.
+  - `summary — Tạo 2 block 2D, bỏ qua 1 view 3D`.
+  - MasterCatalog.json chỉ có 2 entry (View_1 + View_2), không có View_3.
+- Nếu user test thấy view "Arbitrary" của họ thật ra là ortho custom → cần giữ → cân nhắc chỉ skip iso (10309-10312), bỏ check `kArbitrary == 10301` ra.
+
+### Ghi chú API
+- `Inventor.DrawingView.Camera.ViewOrientationType` trả về `ViewOrientationTypeEnum`. Cast `(int)` qua `dynamic` work — Inventor expose enum dạng numeric COM IDispatch.
+- Enum values: 10302-10308 (Front/Top/Side ortho 2D), 10309-10312 (Iso 4 góc 3D), 10301 (Arbitrary), 10303 (Current — kế thừa parent), 10313 (Default).
+- Không check `Camera.Projection == kPerspective` vì drawing views của Inventor gần như luôn ortho-projection (perspective rất hiếm cho technical drawing). Iso + Arbitrary đã đủ phủ trường hợp 3D thật sự.
+- BlockTable trong AutoCAD case-insensitive nhưng `metadata.Views[i].Name` là `"View_N"` tuần tự → không bị collision do skip 3D giữa chừng (View_3 skip vẫn không ảnh hưởng View_4 vì uniqueName được suffix nếu trùng).
+
+---
+
 ## Session 2026-05-05 (2) — Drawing Collection: BTR walk fallback cho A1 bbox extraction
 
 ### Bối cảnh

@@ -524,13 +524,59 @@ namespace MCGCadPlugin.Services.FittingManagement
                             double wSheet = (double)drawingView.Width * 10.0;
                             double hSheet = (double)drawingView.Height * 10.0;
 
+                            // Phân loại 2D ortho vs 3D iso/arbitrary — dùng 2 heuristic độc lập (OR):
+                            //   (1) Camera.ViewOrientationType: Iso (10309-10312) + Arbitrary (10301) = 3D.
+                            //   (2) Camera direction vector: ortho 2D = dọc 1 trục chính (|max| ≈ 1, các thành phần khác ≈ 0).
+                            //       Iso 3D ví dụ (1,1,1)/√3 → mỗi thành phần ≈ 0.577 → max ≈ 0.577 < 0.95 → 3D.
+                            // Heuristic (2) bắt được iso views mà Inventor báo orient = kCurrent (10303) hoặc kDefault (10313)
+                            // — case enum không kê khai chính xác orient.
+                            bool is3D = false;
+                            int orientCode = -1;
+                            double nx = double.NaN, ny = double.NaN, nz = double.NaN;
+                            try
+                            {
+                                try { orientCode = (int)drawingView.Camera.ViewOrientationType; } catch { }
+                                bool isoByEnum = (orientCode == 10301) || (orientCode >= 10309 && orientCode <= 10312);
+
+                                bool isoByVector = false;
+                                try
+                                {
+                                    dynamic eye = drawingView.Camera.Eye;
+                                    dynamic target = drawingView.Camera.Target;
+                                    double dx = (double)target.X - (double)eye.X;
+                                    double dy = (double)target.Y - (double)eye.Y;
+                                    double dz = (double)target.Z - (double)eye.Z;
+                                    double len = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+                                    if (len > 1e-6)
+                                    {
+                                        nx = Math.Abs(dx / len);
+                                        ny = Math.Abs(dy / len);
+                                        nz = Math.Abs(dz / len);
+                                        double maxComp = Math.Max(nx, Math.Max(ny, nz));
+                                        // 2D ortho: max gần 1 (dọc trục chính). Iso/skew: max < 0.95.
+                                        isoByVector = maxComp < 0.95;
+                                    }
+                                }
+                                catch { /* không đọc được Eye/Target — bỏ qua heuristic vector */ }
+
+                                is3D = isoByEnum || isoByVector;
+
+                                FileLogger.Log(LOG_PREFIX,
+                                    $"    View_{viewIndex}: orient={orientCode}, dir=({nx:F2},{ny:F2},{nz:F2}), isoByEnum={isoByEnum}, isoByVector={isoByVector} → {(is3D ? "3D" : "2D")}");
+                            }
+                            catch (System.Exception exOrient)
+                            {
+                                FileLogger.Log(LOG_PREFIX, $"  CẢNH BÁO: phân loại 2D/3D fail cho View_{viewIndex} — treat as 2D: {exOrient.Message}");
+                            }
+
                             views.Add(new ViewMetadata
                             {
                                 Name = "View_" + viewIndex,
                                 CenterX = cxSheet * baseScaleFactor,
                                 CenterY = cySheet * baseScaleFactor,
                                 Width = wSheet * baseScaleFactor,
-                                Height = hSheet * baseScaleFactor
+                                Height = hSheet * baseScaleFactor,
+                                Is3D = is3D
                             });
                             viewIndex++;
                         }
@@ -546,7 +592,9 @@ namespace MCGCadPlugin.Services.FittingManagement
                 FileLogger.LogException(LOG_PREFIX, "duyệt Sheets", ex);
             }
 
-            FileLogger.Log(LOG_PREFIX, $"  Tìm thấy {views.Count} drawing view(s) (tọa độ model mm).");
+            int n3D = 0; foreach (var v in views) if (v.Is3D) n3D++;
+            int n2D = views.Count - n3D;
+            FileLogger.Log(LOG_PREFIX, $"  Tìm thấy {views.Count} drawing view(s) (tọa độ model mm) — {n2D} 2D ortho, {n3D} 3D iso/arbitrary.");
             return views;
         }
 
