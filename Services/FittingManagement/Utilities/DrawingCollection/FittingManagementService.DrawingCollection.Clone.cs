@@ -62,8 +62,12 @@ namespace MCGCadPlugin.Services.FittingManagement
             if (stats.PrimaryNotCloned > 0)
                 LogIdMappingDetails(item.SideDb, mapping, maxPairs: 30);
 
-            // Tính vector dịch: đưa minX bbox về đúng offsetX, giữ nguyên Y/Z.
-            double dx = item.HasExtents ? (offsetX - item.Extents.MinPoint.X) : offsetX;
+            // Hướng A — căn cạnh trái A1.MinX về offsetX (gap giữa các A1 luôn = COLLECTION_GAP).
+            // Fallback bbox.MinX nếu file không có A1 hợp lệ. Fallback 0 nếu file rỗng.
+            double anchorX = item.HasA1
+                ? item.A1MinXSrc
+                : (item.HasExtents ? item.Extents.MinPoint.X : 0);
+            double dx = offsetX - anchorX;
             stats.Dx = dx;
             var displace = Matrix3d.Displacement(new Vector3d(dx, 0, 0));
 

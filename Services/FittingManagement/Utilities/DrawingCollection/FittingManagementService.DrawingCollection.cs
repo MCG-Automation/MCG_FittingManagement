@@ -31,7 +31,9 @@ namespace MCGCadPlugin.Services.FittingManagement
     /// </summary>
     public partial class FittingManagementService
     {
-        private const double COLLECTION_GAP = 1.0;
+        // Hướng A — A1-frame anchored layout. GAP=100mm cho dim/leader nhỏ thò ra ngoài A1 không
+        // chồng A1 file kế. Overflow > GAP sẽ được warn ở Phase 1 + overlap detector ở Summary.
+        private const double COLLECTION_GAP = 100.0;
 
         // Ngưỡng cảnh báo bbox outlier. Bản vẽ cơ khí thông thường hiếm khi vượt ngưỡng này;
         // vượt → nghi ngờ entity "orphan" ngoài modelspace chính.
@@ -172,20 +174,21 @@ namespace MCGCadPlugin.Services.FittingManagement
                                     $"bbox=[({ki.Bbox.MinPoint.X:F0},{ki.Bbox.MinPoint.Y:F0})-({ki.Bbox.MaxPoint.X:F0},{ki.Bbox.MaxPoint.Y:F0})]");
                             }
 
-                            // A1-aware layout: effective width = max(content width, A1 extent tới cạnh phải).
+                            // Hướng A — A1-frame anchored layout:
+                            //   File có A1: effectiveW = A1.Width_src (gap A1↔A1 = COLLECTION_GAP, ổn định).
+                            //   File không A1: fallback bbox tổng (Extents.Width).
                             double contentW = item.HasExtents ? item.Width : 0;
-                            double effectiveW = contentW;
-                            foreach (var ki in cloneStats.KeepAsIsCloned)
+                            double effectiveW;
+                            string layoutMode;
+                            if (item.HasA1)
                             {
-                                double a1MaxXRel = ki.Bbox.MaxPoint.X - offsetX;
-                                if (a1MaxXRel > effectiveW) effectiveW = a1MaxXRel;
+                                effectiveW = item.A1MaxXSrc - item.A1MinXSrc;
+                                layoutMode = "A1-frame";
                             }
-
-                            if (effectiveW > contentW && cloneStats.KeepAsIsCloned.Count > 0)
+                            else
                             {
-                                FileLogger.Log(LOG_PREFIX,
-                                    $"    Layout width adjusted: content={contentW:F0} → effective={effectiveW:F0} " +
-                                    $"(A1 extend {effectiveW - contentW:F0}mm beyond content — dùng effective để tránh overlap)");
+                                effectiveW = contentW;
+                                layoutMode = "bbox-fallback (no A1)";
                             }
 
                             double prevOffset = offsetX;
@@ -195,6 +198,11 @@ namespace MCGCadPlugin.Services.FittingManagement
 
                             item.EffectiveWidth = effectiveW;
                             item.Advanced = advance;
+
+                            FileLogger.Log(LOG_PREFIX,
+                                $"    Layout: mode={layoutMode}, effective={effectiveW:F0}mm, " +
+                                $"bbox-content={contentW:F0}mm, " +
+                                $"overflow=[L:{item.LeftOverflowSrc:F0}/R:{item.RightOverflowSrc:F0}]mm");
 
                             result.SuccessCount++;
                             item.PlacedOffsetX = prevOffset;

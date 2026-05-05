@@ -84,6 +84,55 @@ namespace MCGCadPlugin.Services.FittingManagement
                     LogPreparedFile(fileName, renameStats, purgeStats, extStats,
                         readMs, renameMs, purgeMs, extMs, fileSw.ElapsedMilliseconds);
 
+                    // Hướng A (N=1) — A1-aware layout: mỗi file mặc định DUY NHẤT 1 A1 frame làm anchor.
+                    // Nếu phát hiện nhiều A1, chỉ chọn A1 TRÁI NHẤT (smallest MinX); các A1 còn lại
+                    // được giữ ở vị trí tương đối từ source (translate cùng dx) → có thể nằm trong gap area
+                    // hoặc chồng A1 file kế bên (sẽ bị overlap detector ở Summary phát hiện).
+                    KeepAsIsRefInfo chosenA1 = null;
+                    int validA1Count = 0;
+                    foreach (var ki in extStats.KeepAsIsRefsInSource)
+                    {
+                        double w = ki.Bbox.MaxPoint.X - ki.Bbox.MinPoint.X;
+                        if (w <= 0.5) continue; // bbox degenerate (BlockReference no graphics) — bỏ
+                        validA1Count++;
+                        if (chosenA1 == null || ki.Bbox.MinPoint.X < chosenA1.Bbox.MinPoint.X)
+                            chosenA1 = ki;
+                    }
+
+                    bool hasA1 = chosenA1 != null;
+                    double a1MinX = hasA1 ? chosenA1.Bbox.MinPoint.X : 0;
+                    double a1MaxX = hasA1 ? chosenA1.Bbox.MaxPoint.X : 0;
+                    double leftOver = 0, rightOver = 0;
+                    if (hasA1 && extStats.HasExtents)
+                    {
+                        leftOver = Math.Max(0, a1MinX - extStats.Extents.MinPoint.X);
+                        rightOver = Math.Max(0, extStats.Extents.MaxPoint.X - a1MaxX);
+                    }
+
+                    // Cảnh báo MULTIPLE A1 — file có > 1 khổ A1, layout chỉ anchor trên A1 trái nhất.
+                    if (validA1Count > 1)
+                    {
+                        FileLogger.Log(LOG_PREFIX,
+                            $"  ⚠ MULTIPLE A1 '{fileName}': phát hiện {validA1Count} khổ A1/CAS_HEAD trong file. " +
+                            $"Default N=1 → chỉ anchor trên A1 trái nhất " +
+                            $"(MinX={a1MinX:F0}, w={(a1MaxX - a1MinX):F0}mm). " +
+                            $"Các A1 khác giữ vị trí tương đối từ source — có thể chồng A1 file kế bên " +
+                            $"(check overlap detector ở Summary).");
+                    }
+
+                    // Cảnh báo overflow — entity nằm ngoài A1 frame được chọn có thể chồng A1 file lân cận
+                    // nếu vượt COLLECTION_GAP. Bao gồm cả các A1 phụ (nếu validA1Count > 1).
+                    if (hasA1 && (leftOver > 0.5 || rightOver > 0.5))
+                    {
+                        FileLogger.Log(LOG_PREFIX,
+                            $"  ⚠ OVERFLOW '{fileName}': có entity NGOÀI A1 anchor — " +
+                            $"left={leftOver:F0}mm, right={rightOver:F0}mm. " +
+                            $"Layout căn theo A1.MinX; nếu overflow > GAP({COLLECTION_GAP:F0}mm) sẽ chồng A1 file kế bên. " +
+                            (validA1Count > 1
+                                ? "Lưu ý: file có nhiều A1, overflow có thể bao gồm các A1 phụ."
+                                : "Khuyến nghị: kiểm dim/leader/text/orphan rảnh ngoài frame trong file source."));
+                    }
+
                     list.Add(new PreparedDrawing
                     {
                         FileName = fileName,
@@ -93,7 +142,13 @@ namespace MCGCadPlugin.Services.FittingManagement
                         Extents = extStats.Extents,
                         RenameStats = renameStats,
                         PurgeStats = purgeStats,
-                        ExtStats = extStats
+                        ExtStats = extStats,
+                        HasA1 = hasA1,
+                        ValidA1Count = validA1Count,
+                        A1MinXSrc = a1MinX,
+                        A1MaxXSrc = a1MaxX,
+                        LeftOverflowSrc = leftOver,
+                        RightOverflowSrc = rightOver
                     });
                 }
                 catch (Autodesk.AutoCAD.Runtime.Exception acEx) when (IsRecoverableCorruptError(acEx))
@@ -484,12 +539,26 @@ namespace MCGCadPlugin.Services.FittingManagement
                             string effName = GetEffectiveBlockName(brSrc, tr);
                             if (effName != null && KeepAsIsBlocks.Contains(effName))
                             {
+                                // Fix #1 — Side db `BlockReference.GeometricExtents` thường fail vì block
+                                // chưa graphics-realized. Fallback BTR walk + BlockTransform để compute
+                                // bbox từ entity con trong block definition. Cần cho A1-frame anchored layout.
+                                Extents3d a1Bbox;
+                                if (hasExt)
+                                {
+                                    a1Bbox = ext;
+                                }
+                                else
+                                {
+                                    var fallback = ComputeBlockRefExtentsViaBtrWalk(brSrc, tr);
+                                    a1Bbox = fallback ?? new Extents3d(brSrc.Position, brSrc.Position);
+                                }
+
                                 stats.KeepAsIsRefsInSource.Add(new KeepAsIsRefInfo
                                 {
                                     BlockName = effName,
                                     Position = brSrc.Position,
                                     Rotation = brSrc.Rotation,
-                                    Bbox = hasExt ? ext : new Extents3d(brSrc.Position, brSrc.Position),
+                                    Bbox = a1Bbox,
                                     HandleValue = brSrc.Handle.Value
                                 });
                             }

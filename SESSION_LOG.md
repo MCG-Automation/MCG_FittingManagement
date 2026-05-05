@@ -4,6 +4,102 @@
 
 ---
 
+## Session 2026-05-05 (2) — Drawing Collection: BTR walk fallback cho A1 bbox extraction
+
+### Bối cảnh
+User chạy Hướng A + N=1 trên batch 6 file (`71-48963-10..15.dwg`), vẫn báo overlap A1. Phân tích log `%APPDATA%\MCGCadPlugin\plugin.log`:
+- Mọi A1 ở Phase 1 đều ghi `bbox=[(0,0)-(0,0)]` → degenerate.
+- Bị filter `w <= 0.5` → `validA1Count = 0` → tất cả 6 file fallback bbox layout.
+- Summary xác nhận: `Sum effective widths : 10201772mm (0 file dùng A1.Width, 6 file fallback bbox)`.
+- 3/6 file có orphan BlockReference khổng lồ (file 14: BR size=5065474×146605mm) kéo bbox tổng → đẩy offsetX cực xa.
+- File 12↔13 chồng A1 17146mm vs content bbox 14883/16095mm → A1 thò ra ngoài content.
+
+### Nguyên nhân gốc
+`BlockReference.GeometricExtents` trong **side database** (`new Database(false, true) + ReadDwgFile`) thường THROW vì block reference chưa graphics-realized. Code cũ fallback `new Extents3d(Position, Position)` = degenerate point. Phase 2 sau `WblockClone + TransformBy` thì extents lại lấy được bình thường (`brDest.GeometricExtents` OK trong dest db đã thuộc Document).
+
+### Fix #1 đã làm
+- [Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Helpers.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Helpers.cs): thêm `ComputeBlockRefExtentsViaBtrWalk(BlockReference, Transaction, depth=0)` — iterate BTR entities, union extents (với recursion 1 cấp cho nested BR, MAX_DEPTH=2), apply `br.BlockTransform`. Trả `Extents3d?`, null nếu BTR rỗng.
+- [Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Preprocess.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Preprocess.cs#L487-L505): trong keep-as-is scan của `ComputeModelSpaceExtents`, khi `hasExt = false`, gọi BTR walk fallback thay vì degenerate `(Position, Position)`. Nếu BTR walk cũng fail → vẫn fallback degenerate (giữ behavior cũ).
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded** (Debug, dotnet build OK).
+- Chưa test lại trên batch user phản ánh.
+
+### Bước tiếp theo
+- User test lại batch 6 file `71-48963-10..15.dwg`. Verify log mới:
+  - `[src] A1 ... bbox=[(0,0)-(17146,11900)]` (thay vì `(0,0)-(0,0)`).
+  - `validA1Count = 1` cho mọi file.
+  - `Sum effective widths : 6 file dùng A1.Width` (thay vì fallback bbox).
+  - Overlap detector không flag cặp A1↔A1 (gap đúng 100mm).
+- Nếu sau Fix #1 vẫn còn issue (orphan BR khổng lồ chồng A1 file kế bên do clone vào dest) → triển khai Fix #2 (purge orphan BR layer='0' size > ngưỡng trong side db).
+
+### Ghi chú API
+- `Entity.GeometricExtents` trong side db thường fail cho `BlockReference` (cached extents chưa compute), nhưng work cho `Line/Polyline/MText` (extents tính từ control points).
+- BTR contents iterate được trong side db — chỉ graphics-realization fail, không phải data access.
+- Recursion depth=2 đủ cho A1 → title block → text. Depth sâu hơn không cần thiết và risk infinite loop nếu BTR self-reference (rất hiếm).
+
+---
+
+## Session 2026-05-05 (1) — Drawing Collection: anchor N=1 (chỉ A1 trái nhất mỗi file)
+
+### Bối cảnh
+User test bản Hướng A (session trước) — vẫn thấy gap A1↔A1 không đồng nhất. Nguyên nhân: code đang lấy **envelope X-range của TẤT CẢ A1** trong từng file (`A1MinXSrc = min(all), A1MaxXSrc = max(all)`). Với file chứa nhiều khổ A1 (vd 2 sheet side-by-side), envelope rộng hơn 1 khổ A1 đơn lẻ → effectiveW lệch chuẩn → gap visible giữa các A1 khác nhau giữa các file.
+
+### Quyết định
+**N=1 mỗi file.** Mỗi file mặc định DUY NHẤT 1 A1 frame làm anchor (chọn A1 **trái nhất** = smallest MinX). A1 phụ trong cùng file giữ vị trí tương đối từ source — có thể nằm trong gap area hoặc chồng A1 file kế bên (overlap detector ở Summary sẽ phát hiện và liệt kê).
+
+### Đã làm
+- [Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Types.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Types.cs): `PreparedDrawing` thêm `ValidA1Count` (tổng A1 hợp lệ trong file). Update XML doc: `A1MinXSrc/MaxXSrc` giờ là bbox của A1 **chosen anchor** (leftmost), không phải envelope.
+- [Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Preprocess.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Preprocess.cs): đổi loop chọn A1 — track `chosenA1` = ref có `Bbox.MinPoint.X` nhỏ nhất, đồng thời đếm `validA1Count`. Log warning `⚠ MULTIPLE A1 '{file}': phát hiện N khổ A1, default N=1 → chỉ anchor trên A1 trái nhất` khi `validA1Count > 1`. Overflow warning phụ thêm note nếu N>1.
+- [Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Summary.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Summary.cs): `Layout sanity` header → `(Hướng A — A1-frame anchored, N=1)`. Thêm dòng `Files với nhiều A1 (anchor leftmost): {n} ⚠ A1 phụ có thể chồng A1 file kế bên` khi có file N>1. Per-file overflow listing thêm tag `[N=X A1, anchor leftmost]`.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded** (Debug, dotnet build OK; warning DLL lock chỉ vì AutoCAD đang chạy).
+
+### Bước tiếp theo
+- User test với batch có file >1 A1 → verify gap A1↔A1 (giữa các file) đồng nhất 100mm. Nếu file gốc thật sự có nhiều khổ A1 cần collect riêng, user nên tách thành nhiều file source trước khi collect.
+- Overlap detector trong Summary sẽ flag rõ A1 phụ chồng A1 file kế (nếu có).
+
+### Ghi chú API
+- "Leftmost A1" = A1 có `Bbox.MinPoint.X` nhỏ nhất trong source. Tie-break không cần (cùng MinX → kết quả gần như tương đương).
+- A1 phụ trong file (sau leftmost) được TransformBy cùng `dx` → giữ vị trí tương đối — không cần xử lý thêm.
+
+---
+
+## Session 2026-05-04 (2) — Drawing Collection: A1-frame anchored layout (Hướng A)
+
+### Bối cảnh
+User phản ánh khoảng gap giữa các khổ A1 sau khi Collect Drawings KHÔNG đồng nhất, nghi do scale A1 khác nhau (1:25, 1:30, 1:50). Phân tích code cho thấy nguyên nhân thực: thuật toán cũ căn theo `Extents.MinPoint.X` (bbox của TOÀN BỘ ModelSpace, gồm cả entity nằm ngoài A1 frame như dim/leader/text rảnh), với `COLLECTION_GAP = 1.0mm`. Suy ra công thức: `Gap(A1[i]→A1[i+1]) = RightOverflow_i + LeftOverflow_{i+1} + 1mm`, trong đó overflow = entity nằm ngoài A1 frame. Scale chỉ là yếu tố khuếch đại (cùng % overflow paper-space → mm-space khác theo scale).
+
+### Giải pháp (Hướng A — A1-frame anchored)
+Căn `dx` theo `A1.MinX` thay vì `Extents.MinX`. Advance offsetX bằng `A1.Width + GAP`. Gap A1↔A1 luôn = `COLLECTION_GAP` bất kể scale/overflow. GAP nâng từ 1mm → 100mm để dim/leader nhỏ overflow không chồng A1 lân cận. Files không có A1 fallback bbox cũ.
+
+### Đã làm
+- [Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Types.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Types.cs): `PreparedDrawing` thêm `HasA1`, `A1MinXSrc`, `A1MaxXSrc`, `LeftOverflowSrc`, `RightOverflowSrc`.
+- [Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Preprocess.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Preprocess.cs): tính envelope X-range của tất cả `KeepAsIsRefsInSource` (A1/CAS_HEAD) có bbox > 0.5mm; tính LeftOverflow/RightOverflow vs `Extents`; log warning `⚠ OVERFLOW '{file}': left=...mm, right=...mm` khi overflow > 0.5mm.
+- [Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Clone.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Clone.cs#L66-L70): `dx = offsetX − (HasA1 ? A1MinXSrc : Extents.MinX)`.
+- [Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.cs#L34): `COLLECTION_GAP = 1.0` → `100.0`. `effectiveW = HasA1 ? A1.Width : Extents.Width` (line ~175). Log layout mode + overflow per file.
+- [Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Summary.cs](Services/FittingManagement/Utilities/DrawingCollection/FittingManagementService.DrawingCollection.Summary.cs): cập nhật label "Layout sanity (Hướng A — A1-frame anchored)"; thêm section "Overflow check" liệt kê file có overflow + đánh dấu `⚠ vượt GAP=100mm → CHỒNG A1 lân cận` nếu overflow > GAP.
+- [Views/FittingManagement/BlockUtilitiesView.xaml](Views/FittingManagement/BlockUtilitiesView.xaml#L29): UI helper text → "anchored on each file's A1 frame with a 100mm gap between frames. Files without A1 fall back to bbox layout. Entities outside the A1 frame (overflow) trigger a warning in the log."
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded** (Debug, dotnet build OK; warning DLL lock chỉ vì AutoCAD đang chạy).
+- Chưa test trên dataset thực tế nhiều scale khác nhau.
+
+### Bước tiếp theo
+- User test với batch nhiều file cùng A1 nhưng scale khác nhau (1:25/1:30/1:50) → verify gap A1↔A1 = đúng 100mm, đồng nhất.
+- Nếu user thấy 100mm quá nhỏ với các file có dim ngoài frame → tăng GAP lên 200-500mm.
+
+### Ghi chú API
+- `KeepAsIsRefsInSource[].Bbox` lấy từ `ent.GeometricExtents` ở Phase 1 — có thể fail (`new Extents3d(Position, Position)` fallback, size = 0). Filter `w > 0.5` để loại bbox degenerate.
+- Bbox source A1 = bbox dest A1 sau translate (chỉ Displacement, không scale/rotate). Nên A1.Width source dùng cho effectiveW giữ chính xác trong dest.
+- File rỗng / không A1 / không Extents → `dx = offsetX − 0` (giữ behavior cũ), `Advanced=false`, không tốn GAP.
+
+---
+
 ## Session 2026-05-04 (1) — Tách Master Library và Project Library thành 2 window độc lập
 
 ### Bối cảnh

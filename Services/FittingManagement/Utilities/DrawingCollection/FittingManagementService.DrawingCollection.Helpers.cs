@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.Geometry;
 
 namespace MCGCadPlugin.Services.FittingManagement
 {
@@ -48,6 +49,54 @@ namespace MCGCadPlugin.Services.FittingManagement
                 return br.Name;
             }
             catch { return br.Name; }
+        }
+
+        /// <summary>
+        /// Compute bbox của BlockReference bằng cách iterate BTR entities + apply BlockTransform.
+        /// Dùng khi `BlockReference.GeometricExtents` fail (thường xảy ra trong side database
+        /// `new Database(false, true) + ReadDwgFile` — block reference chưa graphics-realized).
+        ///
+        /// Trả null nếu BTR rỗng hoặc mọi inner entity đều fail extents (rất hiếm).
+        /// Nested BlockReference inside BTR cũng có thể fail GeometricExtents → recursion 1 cấp
+        /// để cover trường hợp A1 chứa nested title block.
+        /// </summary>
+        private static Extents3d? ComputeBlockRefExtentsViaBtrWalk(BlockReference br, Transaction tr, int depth = 0)
+        {
+            const int MAX_DEPTH = 2; // A1 → title block → text. Đủ cho khung tên thông thường.
+            if (depth > MAX_DEPTH) return null;
+            try
+            {
+                ObjectId btrId = br.BlockTableRecord;
+                if (btrId.IsNull) return null;
+                var btr = tr.GetObject(btrId, OpenMode.ForRead) as BlockTableRecord;
+                if (btr == null) return null;
+
+                Extents3d? acc = null;
+                foreach (ObjectId eid in btr)
+                {
+                    var inner = tr.GetObject(eid, OpenMode.ForRead) as Entity;
+                    if (inner == null) continue;
+
+                    Extents3d? innerExt = null;
+                    try { innerExt = inner.GeometricExtents; }
+                    catch
+                    {
+                        // Nested BlockReference trong BTR cũng có thể fail extents → recurse.
+                        if (inner is BlockReference innerBr)
+                            innerExt = ComputeBlockRefExtentsViaBtrWalk(innerBr, tr, depth + 1);
+                    }
+                    if (!innerExt.HasValue) continue;
+
+                    if (!acc.HasValue) acc = innerExt.Value;
+                    else { var a = acc.Value; a.AddExtents(innerExt.Value); acc = a; }
+                }
+
+                if (!acc.HasValue) return null;
+                var result = acc.Value;
+                result.TransformBy(br.BlockTransform);
+                return result;
+            }
+            catch { return null; }
         }
 
         /// <summary>Thay các ký tự AutoCAD cấm trong block name bằng '_'.</summary>

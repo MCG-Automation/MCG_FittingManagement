@@ -28,11 +28,24 @@ namespace MCGCadPlugin.Services.FittingManagement
             public CloneStats CloneStats;
             public double? PlacedOffsetX; // null nếu file fail ở phase 2
 
-            // Layout sau khi apply A1-aware gap:
-            //   EffectiveWidth = max(content_width, A1_rightmost_relative_to_offsetX).
+            // Layout (Hướng A — A1-frame anchored):
+            //   EffectiveWidth = A1.Width nếu HasA1, ngược lại fallback Extents.Width.
             //   Advanced       = true nếu offsetX đã được dời (file rỗng + không A1 → false).
             public double EffectiveWidth;
             public bool Advanced;
+
+            // Hướng A (N=1) — A1-aware layout anchor.
+            //   HasA1            = ≥1 BlockReference A1/CAS_HEAD trong source MS có bbox hợp lệ.
+            //   ValidA1Count     = tổng A1 hợp lệ trong file (>1 → MULTIPLE A1 warning, dùng leftmost làm anchor).
+            //   A1MinXSrc/MaxXSrc= bbox X-range của A1 TRÁI NHẤT (chosen anchor, không phải envelope).
+            //   LeftOverflowSrc  = max(0, A1MinXSrc − Extents.MinX) — entity nằm BÊN TRÁI A1 anchor.
+            //   RightOverflowSrc = max(0, Extents.MaxX − A1MaxXSrc) — entity nằm BÊN PHẢI A1 anchor (gồm cả A1 phụ).
+            public bool HasA1;
+            public int ValidA1Count;
+            public double A1MinXSrc;
+            public double A1MaxXSrc;
+            public double LeftOverflowSrc;
+            public double RightOverflowSrc;
         }
 
         /// <summary>Breakdown kết quả rename trên BlockTable của 1 side db.</summary>

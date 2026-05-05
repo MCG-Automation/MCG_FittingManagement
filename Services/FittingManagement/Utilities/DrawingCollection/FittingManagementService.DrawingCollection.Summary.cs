@@ -82,18 +82,27 @@ namespace MCGCadPlugin.Services.FittingManagement
                 sb.AppendLine($"  Purge: erased total           : {totalPurged}");
 
                 // Sanity-check layout: lastOffsetX ≈ firstOffsetX + sum(effectiveWidth) + (N_advanced) × GAP.
+                // Hướng A: effectiveWidth = A1.Width nếu HasA1, ngược lại fallback bbox.Width.
                 int advancedFiles = prepared.Count(p => p.Advanced);
                 double sumEffective = prepared.Where(p => p.Advanced).Sum(p => p.EffectiveWidth);
                 double expectedSpan = firstOffsetX + sumEffective + advancedFiles * COLLECTION_GAP;
-                int filesAdjustedByA1 = prepared.Count(p => p.Advanced && p.EffectiveWidth > p.Width + 0.5);
+                int filesUsingA1 = prepared.Count(p => p.Advanced && p.HasA1);
+                int filesUsingBboxFallback = prepared.Count(p => p.Advanced && !p.HasA1);
+                int filesWithMultipleA1 = prepared.Count(p => p.ValidA1Count > 1);
+                int filesWithOverflow = prepared.Count(p => p.HasA1 && (p.LeftOverflowSrc > 0.5 || p.RightOverflowSrc > 0.5));
+                double sumLeftOverflow = prepared.Where(p => p.HasA1).Sum(p => p.LeftOverflowSrc);
+                double sumRightOverflow = prepared.Where(p => p.HasA1).Sum(p => p.RightOverflowSrc);
                 sb.AppendLine();
-                sb.AppendLine("Layout sanity:");
-                sb.AppendLine($"  Initial offsetX      : {firstOffsetX:F0}mm " +
+                sb.AppendLine("Layout sanity (Hướng A — A1-frame anchored, N=1):");
+                sb.AppendLine($"  Initial offsetX                       : {firstOffsetX:F0}mm " +
                               (firstOffsetX > 0 ? "(nối tiếp sau A1 existing trong dest)" : "(dest trống A1)"));
-                sb.AppendLine($"  Sum content widths   : {sumWidths:F0}mm");
-                sb.AppendLine($"  Sum effective widths : {sumEffective:F0}mm " +
-                              (filesAdjustedByA1 > 0 ? $"({filesAdjustedByA1} file mở rộng vì A1 > content)" : "(không file nào cần mở rộng)"));
-                sb.AppendLine($"  Files advanced        : {advancedFiles} → gaps = {advancedFiles} × {COLLECTION_GAP:F0} = {advancedFiles * COLLECTION_GAP:F0}mm");
+                sb.AppendLine($"  Sum bbox widths (Extents.Width)       : {sumWidths:F0}mm");
+                sb.AppendLine($"  Sum effective widths                  : {sumEffective:F0}mm " +
+                              $"({filesUsingA1} file dùng A1.Width, {filesUsingBboxFallback} file fallback bbox)");
+                if (filesWithMultipleA1 > 0)
+                    sb.AppendLine($"  Files với nhiều A1 (anchor leftmost)  : {filesWithMultipleA1} " +
+                                  $"⚠ A1 phụ có thể chồng A1 file kế bên");
+                sb.AppendLine($"  Files advanced                        : {advancedFiles} → gaps = {advancedFiles} × {COLLECTION_GAP:F0} = {advancedFiles * COLLECTION_GAP:F0}mm");
                 sb.AppendLine($"  Expected next offsetX after last file : {expectedSpan:F0}mm");
                 sb.AppendLine($"  Actual   next offsetX after last file : {lastOffsetX:F0}mm");
                 double delta = Math.Abs(expectedSpan - lastOffsetX);
@@ -101,6 +110,26 @@ namespace MCGCadPlugin.Services.FittingManagement
                     sb.AppendLine($"  ⚠ Delta {delta:F2}mm — không khớp, có thể 1 file fail ở phase 2.");
                 else
                     sb.AppendLine($"  ✓ Khớp (delta={delta:F2}mm).");
+
+                // Overflow summary — entity nằm ngoài A1 frame (dim/leader/text/orphan).
+                // Overflow > COLLECTION_GAP có thể chồng A1 file kế bên.
+                if (filesWithOverflow > 0)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"Overflow check ({filesWithOverflow}/{filesUsingA1} file có entity ngoài A1):");
+                    sb.AppendLine($"  Sum left overflow  : {sumLeftOverflow:F0}mm");
+                    sb.AppendLine($"  Sum right overflow : {sumRightOverflow:F0}mm");
+                    foreach (var p in prepared.Where(p => p.HasA1 && (p.LeftOverflowSrc > 0.5 || p.RightOverflowSrc > 0.5)))
+                    {
+                        string risk = (p.LeftOverflowSrc > COLLECTION_GAP || p.RightOverflowSrc > COLLECTION_GAP)
+                            ? $"  ⚠ vượt GAP={COLLECTION_GAP:F0}mm → CHỒNG A1 lân cận"
+                            : "";
+                        string multiNote = p.ValidA1Count > 1 ? $"  [N={p.ValidA1Count} A1, anchor leftmost]" : "";
+                        sb.AppendLine($"  • {p.FileName}: L={p.LeftOverflowSrc:F0}, R={p.RightOverflowSrc:F0}mm{multiNote}{risk}");
+                    }
+                    sb.AppendLine("  → Kiểm dim/leader/text/entity rảnh nằm ngoài frame A1 trong file source.");
+                    sb.AppendLine("    File có N>1: A1 phụ trong source chiếm phần overflow phải; remove bớt A1 hoặc tách thành nhiều file để layout sạch.");
+                }
 
                 // Keep-as-is overlap detection — scan mọi A1/CAS_HEAD đã clone vào dest,
                 // tìm các cặp có bbox chồng lên nhau.
