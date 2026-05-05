@@ -4,6 +4,40 @@
 
 ---
 
+## Session 2026-05-05 (11) — Tách FittingManagementService.IdwImport.cs thành 5 file partial
+
+### Bối cảnh
+File [FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs) cũ 781 dòng với 17 method + 1 nested type — vi phạm SRP, khó navigate. Tách theo trách nhiệm theo convention đã có ở `DrawingCollection/` (split 6 file partial cùng folder).
+
+### Đã làm
+Tách thành 5 file partial trong cùng folder `Services/FittingManagement/Import/`:
+
+| File | Trách nhiệm | LOC |
+|---|---|---|
+| [FittingManagementService.IdwImport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.cs) | Entry point + flow (`ImportIdwFilesAsync`, `ExtractAllIdw`, `VaultStatusShortLabel`, nested `ExtractedIdw`) | 211 |
+| [FittingManagementService.IdwImport.Inventor.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.Inventor.cs) | Inventor COM lifecycle + per-file (`AcquireInventorInstance`, `ReleaseInventorInstance`, `ProcessSingleIdwFile`, `GetReferencedModel`) | 193 |
+| [FittingManagementService.IdwImport.Metadata.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.Metadata.cs) | iProperties (`ExtractIProperties`, `SafeGetProperty`, `FormatAndRoundMass`) | 115 |
+| [FittingManagementService.IdwImport.Views.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.Views.cs) | Drawing views + 2D/3D classification (`ExtractDrawingViews`) | 130 |
+| [FittingManagementService.IdwImport.DwgExport.cs](Services/FittingManagement/Import/FittingManagementService.IdwImport.DwgExport.cs) | DWG export (`ExportIdwToDwg`, `ExportViaTranslator`, `CreateMinimalDwgIni`, `FindInventorDwgIniPath`) | 191 |
+
+Tổng 840 dòng (trước: 781) — chênh ~60 dòng do thêm header `using` + namespace + class declaration cho mỗi file.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: **succeeded** (Debug, dotnet build OK).
+- Không thay đổi public API, không thay đổi logic — chỉ di chuyển code.
+
+### Bước tiếp theo
+- User test smoke run `MCG_Fitting` → tab Template → Import .idw để verify luồng end-to-end vẫn work sau split.
+- Khi cần sửa 1 phần (vd 2D/3D detection ở Session 4) — chỉ chạm `Views.cs`, các file khác không ảnh hưởng.
+
+### Ghi chú API
+- Tất cả 5 file cùng `partial class FittingManagementService` cùng namespace `MCGCadPlugin.Services.FittingManagement` → compiler merge thành 1 class. Nested type `ExtractedIdw` (private) ở file gốc — file khác cùng partial class vẫn truy cập được vì cùng class scope.
+- `LOG_PREFIX` + `_libraryFolderPath` ở `MasterLibrary.cs` — accessible từ mọi partial.
+- `using` directives khác nhau từng file (chỉ import những namespace cần) — gọn hơn 1 file ôm hết.
+
+---
+
 ## Session 2026-05-05 (10) — MLeader BlockScale=1 (drive size qua Scale tổng)
 
 ### Bối cảnh
