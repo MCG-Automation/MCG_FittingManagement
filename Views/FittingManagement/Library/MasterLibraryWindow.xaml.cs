@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,6 +23,7 @@ namespace MCGCadPlugin.Views.FittingManagement
         private readonly IFittingManagementService _fittingService;
         private readonly IFittingPreviewService _previewService;
         private readonly ActiveProjectContext _projectContext;
+        private readonly IRecentItemsTracker _recentTracker;
         private List<CatalogItem> _fullCatalog;
 
         public MasterLibraryWindow(IMasterLibraryService masterService,
@@ -34,6 +36,10 @@ namespace MCGCadPlugin.Views.FittingManagement
             _fittingService = fittingService;
             _previewService = new FittingPreviewService();
             _projectContext = ActiveProjectContext.Instance;
+
+            // Recently store: cùng folder với MasterCatalog.json
+            string recentStorePath = Path.Combine(_masterService.MasterLibraryFolder, "MasterCatalog.recent.json");
+            _recentTracker = new RecentItemsTracker(recentStorePath);
 
             _projectContext.ProjectChanged += OnActiveProjectChanged;
             this.Closed += (_, __) =>
@@ -90,7 +96,8 @@ namespace MCGCadPlugin.Views.FittingManagement
 
         private void BuildCategoryTree()
         {
-            TreeCategories.ItemsSource = CatalogTreeBuilder.Build(_fullCatalog);
+            var recent = _recentTracker?.GetRecentBlockNames();
+            TreeCategories.ItemsSource = CatalogTreeBuilder.Build(_fullCatalog, recent);
         }
 
         private void TreeCategories_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e) => ApplyFilters();
@@ -144,7 +151,11 @@ namespace MCGCadPlugin.Views.FittingManagement
             try
             {
                 var accWin = new AccessoryManagerWindow(_masterService, selected[0]);
-                if (accWin.ShowDialog() == true) LoadCatalog();
+                if (accWin.ShowDialog() == true)
+                {
+                    _recentTracker?.Track(selected[0].BlockName);
+                    LoadCatalog();
+                }
             }
             catch (Exception ex) { MessageBox.Show(ex.Message); }
         }
@@ -171,6 +182,7 @@ namespace MCGCadPlugin.Views.FittingManagement
                         continue;
                     }
                     _fittingService.InsertBlockFromLibrary(item.FilePath, item.BlockName);
+                    _recentTracker?.Track(item.BlockName);
                 }
             }
             catch (Exception ex) { MessageBox.Show(ex.Message); }
@@ -255,6 +267,11 @@ namespace MCGCadPlugin.Views.FittingManagement
                 var result = _masterService.PushBlocksFromCurrentDrawing(blockItems);
                 // Invalidate preview cache cho tất cả item user vừa Push (file .dwg vừa thay đổi)
                 foreach (var it in blockItems) _previewService.InvalidatePreview(it);
+                // Đẩy các block update thành công vào danh sách Recently
+                if (result?.Updated != null)
+                {
+                    foreach (var name in result.Updated) _recentTracker?.Track(name);
+                }
                 ShowPushUpdateResult(result);
                 LoadCatalog();
             }

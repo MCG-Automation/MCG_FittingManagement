@@ -42,7 +42,11 @@
       "Read(//c/Users/truonph/AppData/Roaming/MCGCadPlugin/**)",
       "Bash(awk '/=== SESSION START/{b=NR}END{print b}' \"/c/Users/truonph/AppData/Roaming/MCGCadPlugin/plugin.log\")",
       "Read(//c/Users/truonph/AppData/Roaming/Autodesk/VaultCommon/**)",
-      "Read(//c/Users/truonph/AppData/Roaming/Autodesk/VaultCommon//**)"
+      "Read(//c/Users/truonph/AppData/Roaming/Autodesk/VaultCommon//**)",
+      "Bash(ls -la \"/c/Users/truonph/Desktop/71-39261\"*.dwg 2>&1)",
+      "Read(//c/Users/truonph/Desktop/**)",
+      "Bash(find /c/Users/truonph -name \"71-39261.dwg\" 2>/dev/null | head -5)",
+      "Read(//c/Users/truonph/**)"
     ],
     "additionalDirectories": [
       "C:\\Users\\TRANTH\\AppData\\Local\\Temp\\probe4"

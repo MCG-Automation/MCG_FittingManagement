@@ -25,6 +25,7 @@ namespace MCGCadPlugin.Views.FittingManagement
         private readonly IFittingPreviewService _previewService;
         private readonly ActiveProjectContext _projectContext;
         private List<ProjectCatalogItem> _fullCatalog = new List<ProjectCatalogItem>();
+        private IRecentItemsTracker _recentTracker;
 
         public ProjectLibraryWindow(IProjectLibraryService projectService,
                                     IFittingManagementService fittingService)
@@ -62,6 +63,12 @@ namespace MCGCadPlugin.Views.FittingManagement
                 _fullCatalog = string.IsNullOrEmpty(path)
                     ? new List<ProjectCatalogItem>()
                     : _projectService.LoadProjectCatalog(path);
+
+                // Recently store: cùng folder với project JSON, đặt tên theo project
+                _recentTracker = string.IsNullOrEmpty(path)
+                    ? null
+                    : new RecentItemsTracker(GetRecentStorePath(path));
+
                 BuildCategoryTree();
                 ApplyFilters();
                 PreviewPane.Clear();
@@ -73,11 +80,20 @@ namespace MCGCadPlugin.Views.FittingManagement
             }
         }
 
+        /// <summary>Đường dẫn file Recently store cạnh project JSON: <c>&lt;name&gt;.recent.json</c>.</summary>
+        private static string GetRecentStorePath(string projectJsonPath)
+        {
+            string folder = Path.GetDirectoryName(projectJsonPath) ?? "";
+            string name = Path.GetFileNameWithoutExtension(projectJsonPath);
+            return Path.Combine(folder, name + ".recent.json");
+        }
+
         private void BuildCategoryTree()
         {
             // Cast lên CatalogItem để dùng builder chung
             var asBase = _fullCatalog.Cast<CatalogItem>().ToList();
-            TreeCategories.ItemsSource = CatalogTreeBuilder.Build(asBase);
+            var recent = _recentTracker?.GetRecentBlockNames();
+            TreeCategories.ItemsSource = CatalogTreeBuilder.Build(asBase, recent);
         }
 
         private void TreeCategories_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e) => ApplyFilters();
@@ -147,6 +163,7 @@ namespace MCGCadPlugin.Views.FittingManagement
                         continue;
                     }
                     _fittingService.InsertBlockFromLibrary(item.FilePath, item.BlockName);
+                    _recentTracker?.Track(item.BlockName);
                 }
             }
             catch (Exception ex) { MessageBox.Show(ex.Message); }
@@ -171,6 +188,7 @@ namespace MCGCadPlugin.Views.FittingManagement
                 try
                 {
                     _projectService.SaveProjectCatalog(_projectContext.ProjectFilePath, _fullCatalog);
+                    _recentTracker?.Track(editedItem.BlockName);
                 }
                 catch (Exception ex) { MessageBox.Show(ex.Message); }
             }

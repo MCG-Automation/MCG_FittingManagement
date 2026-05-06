@@ -14,10 +14,46 @@ namespace MCGCadPlugin.Views.FittingManagement
         /// <summary>Build cây Categories: root "All" + group BomType → Title.</summary>
         public static List<CategoryNode> Build(IList<CatalogItem> catalog, string allLabel = "All Fittings")
         {
+            return Build(catalog, null, allLabel);
+        }
+
+        /// <summary>
+        /// Build cây Categories có chèn thêm node "Recently" (ngay sau "All Fittings") nếu
+        /// <paramref name="recentBlockNames"/> không rỗng — items giữ thứ tự mới nhất → cũ nhất,
+        /// bỏ qua key không còn tồn tại trong catalog.
+        /// </summary>
+        public static List<CategoryNode> Build(IList<CatalogItem> catalog, IList<string> recentBlockNames, string allLabel = "All Fittings")
+        {
             var roots = new List<CategoryNode>
             {
                 new CategoryNode { CategoryName = allLabel, CountLabel = $"({catalog.Count})", Items = catalog.ToList() }
             };
+
+            // Chèn node "Recently" ngay sau "All Fittings"
+            if (recentBlockNames != null && recentBlockNames.Count > 0)
+            {
+                var byBlockName = catalog
+                    .Where(c => !string.IsNullOrWhiteSpace(c.BlockName))
+                    .GroupBy(c => c.BlockName, StringComparer.Ordinal)
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
+                var recentItems = new List<CatalogItem>();
+                foreach (var name in recentBlockNames)
+                {
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+                    if (byBlockName.TryGetValue(name, out var item)) recentItems.Add(item);
+                }
+
+                if (recentItems.Count > 0)
+                {
+                    roots.Add(new CategoryNode
+                    {
+                        CategoryName = "Recently",
+                        CountLabel = $"({recentItems.Count})",
+                        Items = recentItems
+                    });
+                }
+            }
 
             var bomGroups = catalog.GroupBy(x =>
             {

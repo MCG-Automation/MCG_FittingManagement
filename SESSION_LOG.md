@@ -4,6 +4,47 @@
 
 ---
 
+## Session 2026-05-06 (12) — Thêm node "Recently" vào cây Library (Master + Project)
+
+### Bối cảnh
+User yêu cầu hiển thị danh sách CatalogItem vừa được dùng trong Library window — đặt làm node `"Recently"` ngay sau `"All Fittings"` trong TreeView, dùng chung cho cả MasterLibraryWindow và ProjectLibraryWindow. Tracking chỉ qua thao tác plugin (không hook event database — Cách A đã chốt). Giới hạn 15 entries, FIFO. Không hiển thị thời gian. Không có nút Clear.
+
+### Đã làm
+**File mới (3):**
+| File | Trách nhiệm |
+|---|---|
+| [Models/FittingManagement/RecentItemEntry.cs](Models/FittingManagement/RecentItemEntry.cs) | DTO `{ BlockName, TimestampUtc }` — Model thuần, không import AutoCAD |
+| [Services/FittingManagement/Library/IRecentItemsTracker.cs](Services/FittingManagement/Library/IRecentItemsTracker.cs) | Interface `Track / GetRecentBlockNames` |
+| [Services/FittingManagement/Library/RecentItemsTracker.cs](Services/FittingManagement/Library/RecentItemsTracker.cs) | Impl: file-based JSON (Newtonsoft), move-to-top, cap 15, sort timestamp desc |
+
+**File sửa (3):**
+| File | Thay đổi |
+|---|---|
+| [Views/FittingManagement/Library/Shared/CatalogTreeBuilder.cs](Views/FittingManagement/Library/Shared/CatalogTreeBuilder.cs) | Thêm overload `Build(catalog, recentBlockNames, allLabel)` — chèn node "Recently" sau "All Fittings", lookup ngược catalog theo BlockName, bỏ entry không còn |
+| [Views/FittingManagement/Library/MasterLibraryWindow.xaml.cs](Views/FittingManagement/Library/MasterLibraryWindow.xaml.cs) | Init tracker trong ctor (`<MasterLibraryFolder>\MasterCatalog.recent.json`); hook Track tại 3 điểm: `InsertSelected`, `BtnManageAccessory_Click` (sau OK), `BtnUpdateLibrary_Click` (theo `result.Updated`) |
+| [Views/FittingManagement/Library/ProjectLibraryWindow.xaml.cs](Views/FittingManagement/Library/ProjectLibraryWindow.xaml.cs) | Init tracker trong `LoadCatalog` theo project active (`<projectFolder>\<name>.recent.json`); hook Track tại 2 điểm: `InsertSelected`, `GridCatalog_CellEditEnding` (sau save pos) |
+
+### Quyết định kiến trúc
+- **Storage 2 file riêng** (Master vs Project) thay vì 1 file global → mỗi project có Recently riêng, không nhiễu chéo.
+- **Key = BlockName** (đồng nhất với `CatalogJsonStore.MergeItems` / `RemoveItems`).
+- **Không rebuild tree ngay sau Insert** — Track ngầm; Recently sẽ refresh khi user click Refresh / chuyển catalog. Tránh disrupt selection trong khi user đang thao tác trên CAD.
+- **Auto-Assign Pos không track** — đó là mass operation, sẽ flood Recently nếu track tất cả.
+
+### Trạng thái
+- **Phase:** 1 — Feature Implementation.
+- Build: chưa thực hiện (chờ user verify).
+
+### Bước tiếp theo
+- User build & test: mở Master Library → Insert vài block → click Refresh → kiểm tra node "Recently" xuất hiện sau "All Fittings" với đúng item và thứ tự.
+- Lặp lại trên Project Library với 1 project active.
+- Edge case cần verify: thay đổi project active → Recently phải đổi theo project.
+
+### Ghi chú API
+- `CatalogTreeBuilder.ApplySearch` dùng `source.Where(...).ToList()` → giữ thứ tự `source` khi không search → thứ tự "mới nhất → cũ nhất" của Recently được preserve trong DataGrid.
+- `ApplyFilters` ở cả 2 window kiểm tra `node.CategoryName != "All Fittings"` để dùng `node.Items` — node "Recently" rơi vào nhánh này nên dùng đúng items đã được sort.
+
+---
+
 ## Session 2026-05-05 (11) — Tách FittingManagementService.IdwImport.cs thành 5 file partial
 
 ### Bối cảnh
