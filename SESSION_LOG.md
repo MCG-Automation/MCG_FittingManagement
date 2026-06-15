@@ -4,6 +4,40 @@
 
 ---
 
+## Session 2026-06-15 (13) — Align csproj với MCGVN Installation Guide
+
+### Đã làm
+**File sửa (2):**
+| File | Thay đổi |
+|---|---|
+| [MCGCadPlugin.csproj](MCGCadPlugin.csproj) | Đổi `PluginName` từ `MCGCadPlugin.FittingManagement` → `MCG_FittingManagement`; sửa XmlPoke Value thêm `./Contents/` prefix; thêm XmlPoke thứ 2 cho bundle dir |
+| [build-and-launch.bat](build-and-launch.bat) | Đổi `PROJECT_NAME` và `BUNDLE_DIR` theo tên mới; thêm bước copy `PackageContents.xml` vào bundle lần đầu; sửa lệnh kiểm tra `MCG_Show` → `MCG_Fitting` |
+
+**File mới (1):**
+| File | Trách nhiệm |
+|---|---|
+| [PackageContents.xml](PackageContents.xml) | Bundle manifest chuẩn MCGVN: `SchemaVersion="1.0"`, `SeriesMin="R24.0"`, `LoadOnAutoCADStartup="True"` — MSBuild cập nhật `ModuleName` sau mỗi build |
+
+### Vấn đề đã giải quyết
+| Vấn đề | Nguyên nhân | Fix |
+|---|---|---|
+| Bat install không pick up DLL | `MCGCadPlugin.FittingManagement.dll` không khớp pattern `MCG_*.dll` | Đổi PluginName → `MCG_FittingManagement` |
+| XmlPoke ghi ModuleName sai | Value `$(AssemblyName).dll` thiếu prefix `./Contents/` | Value → `./Contents/$(AssemblyName).dll` |
+| PackageContents.xml không tồn tại | Chưa có file → XmlPoke bị skip, AutoCAD không load | Tạo file template + bat copy lần đầu |
+| Bundle dir không nhất quán | `MCGCadPlugin.bundle` vs `MCG_Plugin.bundle` | Đổi về `MCG_FittingManagement.bundle` |
+
+### Trạng thái
+- DLL output (Release): `MCG_FittingManagement.dll` ✅ khớp `MCG_*.dll`
+- DLL output (Debug): `MCG_FittingManagement_YYYYMMDD_HHMMSS.dll` ✅ cleanup pattern đúng
+- Bundle: `%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\`
+- PackageContents.xml: project root (git) + auto-sync sang bundle
+
+### Bước tiếp theo
+- Chạy `build-and-launch.bat` → tạo bundle lần đầu với PackageContents.xml mới
+- Xóa bundle cũ `MCGCadPlugin.bundle` nếu còn tồn tại trong `%PROGRAMDATA%`
+
+---
+
 ## Session 2026-05-06 (12) — Thêm node "Recently" vào cây Library (Master + Project)
 
 ### Bối cảnh

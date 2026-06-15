@@ -5,9 +5,9 @@ setlocal enabledelayedexpansion
 :: ==========================================
 :: CẤU HÌNH — Chỉnh tại đây nếu cần
 :: ==========================================
-set "PROJECT_NAME=MCGCadPlugin"
+set "PROJECT_NAME=MCG_FittingManagement"
 set "AUTOCAD_EXE=C:\Program Files\Autodesk\AutoCAD 2023\acad.exe"
-set "BUNDLE_DIR=%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCGCadPlugin.bundle"
+set "BUNDLE_DIR=%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle"
 set "CONTENTS_DIR=%BUNDLE_DIR%\Contents"
 
 :: ==========================================
@@ -144,7 +144,20 @@ if exist "%~dp0appsettings.txt" (
     echo       appsettings.txt da copy.
 )
 
-:: PackageContents.xml đã được MSBuild tự cập nhật — không cần tạo lại
+:: Lần đầu deploy: copy PackageContents.xml từ project root vào bundle root
+set "PKG_SRC=%~dp0PackageContents.xml"
+set "PKG_DST=%BUNDLE_DIR%\PackageContents.xml"
+if exist "%PKG_SRC%" (
+    if not exist "%PKG_DST%" (
+        copy /Y "%PKG_SRC%" "%BUNDLE_DIR%\" >nul
+        echo       PackageContents.xml da copy vao bundle (lan dau).
+    ) else (
+        echo       PackageContents.xml da duoc MSBuild cap nhat.
+    )
+) else (
+    echo [CANH BAO] Khong tim thay PackageContents.xml -- AutoCAD co the khong load plugin.
+)
+
 echo       Plugin da copy: %CONTENTS_DIR%\%DLL_FILE%
 echo.
 
@@ -172,7 +185,7 @@ if "%BUILD_CONFIG%"=="Debug" (
     echo   DLL: %DLL_FILE%
     echo   AutoCAD dang khoi dong voi ban Release.
 )
-echo   Go lenh MCG_Show trong AutoCAD de kiem tra.
+echo   Go lenh MCG_Fitting trong AutoCAD de kiem tra.
 echo ===================================================
 echo.
 exit /b 0

@@ -8,7 +8,7 @@
     <UseWPF>true</UseWPF>
     <LangVersion>latest</LangVersion>
     <Platforms>x64</Platforms>
-    <PluginName>MCGCadPlugin.FittingManagement</PluginName>
+    <PluginName>MCG_FittingManagement</PluginName>
 
     <Timestamp>$([System.DateTime]::Now.ToString("yyyyMMdd_HHmmss"))</Timestamp>
 
@@ -29,6 +29,7 @@
   <Target Name="UpdatePackageContents" AfterTargets="Build">
     <PropertyGroup>
       <PackageContentsPath>$(MSBuildProjectDirectory)\PackageContents.xml</PackageContentsPath>
+      <BundlePackageContentsPath>$(PROGRAMDATA)\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\PackageContents.xml</BundlePackageContentsPath>
     </PropertyGroup>
 
     <WriteLinesToFile
@@ -36,14 +37,22 @@
       Lines="$(AssemblyName)"
       Overwrite="true" />
 
+    <!-- Cập nhật ModuleName trong PackageContents.xml ở thư mục project (source of truth) -->
     <XmlPoke
       Condition="Exists('$(PackageContentsPath)')"
       XmlInputPath="$(PackageContentsPath)"
       Query="//ComponentEntry[contains(@ModuleName,'.dll')]/@ModuleName"
-      Value="$(AssemblyName).dll" />
+      Value="./Contents/$(AssemblyName).dll" />
 
-    <Message Text="[MCGCadPlugin Build] DLL Name: $(AssemblyName).dll" Importance="High" />
-    <Message Condition="!Exists('$(PackageContentsPath)')" Text="[MCGCadPlugin Build] PackageContents.xml not found — skipped sync." Importance="High" />
+    <!-- Cập nhật ModuleName trong PackageContents.xml đã deploy vào bundle (nếu đã có) -->
+    <XmlPoke
+      Condition="Exists('$(BundlePackageContentsPath)')"
+      XmlInputPath="$(BundlePackageContentsPath)"
+      Query="//ComponentEntry[contains(@ModuleName,'.dll')]/@ModuleName"
+      Value="./Contents/$(AssemblyName).dll" />
+
+    <Message Text="[MCGCadPlugin Build] DLL: $(AssemblyName).dll" Importance="High" />
+    <Message Condition="!Exists('$(PackageContentsPath)')" Text="[MCGCadPlugin Build] PackageContents.xml chua ton tai — can chay build-and-launch.bat de tao lan dau." Importance="High" />
   </Target>
   <ItemGroup>
     <Reference Include="System.Windows.Forms" />
