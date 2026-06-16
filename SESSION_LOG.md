@@ -4,6 +4,83 @@
 
 ---
 
+## Session 2026-06-16 (16) — Tạo Install_AutoLoadCadAddin.bat
+
+### Đã làm
+- Tạo `Install_AutoLoadCadAddin.bat` theo đúng pattern MCGVN standard
+
+### Logic bat file
+| Bước | Hành động |
+|------|-----------|
+| 1/3 | Tạo `%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\Contents\` — kiểm tra quyền Admin |
+| Check | Xác nhận có `MCG_*.dll` trong cùng thư mục — báo lỗi rõ ràng nếu không |
+| 2/3 | Copy `MCG_*.dll` + `appsettings.txt` (nếu có) vào `Contents\` |
+| 3/3 | Tự sinh `PackageContents.xml` động — loop qua từng DLL |
+
+### Trạng thái
+- HOÀN THÀNH — đã đóng gap còn lại từ session 14
+
+---
+
+## Session 2026-06-16 (15) — Viết lại Macgregor_FittingTool_UserGuide.html
+
+### Đã làm
+- Đọc và phân tích toàn bộ `MCGVN_Autocad_Inventor_Installation_Guide.html` để lấy design system
+- Khám phá tất cả View, Command, Service của FittingManagement plugin để hiểu đầy đủ tính năng
+- Viết lại hoàn toàn `Docs/Macgregor_FittingTool_UserGuide.html`
+
+### Nội dung file mới
+7 Tab điều hướng theo đúng style MCGVN (DM Sans, navy/accent/gold palette, sticky nav):
+| Tab | Nội dung |
+|-----|---------|
+| Tổng quan | 4 tab overview, workflow diagram 5 bước (Admin→Engineer), khái niệm cốt lõi |
+| Cài đặt | 3 bước cài theo MCGVN standard + bảng lỗi thường gặp |
+| Quick Start | Luồng 5 bước nhanh có color-coded tab badge |
+| BOM & Balloon | Chi tiết 4 bước BOM + so sánh Place vs Mass Balloon |
+| Thư viện | Tab 3 (Admin: Import .idw + Master Library) + Tab 2 (Engineer: Project Library) |
+| Block Utilities | 6 Block Utilities + 2 Drawing Collection |
+| FAQ | 8 câu hỏi thường gặp với giải thích đầy đủ |
+
+### Trạng thái
+- File: HOÀN THÀNH
+- Bước tiếp theo: Tạo `Install_AutoLoadCadAddin.bat` (gap còn lại từ session 14)
+
+---
+
+## Session 2026-06-16 (14) — Phân tích gap với MCGVN Installation Guide
+
+### Đã làm
+- Đọc và phân tích toàn bộ `MCGVN_Autocad_Inventor_Installation_Guide.html`
+- So sánh tool hiện tại với tiêu chuẩn cài đặt AutoCAD của MCGVN
+
+### Kết quả phân tích
+
+| Yếu tố | Hiện tại | Standard MCGVN | Kết luận |
+|--------|---------|----------------|----------|
+| DLL name | `MCG_FittingManagement.dll` | `MCG_*.dll` | ✅ Đạt |
+| Bundle path | `MCG_FittingManagement.bundle` | `MCG_Plugin.bundle` (generic) | ✅ Per-plugin OK |
+| PackageContents.xml | Static + XmlPoke từ MSBuild | Dynamic gen trong install bat | ⚠️ Install bat cần gen động |
+| Dev script | `build-and-launch.bat` (cần dotnet) | — | ✅ Giữ cho dev |
+| **Install script** | **KHÔNG CÓ** | `Install_AutoLoadCadAddin.bat` | ❌ **GAP CHÍNH** |
+| appsettings.txt | Copy nếu tồn tại | Copy nếu tồn tại | ✅ Đạt |
+
+### Gap chính
+**Thiếu `Install_AutoLoadCadAddin.bat`** — script standalone cho end-user deploy (không cần dotnet/VS):
+- Đặt cùng thư mục với `MCG_FittingManagement.dll` (thường `C:\CustomTools\Autocad\`)
+- Tạo bundle folder `%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\Contents\`
+- Copy tất cả `MCG_*.dll` + `appsettings.txt` vào `Contents\`
+- **Tự sinh `PackageContents.xml` động** (loop qua từng DLL)
+- Yêu cầu chạy với quyền Administrator
+
+### Trạng thái
+- Phase phân tích: HOÀN THÀNH
+- Chờ user xác nhận trước khi tạo file
+
+### Bước tiếp theo
+- File: `Install_AutoLoadCadAddin.bat` | Mục tiêu: Tạo install script MCGVN standard
+
+---
+
 ## Session 2026-06-15 (13) — Align csproj với MCGVN Installation Guide
 
 ### Đã làm

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MacGregor Fitting Tools – Hướng dẫn sử dụng</title>
+<title>MacGregor Fitting Tools – User Guide</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -223,7 +223,6 @@
 
   /* FLOW TIMELINE */
   .flow-item { display: flex; gap: 0; align-items: stretch; }
-  .flow-item + .flow-item { margin-top: 0; }
   .flow-left { display: flex; flex-direction: column; align-items: center; width: 48px; flex-shrink: 0; }
   .flow-dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; flex-shrink: 0; }
   .flow-line { width: 2px; flex: 1; background: var(--border); margin: 4px 0; }
@@ -244,12 +243,12 @@
   <div class="header-inner">
     <span class="header-badge">MCG Internal Tool</span>
     <h1>MacGregor<br><span>Fitting Tools</span></h1>
-    <p class="subtitle">Hướng dẫn sử dụng toàn tập — Trích xuất Inventor, quản lý thư viện, xuất BOM và cắm Balloon tự động trong AutoCAD.</p>
+    <p class="subtitle">Complete user guide — Inventor extraction, library management, BOM export and automatic Balloon placement in AutoCAD.</p>
     <div class="header-meta">
       <span class="meta-tag"><strong>Plugin:</strong> MCG_FittingManagement</span>
       <span class="meta-tag"><strong>AutoCAD:</strong> 2023+</span>
-      <span class="meta-tag"><strong>Lệnh mở:</strong> MCG_Fitting</span>
-      <span class="meta-tag"><strong>Cập nhật:</strong> 2026</span>
+      <span class="meta-tag"><strong>Command:</strong> MCG_Fitting</span>
+      <span class="meta-tag"><strong>Updated:</strong> 2026</span>
     </div>
   </div>
 </header>
@@ -257,11 +256,11 @@
 <!-- NAV -->
 <nav class="tabs">
   <div class="tabs-inner">
-    <button class="tab-btn active" onclick="showTab('overview')">Tổng quan</button>
-    <button class="tab-btn" onclick="showTab('install')">Cài đặt</button>
+    <button class="tab-btn active" onclick="showTab('overview')">Overview</button>
+    <button class="tab-btn" onclick="showTab('install')">Installation</button>
     <button class="tab-btn" onclick="showTab('quickstart')">Quick Start</button>
     <button class="tab-btn" onclick="showTab('bom')">BOM &amp; Balloon</button>
-    <button class="tab-btn" onclick="showTab('library')">Thư viện</button>
+    <button class="tab-btn" onclick="showTab('library')">Library</button>
     <button class="tab-btn" onclick="showTab('utilities')">Block Utilities</button>
     <button class="tab-btn" onclick="showTab('faq')">FAQ</button>
   </div>
@@ -269,46 +268,46 @@
 
 <main>
 
-<!-- ═══════════════════════════════════════ TỔNG QUAN ═══════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════ OVERVIEW ═══════════════════════════════════════ -->
 <div id="overview" class="section active">
-  <h2 class="section-title">Tổng quan công cụ</h2>
+  <h2 class="section-title">Tool Overview</h2>
 
   <div class="white-card" style="margin-bottom:22px;">
     <p style="font-size:15px;color:#4a5a78;line-height:1.8;">
-      <strong style="color:var(--navy);">MacGregor Fitting Tools</strong> là plugin AutoCAD quản lý toàn vòng đời Fitting —
-      từ trích xuất dữ liệu từ bản vẽ Inventor 3D, xây dựng thư viện Block tiêu chuẩn, thiết kế trên CAD,
-      đến xuất bảng BOM và cắm Balloon tự động.
-      Plugin tích hợp trực tiếp vào AutoCAD dưới dạng <strong style="color:var(--navy);">PaletteSet</strong> gồm 4 tab chức năng.
+      <strong style="color:var(--navy);">MacGregor Fitting Tools</strong> is an AutoCAD plugin that manages the full lifecycle of Fittings —
+      from extracting data from Inventor 3D drawings, building a standardised Block library, designing in CAD,
+      to exporting BOM tables and placing Balloons automatically.
+      The plugin integrates directly into AutoCAD as a <strong style="color:var(--navy);">PaletteSet</strong> with 4 functional tabs.
     </p>
   </div>
 
   <!-- 4 tab overview -->
-  <h3 style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:14px;">4 Tab chức năng</h3>
+  <h3 style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:14px;">4 Functional Tabs</h3>
   <div class="feature-grid" style="margin-bottom:28px;">
     <div class="feature-card">
       <div class="fh-badge fh-tab1" style="margin-bottom:8px;">TAB 1 — FITTING HANDLE</div>
       <h4>BOM Export &amp; Balloon</h4>
-      <p>Quét &amp; đếm Block, đánh số Position, đồng bộ ngược CAD, cắm Balloon hàng loạt, xuất Excel 2 sheet.</p>
+      <p>Scan &amp; count Blocks, assign Position numbers, sync back to CAD, mass-place Balloons, export 2-sheet Excel.</p>
     </div>
     <div class="feature-card">
       <div class="fh-badge fh-tab2" style="margin-bottom:8px;">TAB 2 — PROJECT CONFIG</div>
       <h4>Project Library</h4>
-      <p>Duyệt thư viện Fitting theo dự án, chèn Block vào bản vẽ, gán số Position cho từng item.</p>
+      <p>Browse the Fitting library for the active project, insert Blocks into the drawing, assign Position numbers per item.</p>
     </div>
     <div class="feature-card">
       <div class="fh-badge fh-tab3" style="margin-bottom:8px;">TAB 3 — TEMPLATE (ADMIN)</div>
       <h4>Master Library &amp; Import</h4>
-      <p>Admin nhập file <code>.idw</code> từ Inventor, chọn BOM Type, quản lý thư viện Fitting chuẩn của công ty.</p>
+      <p>Admin imports <code>.idw</code> files from Inventor, selects BOM Type, manages the company-standard Fitting library.</p>
     </div>
     <div class="feature-card">
       <div class="fh-badge fh-tab4" style="margin-bottom:8px;">TAB 4 — BLOCK UTILITIES</div>
-      <h4>Công cụ sửa Block</h4>
-      <p>Đổi tên, nhân bản, thêm/bỏ đối tượng, đổi điểm gốc, thay thế hàng loạt — không cần Explode, không mất Attribute.</p>
+      <h4>Block Editing Tools</h4>
+      <p>Rename, clone, add/remove objects, change insertion point, bulk replace — no Explode required, Attributes preserved.</p>
     </div>
   </div>
 
   <!-- Workflow -->
-  <h3 style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:14px;">Luồng làm việc tổng thể</h3>
+  <h3 style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:14px;">Overall Workflow</h3>
   <div class="white-card" style="margin-bottom:22px;">
     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
       <span style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;background:#e8fff0;color:#1b5e20;">ADMIN / KEY USER</span>
@@ -322,8 +321,8 @@
       </div>
       <div class="flow-body">
         <span class="role-tag" style="background:#e8fff0;color:#1b5e20;">ADMIN — Tab 3</span>
-        <h5>Nhập file .idw từ Inventor</h5>
-        <p>Chọn BOM Type (Panel/Detail) → Import .idw → Hệ thống trích xuất hình chiếu, tạo Block, lưu vào Master Library.</p>
+        <h5>Import .idw files from Inventor</h5>
+        <p>Select BOM Type (Panel/Detail) → Import .idw → System extracts drawing views, creates Blocks, saves to Master Library.</p>
       </div>
     </div>
     <div class="flow-item">
@@ -333,8 +332,8 @@
       </div>
       <div class="flow-body">
         <span class="role-tag" style="background:#e8fff0;color:#1b5e20;">ADMIN — Tab 3 (Master Library)</span>
-        <h5>Cấu hình dự án</h5>
-        <p>Mở Master Library → Chọn Fitting phù hợp → Add to Project → Cấu hình Sub-BOM/Accessories.</p>
+        <h5>Configure the project</h5>
+        <p>Open Master Library → Select relevant Fittings → Add to Project → Configure Sub-BOM / Accessories.</p>
       </div>
     </div>
     <div class="flow-item">
@@ -344,8 +343,8 @@
       </div>
       <div class="flow-body">
         <span class="role-tag" style="background:#e0f0ff;color:#1565c0;">ENGINEER — Tab 2</span>
-        <h5>Chèn Fitting vào bản vẽ</h5>
-        <p>Mở Project Library → Tìm Fitting → Insert to CAD → Rải lên bản vẽ.</p>
+        <h5>Insert Fittings into the drawing</h5>
+        <p>Open Project Library → Find Fitting → Insert to CAD → Place on drawing.</p>
       </div>
     </div>
     <div class="flow-item">
@@ -355,7 +354,7 @@
       </div>
       <div class="flow-body">
         <span class="role-tag" style="background:#e0f0ff;color:#1565c0;">ENGINEER — Tab 1</span>
-        <h5>Xuất BOM &amp; cắm Balloon</h5>
+        <h5>Export BOM &amp; place Balloons</h5>
         <p>Scan &amp; Count → Auto-Assign Positions → Sync Pos to CAD → Mass Auto-Balloon → Export Excel.</p>
       </div>
     </div>
@@ -364,63 +363,63 @@
         <div class="flow-dot" style="background:var(--muted);">5</div>
       </div>
       <div class="flow-body" style="padding-bottom:0;">
-        <span class="role-tag" style="background:#f5f5f5;color:#555;">KHI CẦN — Tab 4</span>
-        <h5>Chỉnh sửa Block (khi cần)</h5>
-        <p>Dùng Block Utilities để đổi tên, thêm đối tượng, thay thế hàng loạt mà không cần Explode.</p>
+        <span class="role-tag" style="background:#f5f5f5;color:#555;">AS NEEDED — Tab 4</span>
+        <h5>Edit Blocks (when required)</h5>
+        <p>Use Block Utilities to rename, add objects, or bulk-replace without Exploding.</p>
       </div>
     </div>
   </div>
 
-  <!-- Quy tắc vàng -->
+  <!-- Golden rule -->
   <div class="callout danger">
-    <strong>⚠️ QUY TẮC "SINGLE SOURCE OF TRUTH"</strong><br>
-    Bản vẽ CAD là chân lý duy nhất. Tuyệt đối <strong>KHÔNG</strong> chỉnh sửa số lượng hay số Pos thủ công trên Excel.
-    Nếu có thay đổi → thao tác trên CAD (chèn thêm Block, Scan lại, Sync Pos) → Export Excel lại từ đầu.
+    <strong>⚠️ SINGLE SOURCE OF TRUTH RULE</strong><br>
+    The CAD drawing is the sole source of truth. <strong>NEVER</strong> manually edit quantities or Position numbers in Excel.
+    Any change must be made in CAD (add/remove Blocks, re-scan, Sync Pos) → then re-export Excel from scratch.
   </div>
 
-  <!-- Khái niệm cốt lõi -->
-  <h3 style="font-size:17px;font-weight:700;color:var(--navy);margin:26px 0 14px;">Khái niệm cốt lõi</h3>
+  <!-- Key concepts -->
+  <h3 style="font-size:17px;font-weight:700;color:var(--navy);margin:26px 0 14px;">Key Concepts</h3>
   <div class="white-card">
     <div class="concept-row">
       <span class="concept-pill" style="background:#e0f0ff;color:#1565c0;">POS_NUM</span>
-      <p>Attribute ẩn (Invisible Attribute) cấy vào mỗi Block khi Insert. Liên kết Block CAD với số Position trong BOM. <strong style="color:var(--navy);">Không xóa thủ công.</strong></p>
+      <p>An invisible Attribute embedded in every Block on Insert. Links each CAD Block to its Position number in the BOM. <strong style="color:var(--navy);">Do not delete manually.</strong></p>
     </div>
     <div class="concept-row">
       <span class="concept-pill" style="background:#e8fff0;color:#1b5e20;">-tv / -fv / -sv</span>
-      <p>Hậu tố tên Block: <strong style="color:var(--navy);">-tv</strong> = Top View (hình chiếu bằng — dùng để đếm BOM và cắm Balloon), <strong style="color:var(--navy);">-fv</strong> = Front View, <strong style="color:var(--navy);">-sv</strong> = Side View. Hệ thống <em>chỉ đếm</em> block <code>-tv</code> khi Scan BOM.</p>
+      <p>Block name suffixes: <strong style="color:var(--navy);">-tv</strong> = Top View (used for BOM counting and Balloon placement), <strong style="color:var(--navy);">-fv</strong> = Front View, <strong style="color:var(--navy);">-sv</strong> = Side View. The system <em>only counts</em> <code>-tv</code> blocks during BOM Scan.</p>
     </div>
     <div class="concept-row">
       <span class="concept-pill" style="background:#f0e8ff;color:#6a1b9a;">Panel / Detail</span>
-      <p><strong style="color:var(--navy);">Panel (Structure)</strong>: Cụm kết cấu lớn, hàn dính nguyên khối. <strong style="color:var(--navy);">Detail (Hull)</strong>: Chi tiết rời, phụ kiện mua ngoài, chi tiết vỏ. Phân loại sai làm hỏng cấu trúc BOM.</p>
+      <p><strong style="color:var(--navy);">Panel (Structure)</strong>: Large structural assembly, welded as one unit. <strong style="color:var(--navy);">Detail (Hull)</strong>: Loose component, hull part, or bought-out accessory mounted onto a Panel. Wrong classification corrupts the BOM tree.</p>
     </div>
     <div class="concept-row">
       <span class="concept-pill" style="background:#fff4e8;color:#bf360c;">Sub-BOM</span>
-      <p>Phụ kiện ảo gắn vào Fitting chính (VD: 2 cùm, 4 ốc). Khi xuất BOM, phụ kiện tự động thụt lề sau Fitting chính và bám theo số Position của Mẹ.</p>
+      <p>Virtual accessories attached to a parent Fitting (e.g. 2 clamps + 4 bolts). When exporting BOM, accessories are automatically indented below the parent and inherit its Position numbering.</p>
     </div>
     <div class="concept-row">
       <span class="concept-pill" style="background:#eef2fa;color:var(--navy);">Stacked Balloon</span>
-      <p>Chùm bóng chú giải xếp chồng: khi 1 Fitting có nhiều Pos (chuỗi <code>"001,002,003"</code> do Sub-BOM), hệ thống tạo chuỗi balloon nối tiếp nhau trên bản vẽ.</p>
+      <p>A stacked annotation balloon chain: when 1 Fitting has multiple Pos numbers (string <code>"001,002,003"</code> due to Sub-BOM), the system automatically creates a chain of sequential balloons on the drawing.</p>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════ CÀI ĐẶT ═══════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════ INSTALLATION ═══════════════════════════════════════ -->
 <div id="install" class="section">
-  <h2 class="section-title">Cài đặt &amp; Kích hoạt</h2>
+  <h2 class="section-title">Installation &amp; Activation</h2>
   <div class="steps">
 
     <div class="step-card">
       <div class="step-num">01</div>
       <div class="step-body">
-        <h3>Chuẩn bị file — Copy về ổ C trước</h3>
-        <p>Nhận gói phân phối từ Admin. Gói gồm:</p>
+        <h3>Prepare files — Copy to local drive first</h3>
+        <p>Obtain the distribution package from your Admin. The package contains:</p>
         <ul>
-          <li><span class="cmd">MCG_FittingManagement.dll</span> — Plugin chính</li>
-          <li><span class="cmd">appsettings.txt</span> — Cấu hình kết nối (database, library path...)</li>
-          <li><span class="cmd">Install_AutoLoadCadAddin.bat</span> — Script cài đặt tự động</li>
+          <li><span class="cmd">MCG_FittingManagement.dll</span> — Main plugin</li>
+          <li><span class="cmd">appsettings.txt</span> — Connection settings (database, library path…)</li>
+          <li><span class="cmd">Install_AutoLoadCadAddin.bat</span> — Automated installation script</li>
         </ul>
         <div class="callout warning">
-          ⚠️ <strong>Không chạy trực tiếp từ Google Drive / OneDrive.</strong> Copy toàn bộ 3 file về local trước:
+          ⚠️ <strong>Do not run directly from Google Drive / OneDrive.</strong> Copy all 3 files to a local folder first:
           <div style="margin-top:8px;"><span class="path">C:\CustomTools\Autocad\</span></div>
         </div>
       </div>
@@ -429,27 +428,27 @@
     <div class="step-card">
       <div class="step-num">02</div>
       <div class="step-body">
-        <h3>Chạy Script cài đặt (Run as Administrator)</h3>
-        <p>Chuột phải vào <span class="cmd">Install_AutoLoadCadAddin.bat</span> → <strong>Run as administrator</strong>.</p>
-        <p style="margin-top:8px;">Script tự động thực hiện:</p>
+        <h3>Run the installation script (Run as Administrator)</h3>
+        <p>Right-click <span class="cmd">Install_AutoLoadCadAddin.bat</span> → <strong>Run as administrator</strong>.</p>
+        <p style="margin-top:8px;">The script automatically:</p>
         <ol>
-          <li>Tạo thư mục bundle: <span class="path">%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\Contents\</span></li>
-          <li>Copy <code>MCG_*.dll</code> và <code>appsettings.txt</code> vào <code>Contents\</code></li>
-          <li>Tự sinh <code>PackageContents.xml</code> — AutoCAD đọc file này khi khởi động</li>
+          <li>Creates the bundle folder: <span class="path">%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\Contents\</span></li>
+          <li>Copies <code>MCG_*.dll</code> and <code>appsettings.txt</code> into <code>Contents\</code></li>
+          <li>Generates <code>PackageContents.xml</code> dynamically — AutoCAD reads this on startup</li>
         </ol>
-        <div class="callout success">✅ Script báo <strong>SUCCESSFULLY COMPLETED</strong> là cài đặt thành công.</div>
+        <div class="callout success">✅ If the script reports <strong>SUCCESSFULLY COMPLETED</strong>, installation is done.</div>
       </div>
     </div>
 
     <div class="step-card">
       <div class="step-num">03</div>
       <div class="step-body">
-        <h3>Khởi động AutoCAD &amp; Kích hoạt</h3>
-        <p>Restart AutoCAD 2023. Plugin load tự động khi AutoCAD mở. Gõ lệnh để mở giao diện:</p>
+        <h3>Launch AutoCAD &amp; Activate</h3>
+        <p>Restart AutoCAD 2023. The plugin loads automatically on startup. Type the following command to open the UI:</p>
         <div style="margin:10px 0;"><span class="path">MCG_Fitting</span></div>
-        <p>Palette <strong>"Fitting Management"</strong> xuất hiện bên phải với 4 tab.</p>
+        <p>The <strong>"Fitting Management"</strong> Palette appears on the right side with 4 tabs.</p>
         <div class="callout info">
-          💡 <strong>Lệnh ẩn Palette:</strong> Gõ <span class="cmd">MCG_Fitting_Hide</span> để đóng mà không mất cài đặt.
+          💡 <strong>Hide the Palette:</strong> Type <span class="cmd">MCG_Fitting_Hide</span> to close without losing settings.
         </div>
       </div>
     </div>
@@ -457,24 +456,24 @@
     <div class="step-card">
       <div class="step-num warn">!</div>
       <div class="step-body">
-        <h3>Lỗi thường gặp khi cài đặt</h3>
+        <h3>Common installation errors</h3>
         <table class="data-table">
-          <thead><tr><th>Triệu chứng</th><th>Nguyên nhân</th><th>Fix</th></tr></thead>
+          <thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
           <tbody>
             <tr>
-              <td>Script báo "Cannot create directory"</td>
-              <td>Thiếu quyền Admin</td>
-              <td>Chuột phải → Run as Administrator</td>
+              <td>Script reports "Cannot create directory"</td>
+              <td>Missing Admin rights</td>
+              <td>Right-click → Run as Administrator</td>
             </tr>
             <tr>
-              <td>Gõ MCG_Fitting không nhận lệnh</td>
-              <td>Plugin chưa load</td>
-              <td>Restart AutoCAD hoàn toàn; kiểm tra bundle folder có <code>PackageContents.xml</code> không</td>
+              <td>MCG_Fitting command not recognised</td>
+              <td>Plugin not loaded</td>
+              <td>Fully restart AutoCAD; verify bundle folder has <code>PackageContents.xml</code></td>
             </tr>
             <tr>
-              <td>Script báo "No MCG_*.dll found"</td>
-              <td>Bat và DLL không cùng thư mục</td>
-              <td>Đặt bat và DLL vào cùng 1 thư mục trên ổ C</td>
+              <td>Script reports "No MCG_*.dll found"</td>
+              <td>Bat and DLL in different folders</td>
+              <td>Place the bat and DLL in the same folder on the C drive</td>
             </tr>
           </tbody>
         </table>
@@ -486,38 +485,38 @@
 
 <!-- ═══════════════════════════════════════ QUICK START ═══════════════════════════════════════ -->
 <div id="quickstart" class="section">
-  <h2 class="section-title">Quick Start — Luồng 5 bước</h2>
+  <h2 class="section-title">Quick Start — 5-Step Workflow</h2>
 
   <div class="callout info" style="margin-bottom:22px;">
-    <strong>Điều kiện:</strong> Plugin đã cài đặt. Admin đã import Fitting vào Master Library và cấu hình dự án. Bạn đã mở bản vẽ AutoCAD cần thiết kế.
+    <strong>Prerequisites:</strong> Plugin installed. Admin has imported Fittings into Master Library and configured the project. You have the AutoCAD drawing open and ready to design.
   </div>
 
   <div class="qs-steps">
     <div class="qs-step">
       <div class="qs-num">1</div>
       <div class="qs-body">
-        <h4>Mở Palette</h4>
-        <p>Gõ <span class="cmd">MCG_Fitting</span> vào AutoCAD Command Line. Palette "Fitting Management" xuất hiện.</p>
+        <h4>Open the Palette</h4>
+        <p>Type <span class="cmd">MCG_Fitting</span> in the AutoCAD Command Line. The "Fitting Management" Palette appears.</p>
       </div>
     </div>
 
     <div class="qs-step">
       <div class="qs-num">2</div>
       <div class="qs-body">
-        <h4>Chèn Fitting vào bản vẽ</h4>
-        <p><span class="tag-badge t2">Tab 2</span> Bấm <kbd>Open Project Library</kbd> → Tìm Fitting → <kbd>Insert to CAD</kbd>. Lặp lại cho tất cả Fitting cần dùng (chèn đủ cả <code>-tv</code>, <code>-fv</code>, <code>-sv</code> nếu cần).</p>
+        <h4>Insert Fittings into the drawing</h4>
+        <p><span class="tag-badge t2">Tab 2</span> Click <kbd>Open Project Library</kbd> → Find the Fitting → <kbd>Insert to CAD</kbd>. Repeat for all required Fittings (insert all necessary views: <code>-tv</code>, <code>-fv</code>, <code>-sv</code>).</p>
       </div>
     </div>
 
     <div class="qs-step">
       <div class="qs-num">3</div>
       <div class="qs-body">
-        <h4>Xuất BOM &amp; đánh số Position</h4>
-        <p><span class="tag-badge t1">Tab 1</span> Bấm <kbd>Open BOM Export</kbd>. Trong cửa sổ BOM thực hiện theo thứ tự:</p>
+        <h4>Export BOM &amp; assign Position numbers</h4>
+        <p><span class="tag-badge t1">Tab 1</span> Click <kbd>Open BOM Export</kbd>. In the BOM window, follow this order:</p>
         <ol>
-          <li>Bấm <kbd>Scan &amp; Count</kbd> — quét toàn bộ bản vẽ</li>
-          <li>Bấm <kbd>Auto-Assign Positions</kbd> — cấp số Pos tự động</li>
-          <li>Bấm <kbd>Sync Pos to CAD</kbd> — bơm số vào Attribute ẩn trên bản vẽ</li>
+          <li>Click <kbd>Scan &amp; Count</kbd> — scans the entire drawing</li>
+          <li>Click <kbd>Auto-Assign Positions</kbd> — assigns Pos numbers automatically</li>
+          <li>Click <kbd>Sync Pos to CAD</kbd> — writes numbers into the hidden Attributes on the drawing</li>
         </ol>
       </div>
     </div>
@@ -525,22 +524,22 @@
     <div class="qs-step">
       <div class="qs-num">4</div>
       <div class="qs-body">
-        <h4>Cắm Balloon hàng loạt</h4>
-        <p><span class="tag-badge t1">Tab 1</span> Bấm <kbd>Mass Auto-Balloon</kbd>. Vẽ khung chọn bao quanh vùng cần cắm. Balloon Stacked tự động xuất hiện trên tất cả Block <code>-tv</code>.</p>
+        <h4>Place Balloons in bulk</h4>
+        <p><span class="tag-badge t1">Tab 1</span> Click <kbd>Mass Auto-Balloon</kbd>. Draw a selection frame around the area. Stacked Balloons appear automatically on all <code>-tv</code> Blocks.</p>
       </div>
     </div>
 
     <div class="qs-step">
       <div class="qs-num">5</div>
       <div class="qs-body">
-        <h4>Xuất Excel</h4>
-        <p>Trong cửa sổ BOM Export, bấm <kbd>Export to Excel</kbd>. File Excel tạo ra gồm 2 Sheet: <strong>Matrix</strong> (ma trận Panel×Detail) và <strong>Data</strong> (danh sách đầy đủ, phụ kiện thụt lề và in nghiêng).</p>
+        <h4>Export Excel</h4>
+        <p>In the BOM Export window, click <kbd>Export to Excel</kbd>. The Excel file is generated with 2 sheets: <strong>Matrix</strong> (Panel × Detail matrix) and <strong>Data</strong> (full list — accessories indented and italicised).</p>
       </div>
     </div>
   </div>
 
   <div class="callout success" style="margin-top:20px;">
-    ✅ <strong>Kết quả:</strong> Bản vẽ có đầy đủ Balloon + File Excel BOM sẵn sàng. Không chỉnh sửa số nào thủ công.
+    ✅ <strong>Result:</strong> Drawing has full Balloon annotations + Excel BOM ready to submit. No manual number editing required.
   </div>
 </div>
 
@@ -550,63 +549,63 @@
 
   <div class="feature-header">
     <span class="fh-badge fh-tab1">TAB 1 — FITTING HANDLE</span>
-    <h3>Quét BOM, đánh số và cắm Balloon</h3>
-    <p>Tab dành cho Engineer/Drafter. Sau khi rải xong Fitting lên bản vẽ, đây là tab để hoàn thiện: đánh số, đồng bộ, balloon, xuất Excel.</p>
+    <h3>Scan BOM, assign numbers and place Balloons</h3>
+    <p>This tab is for Engineers / Drafters. Once all Fittings are placed on the drawing, use this tab to finalise: number assignment, sync, balloon, and Excel export.</p>
   </div>
 
-  <!-- 3 nút chính -->
+  <!-- 3 main buttons -->
   <div class="white-card" style="margin-bottom:24px;">
-    <h4>Các nút chức năng chính</h4>
+    <h4>Main buttons</h4>
     <table class="data-table">
-      <thead><tr><th>Nút</th><th>Chức năng</th><th>Ghi chú</th></tr></thead>
+      <thead><tr><th>Button</th><th>Function</th><th>Notes</th></tr></thead>
       <tbody>
         <tr>
           <td>Open BOM Export</td>
-          <td>Mở cửa sổ BomPreviewWindow — trung tâm quản lý toàn bộ quy trình BOM</td>
-          <td>Chạy trước các bước Scan, Assign, Sync</td>
+          <td>Opens the BomPreviewWindow — the central hub for the entire BOM workflow</td>
+          <td>Run before Scan, Assign, and Sync steps</td>
         </tr>
         <tr>
           <td>Place Balloon</td>
-          <td>Cắm Balloon đơn lẻ — click từng Block một trên bản vẽ</td>
-          <td>Dùng khi cần kiểm soát từng vị trí balloon</td>
+          <td>Place individual Balloons — click each Block one at a time</td>
+          <td>Use when precise balloon positioning is needed</td>
         </tr>
         <tr>
           <td>Mass Auto-Balloon</td>
-          <td>Cắm Balloon hàng loạt — vẽ khung chọn vùng cần cắm</td>
-          <td>Chỉ cắm vào Block <code>-tv</code>; nhanh nhất cho toàn bản vẽ</td>
+          <td>Bulk Balloon placement — draw a selection frame around the area</td>
+          <td>Only places on <code>-tv</code> Blocks; fastest for the whole drawing</td>
         </tr>
       </tbody>
     </table>
   </div>
 
   <!-- BOM steps -->
-  <h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:14px;">Cửa sổ BOM Export — Từng bước</h3>
+  <h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:14px;">BOM Export Window — Step by Step</h3>
   <div class="steps" style="margin-bottom:28px;">
 
     <div class="step-card">
       <div class="step-num">1</div>
       <div class="step-body">
-        <h3>Scan &amp; Count — Quét bản vẽ</h3>
-        <p>Bấm <kbd>Scan &amp; Count</kbd>. Thuật toán <strong>X-Ray</strong> quét xuyên suốt bản vẽ, đếm tất cả Block Fitting.</p>
+        <h3>Scan &amp; Count — Scan the drawing</h3>
+        <p>Click <kbd>Scan &amp; Count</kbd>. The <strong>X-Ray</strong> algorithm scans through the entire drawing and counts all Fitting Blocks.</p>
         <div class="callout info">
-          <strong>Cơ chế Chống Đếm Khống:</strong> Hệ thống <em>chỉ đếm</em> Block có tên kết thúc bằng <code>-tv</code> (Top View).
-          Các Block <code>-fv</code>, <code>-sv</code>, <code>-iso</code> bị bỏ qua hoàn toàn — đảm bảo mỗi Fitting chỉ được đếm 1 lần dù có nhiều hình chiếu.
+          <strong>Double-Count Prevention:</strong> The system <em>only counts</em> Blocks whose name ends with <code>-tv</code> (Top View).
+          Blocks ending in <code>-fv</code>, <code>-sv</code>, or <code>-iso</code> are ignored entirely — ensuring each Fitting is counted exactly once regardless of how many views are on the drawing.
         </div>
-        <p style="font-size:13px;color:var(--muted);margin-top:8px;">Nếu thấy số lượng thiếu → kiểm tra đã Insert Block <code>-tv</code> chưa.</p>
+        <p style="font-size:13px;color:var(--muted);margin-top:8px;">If the count seems low, check that <code>-tv</code> Blocks have been inserted — not just <code>-fv</code> or <code>-sv</code>.</p>
       </div>
     </div>
 
     <div class="step-card">
       <div class="step-num">2</div>
       <div class="step-body">
-        <h3>Auto-Assign Positions — Cấp số tự động</h3>
-        <p>Bấm <kbd>Auto-Assign Positions</kbd>. Hệ thống gán số Position liên tiếp (001, 002, 003...) cho tất cả Fitting đã Scan.</p>
+        <h3>Auto-Assign Positions — Assign numbers automatically</h3>
+        <p>Click <kbd>Auto-Assign Positions</kbd>. The system assigns sequential Position numbers (001, 002, 003…) to all scanned Fittings.</p>
         <ul>
-          <li>Số Pos của <strong>Phụ kiện (Sub-BOM)</strong> tự động bám theo số Mẹ</li>
-          <li>Cụm Mẹ + 2 Phụ kiện → chuỗi <code>"001,002,003"</code> được gộp</li>
+          <li><strong>Sub-BOM accessories</strong> automatically inherit numbers after the parent</li>
+          <li>Parent + 2 accessories → merged string <code>"001,002,003"</code></li>
         </ul>
         <div class="callout warning">
-          ⚠️ Sau bước này, <strong>bắt buộc bấm Sync Pos to CAD</strong>. Bỏ qua bước này → Balloon sẽ báo lỗi "Không tìm thấy POS_NUM".
+          ⚠️ After this step, you <strong>must click Sync Pos to CAD</strong>. Skipping this step will cause Balloons to report "POS_NUM not found".
         </div>
       </div>
     </div>
@@ -614,25 +613,25 @@
     <div class="step-card">
       <div class="step-num">3</div>
       <div class="step-body">
-        <h3>Sync Pos to CAD — Bơm số vào bản vẽ</h3>
-        <p>Bấm <kbd>Sync Pos to CAD</kbd>. Hệ thống viết chuỗi Position vào Attribute ẩn <code>POS_NUM</code> của từng Block trên bản vẽ.</p>
-        <div class="callout success">✅ Sau bước này, Block trên CAD đã mang số Position. Có thể cắm Balloon bất kỳ lúc nào.</div>
+        <h3>Sync Pos to CAD — Write numbers to the drawing</h3>
+        <p>Click <kbd>Sync Pos to CAD</kbd>. The system writes the Position string into the hidden <code>POS_NUM</code> Attribute of each Block on the drawing.</p>
+        <div class="callout success">✅ After this step, Blocks on the CAD drawing carry Position numbers. Balloons can be placed at any time.</div>
       </div>
     </div>
 
     <div class="step-card">
       <div class="step-num">4</div>
       <div class="step-body">
-        <h3>Export to Excel — Xuất BOM</h3>
-        <p>Bấm <kbd>Export to Excel</kbd>. File Excel tạo tự động với 2 Sheet:</p>
+        <h3>Export to Excel — Generate the BOM</h3>
+        <p>Click <kbd>Export to Excel</kbd>. An Excel file is created automatically with 2 sheets:</p>
         <div class="two-col" style="margin-top:12px;">
           <div style="background:#eef2fa;border-radius:10px;padding:14px 16px;">
             <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">Sheet: MATRIX</div>
-            <div style="font-size:13px;color:#4a5a78;">Ma trận Panel × Detail. Cột = Panel, Hàng = Detail. Giao ô = số lượng Detail dùng trong Panel đó.</div>
+            <div style="font-size:13px;color:#4a5a78;">Panel × Detail matrix. Columns = Panels, Rows = Details. Cell value = quantity of that Detail used in that Panel.</div>
           </div>
           <div style="background:#eef2fa;border-radius:10px;padding:14px 16px;">
             <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">Sheet: DATA</div>
-            <div style="font-size:13px;color:#4a5a78;">Danh sách đầy đủ. Phụ kiện thụt lề, in nghiêng. Cột Pos ép định dạng Text (<code>@</code>) để giữ số 0 đứng đầu.</div>
+            <div style="font-size:13px;color:#4a5a78;">Full item list. Accessories are indented and italicised. Pos column forced to Text format (<code>@</code>) to preserve leading zeros.</div>
           </div>
         </div>
       </div>
@@ -641,65 +640,65 @@
   </div>
 
   <!-- Ballooning detail -->
-  <h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:14px;">Cắm Balloon — So sánh 2 chế độ</h3>
+  <h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:14px;">Balloon Placement — Two Modes Compared</h3>
   <div class="white-card">
     <div class="two-col">
       <div>
-        <h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Place Balloon (đơn lẻ)</h4>
+        <h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Place Balloon (individual)</h4>
         <ol style="font-size:13.5px;color:#4a5a78;padding-left:18px;line-height:1.9;">
-          <li>Bấm <kbd>Place Balloon</kbd></li>
-          <li>Click vào từng Block <code>-tv</code></li>
-          <li>Balloon xuất hiện tại vị trí click</li>
-          <li>Nhấn <kbd>ESC</kbd> để kết thúc</li>
+          <li>Click <kbd>Place Balloon</kbd></li>
+          <li>Click each <code>-tv</code> Block on the drawing</li>
+          <li>Balloon appears at the clicked position</li>
+          <li>Press <kbd>ESC</kbd> to end the command</li>
         </ol>
-        <div class="callout warning" style="margin-top:10px;font-size:12.5px;">Chậm hơn Mass, dùng khi cần kiểm soát từng vị trí.</div>
+        <div class="callout warning" style="margin-top:10px;font-size:12.5px;">Slower than Mass mode — use when precise balloon positions are needed.</div>
       </div>
       <div>
-        <h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Mass Auto-Balloon (hàng loạt)</h4>
+        <h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Mass Auto-Balloon (bulk)</h4>
         <ol style="font-size:13.5px;color:#4a5a78;padding-left:18px;line-height:1.9;">
-          <li>Bấm <kbd>Mass Auto-Balloon</kbd></li>
-          <li>Vẽ khung bao quanh khu vực</li>
-          <li>Hệ thống quét tất cả Block <code>-tv</code> trong khung</li>
-          <li>Stacked Balloon xuất hiện tự động</li>
+          <li>Click <kbd>Mass Auto-Balloon</kbd></li>
+          <li>Draw a frame around the target area</li>
+          <li>System scans all <code>-tv</code> Blocks inside the frame</li>
+          <li>Stacked Balloons appear automatically</li>
         </ol>
-        <div class="callout success" style="margin-top:10px;font-size:12.5px;">Nhanh nhất — bỏ qua tự động Block không phải <code>-tv</code>.</div>
+        <div class="callout success" style="margin-top:10px;font-size:12.5px;">Fastest option — non-<code>-tv</code> Blocks are skipped automatically.</div>
       </div>
     </div>
     <div class="callout info" style="margin-top:14px;">
-      <strong>Stacked Balloon:</strong> Khi 1 Block có chuỗi Pos <code>"001,002,003"</code> (do Sub-BOM), hệ thống tự tạo 3 balloon xếp chồng theo thứ tự số.
+      <strong>Stacked Balloon:</strong> When a Block has a Pos string like <code>"001,002,003"</code> (from Sub-BOM), the system automatically generates 3 stacked balloons in numerical order.
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════ THƯ VIỆN ═══════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════ LIBRARY ═══════════════════════════════════════ -->
 <div id="library" class="section">
-  <h2 class="section-title">Quản lý Thư viện (Tab 2 &amp; 3)</h2>
+  <h2 class="section-title">Library Management (Tab 2 &amp; 3)</h2>
 
   <!-- TAB 3 — ADMIN -->
   <div class="feature-header">
     <span class="fh-badge fh-tab3">TAB 3 — TEMPLATE (ADMIN)</span>
-    <h3>Import từ Inventor &amp; Master Library</h3>
-    <p>Dành cho Admin/Key User. Đây là nguồn gốc tạo ra Fitting — nhập file từ Inventor và xây dựng thư viện chuẩn công ty.</p>
+    <h3>Import from Inventor &amp; Master Library</h3>
+    <p>For Admin / Key Users only. This is where Fittings originate — import from Inventor and build the company-standard library.</p>
   </div>
 
-  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px;">Nhập file .idw từ Inventor</h3>
+  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px;">Importing .idw files from Inventor</h3>
   <div class="steps" style="margin-bottom:26px;">
 
     <div class="step-card">
       <div class="step-num">1</div>
       <div class="step-body">
-        <h3>Chọn BOM Type — BẮT BUỘC trước khi Import</h3>
+        <h3>Select BOM Type — REQUIRED before Import</h3>
         <div class="two-col" style="margin-top:10px;">
           <div style="background:#e8fff0;border:2px solid #22c55e;border-radius:10px;padding:14px;">
             <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:5px;">Panel (Structure)</div>
-            <div style="font-size:12.5px;color:#4a5a78;">Cụm kết cấu lớn, hàn nguyên khối. Thường chứa nhiều Detail. VD: Frame Assembly, Hatch Cover Panel.</div>
+            <div style="font-size:12.5px;color:#4a5a78;">Large structural assembly, welded as one piece. Typically contains multiple Details. E.g. Frame Assembly, Hatch Cover Panel.</div>
           </div>
           <div style="background:#fff4e8;border:2px solid #f59e0b;border-radius:10px;padding:14px;">
             <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:5px;">Detail (Hull)</div>
-            <div style="font-size:12.5px;color:#4a5a78;">Chi tiết rời, vỏ, phụ kiện mua ngoài, gắn lên Panel. VD: Cleat, Sheave, Hook.</div>
+            <div style="font-size:12.5px;color:#4a5a78;">Loose component, hull part, or bought-out accessory mounted onto a Panel. E.g. Cleat, Sheave, Hook.</div>
           </div>
         </div>
-        <div class="callout danger" style="margin-top:10px;"><strong>Phân loại sai = Hỏng cấu trúc BOM.</strong> Không thể đổi BOM Type sau khi đã Import. Nếu nhập sai → xóa và Import lại.</div>
+        <div class="callout danger" style="margin-top:10px;"><strong>Wrong classification = corrupted BOM structure.</strong> BOM Type cannot be changed after Import. If imported incorrectly → delete and re-import.</div>
       </div>
     </div>
 
@@ -707,39 +706,39 @@
       <div class="step-num">2</div>
       <div class="step-body">
         <h3>Import .idw files</h3>
-        <p>Bấm <kbd>Import .idw files</kbd> → Chọn 1 hoặc nhiều file <code>.idw</code>. Quá trình chạy ngầm (async).</p>
+        <p>Click <kbd>Import .idw files</kbd> → Select one or more <code>.idw</code> files. The process runs in the background (async).</p>
         <div class="callout info" style="margin-top:10px;">
-          <strong>Hệ thống làm trong background:</strong>
+          <strong>What the system does in the background:</strong>
           <ul>
-            <li>Giao tiếp với Autodesk Inventor để đọc dữ liệu</li>
-            <li>Đọc iProperties: Part Number, Description — ưu tiên trường <code>Designer</code> thay <code>Author</code></li>
-            <li>Làm tròn khối lượng (Mass) đúng chuẩn</li>
-            <li>Mở khóa layer tiêu chuẩn: <code>Mechanical-AM_3</code>, <code>_7</code>, <code>_9</code></li>
-            <li>Cắt riêng từng hình chiếu dựa vào Bounding Box</li>
-            <li>Ép Linetype và Color về <code>ByLayer</code></li>
-            <li>Cấy Attribute ẩn <code>POS_NUM</code> vào Block</li>
-            <li>Lưu vào Master Library</li>
+            <li>Communicates with Autodesk Inventor to read drawing data</li>
+            <li>Reads iProperties: Part Number, Description — prioritises <code>Designer</code> field over <code>Author</code></li>
+            <li>Rounds the Mass value to standard precision</li>
+            <li>Unlocks standard layers: <code>Mechanical-AM_3</code>, <code>_7</code>, <code>_9</code></li>
+            <li>Crops each drawing view using its Bounding Box</li>
+            <li>Forces Linetype and Color to <code>ByLayer</code></li>
+            <li>Embeds hidden <code>POS_NUM</code> Attribute into each Block</li>
+            <li>Saves to Master Library</li>
           </ul>
         </div>
-        <div class="callout warning" style="margin-top:10px;">💡 Mở sẵn Inventor (để trống) trước khi Import — tránh timeout, tăng tốc độ.</div>
+        <div class="callout warning" style="margin-top:10px;">💡 Open Inventor first (leave it idle with no file open) before clicking Import — reduces timeout risk and speeds up the process.</div>
       </div>
     </div>
 
   </div>
 
   <!-- Master Library -->
-  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px;">Master Library — Quản lý thư viện chuẩn</h3>
+  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px;">Master Library — Managing the standard library</h3>
   <div class="white-card" style="margin-bottom:28px;">
-    <p style="font-size:14px;color:#4a5a78;margin-bottom:14px;">Bấm <kbd>Open Master Library</kbd>. Đây là "kho gốc" — chỉ Admin chỉnh sửa.</p>
+    <p style="font-size:14px;color:#4a5a78;margin-bottom:14px;">Click <kbd>Open Master Library</kbd>. This is the "source of record" — only Admin can modify it.</p>
     <table class="data-table">
-      <thead><tr><th>Chức năng</th><th>Mô tả</th></tr></thead>
+      <thead><tr><th>Feature</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td>Search</td><td>Tìm đa từ khóa (VD: <code>sheave 22</code>). Tìm theo Part ID, Name, Description, Originator.</td></tr>
-        <tr><td>Categories tree</td><td>Lọc theo cây danh mục. Click để thu hẹp phạm vi.</td></tr>
-        <tr><td>Add from CAD</td><td>Quét nhiều hình chiếu (<code>-tv</code>, <code>-fv</code>, <code>-sv</code>) trên bản vẽ đang mở → Tool gom vào 1 Part ID.</td></tr>
-        <tr><td>Sub-BOM / Accessories</td><td>Gán phụ kiện ảo cho Fitting chính (VD: 2 cùm + 4 ốc). Khi xuất BOM, phụ kiện tự bám theo số Mẹ.</td></tr>
-        <tr><td>Push Update</td><td>Sửa Block trực tiếp trên bản vẽ → Chọn Block đã sửa → Bấm Push Update để ghi đè DWG trong Library.</td></tr>
-        <tr><td>Add to Project</td><td>Thêm Fitting từ Master Library vào danh sách dự án đang active → Engineer có thể Insert.</td></tr>
+        <tr><td>Search</td><td>Multi-keyword search (e.g. <code>sheave 22</code>). Searches by Part ID, Name, Description, Originator.</td></tr>
+        <tr><td>Categories tree</td><td>Filter by category tree. Click to narrow down the scope.</td></tr>
+        <tr><td>Add from CAD</td><td>Scan multiple views (<code>-tv</code>, <code>-fv</code>, <code>-sv</code>) from the open drawing → Tool groups them under 1 Part ID.</td></tr>
+        <tr><td>Sub-BOM / Accessories</td><td>Assign virtual accessories to a parent Fitting (e.g. 2 clamps + 4 bolts). When exporting BOM, accessories are automatically indented after the parent.</td></tr>
+        <tr><td>Push Update</td><td>Edit a Block directly on the drawing → Select the modified Block → Click Push Update to overwrite the DWG in the Library.</td></tr>
+        <tr><td>Add to Project</td><td>Add a Fitting from Master Library to the active project list → Engineers can then Insert it.</td></tr>
       </tbody>
     </table>
   </div>
@@ -747,24 +746,24 @@
   <!-- TAB 2 — ENGINEER -->
   <div class="feature-header">
     <span class="fh-badge fh-tab2">TAB 2 — PROJECT CONFIG (ENGINEER)</span>
-    <h3>Project Library — Thư viện dự án</h3>
-    <p>Sau khi Admin thêm Fitting vào dự án, Engineer dùng tab này để Insert Block vào bản vẽ.</p>
+    <h3>Project Library — Project-specific library</h3>
+    <p>Once Admin has added Fittings to the project, Engineers use this tab to insert Blocks into drawings.</p>
   </div>
 
   <div class="white-card">
-    <p style="font-size:14px;color:#4a5a78;margin-bottom:14px;">Bấm <kbd>Open Project Library</kbd>. Chỉ hiển thị Fitting đã được Admin cấu hình cho dự án hiện tại.</p>
+    <p style="font-size:14px;color:#4a5a78;margin-bottom:14px;">Click <kbd>Open Project Library</kbd>. Only shows Fittings configured by Admin for the current project.</p>
     <table class="data-table">
-      <thead><tr><th>Chức năng</th><th>Mô tả</th></tr></thead>
+      <thead><tr><th>Feature</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td>Search</td><td>Tìm kiếm nhanh trong danh sách Fitting của dự án.</td></tr>
-        <tr><td>Preview pane</td><td>Xem trước hình dạng Block trước khi Insert.</td></tr>
-        <tr><td>Insert to CAD</td><td>Chèn Block vào bản vẽ. Hệ thống tự cấy Attribute <code>POS_NUM</code> ẩn nếu chưa có.</td></tr>
-        <tr><td>Auto-Assign Pos</td><td>Gán số Position sơ bộ trong Project Library.</td></tr>
-        <tr><td>Remove Selected</td><td>Xóa Fitting khỏi danh sách dự án (không xóa khỏi Master Library).</td></tr>
+        <tr><td>Search</td><td>Quick search within the current project's Fitting list.</td></tr>
+        <tr><td>Preview pane</td><td>Preview the Block shape before inserting.</td></tr>
+        <tr><td>Insert to CAD</td><td>Insert the Block into the drawing. The system automatically embeds the hidden <code>POS_NUM</code> Attribute if not present.</td></tr>
+        <tr><td>Auto-Assign Pos</td><td>Assign preliminary Position numbers within the Project Library.</td></tr>
+        <tr><td>Remove Selected</td><td>Remove a Fitting from the project list (does not delete from Master Library).</td></tr>
       </tbody>
     </table>
     <div class="callout info" style="margin-top:14px;">
-      💡 <strong>Thứ tự Insert tốt nhất:</strong> Chèn đủ tất cả hình chiếu của 1 Fitting (<code>-tv</code>, <code>-fv</code>, <code>-sv</code>) trước khi chuyển sang Fitting khác. Giúp BOM Scan chính xác hơn.
+      💡 <strong>Best Insert practice:</strong> Insert all views of one Fitting (<code>-tv</code>, <code>-fv</code>, <code>-sv</code>) before moving to the next. This gives BOM Scan a cleaner result.
     </div>
   </div>
 </div>
@@ -775,85 +774,85 @@
 
   <div class="feature-header">
     <span class="fh-badge fh-tab4">TAB 4 — BLOCK UTILITIES</span>
-    <h3>Thao tác Block nâng cao — không cần Explode</h3>
-    <p>Toàn bộ Attribute ẩn (<code>POS_NUM</code>) được bảo toàn suốt quá trình. Gồm 2 nhóm: <strong>Block Utilities</strong> và <strong>Drawing Collection</strong>.</p>
+    <h3>Advanced Block operations — no Explode required</h3>
+    <p>All hidden Attributes (<code>POS_NUM</code>) are preserved throughout every operation. Divided into 2 groups: <strong>Block Utilities</strong> and <strong>Drawing Collection</strong>.</p>
   </div>
 
-  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:14px;">Nhóm 1 — Block Utilities</h3>
+  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:14px;">Group 1 — Block Utilities</h3>
   <div class="feature-grid" style="margin-bottom:28px;">
     <div class="feature-card">
       <h4>Rename Block</h4>
-      <p>Đổi tên hoặc nhân bản (Clone) Block.</p>
+      <p>Rename or clone a Block with a new name.</p>
       <ul>
-        <li>Tự sửa nội dung MText bên trong khi đổi tên</li>
-        <li>Dùng trước khi Add to Library để đặt đúng Part ID</li>
+        <li>Automatically updates any MText content inside the Block</li>
+        <li>Use before Add to Library to set the correct Part ID</li>
       </ul>
     </div>
     <div class="feature-card">
       <h4>Add Objects to Block</h4>
-      <p>Thêm đối tượng rời vào Block mà không làm vỡ Block.</p>
+      <p>Add loose objects into an existing Block without breaking it.</p>
       <ul>
-        <li>Bấm lệnh → Chọn Block đích → Quét các nét vẽ cần gộp</li>
-        <li>Tọa độ bù trừ tự động — không bị lệch sau khi gộp</li>
+        <li>Click command → Select target Block → Select objects to merge</li>
+        <li>Coordinates are automatically compensated — no positional drift</li>
       </ul>
     </div>
     <div class="feature-card">
       <h4>Extract Objects from Block</h4>
-      <p>Kéo đối tượng từ bên trong Block ra Model Space.</p>
+      <p>Pull objects from inside a Block out to Model Space.</p>
       <ul>
-        <li>Bấm lệnh → Click vào các nét vẽ bên trong Block</li>
-        <li>Block không bị Explode — Attribute vẫn nguyên vẹn</li>
+        <li>Click command → Click the geometry lines inside the Block</li>
+        <li>Block is not Exploded — Attributes remain intact</li>
       </ul>
     </div>
     <div class="feature-card">
       <h4>Change Insertion Point</h4>
-      <p>Thay đổi Base Point của Block.</p>
+      <p>Change the Base Point of a Block.</p>
       <ul>
-        <li>Tự bù trừ tọa độ cho <strong>tất cả</strong> Block cùng tên trên bản vẽ</li>
-        <li>Không cần chỉnh từng Block một sau khi đổi</li>
+        <li>Automatically compensates coordinates for <strong>all</strong> same-name Blocks on the drawing</li>
+        <li>No need to re-adjust each Block instance individually</li>
       </ul>
     </div>
     <div class="feature-card">
       <h4>Smart Replace (Spatial)</h4>
-      <p>Thay thế Block hàng loạt theo vị trí không gian.</p>
+      <p>Bulk-replace Blocks based on spatial position.</p>
       <ul>
-        <li>Chọn Block Nguồn và Block Đích</li>
-        <li>Dùng Bounding Box để sắp xếp và thay thế tự động</li>
-        <li>Giữ nguyên Scale và Rotation của Block gốc</li>
+        <li>Select source and target Blocks</li>
+        <li>Uses Bounding Box for spatial matching and automatic replacement</li>
+        <li>Preserves original Block Scale and Rotation</li>
       </ul>
     </div>
     <div class="feature-card">
       <h4>Redefine Blocks</h4>
-      <p>Đồng bộ định nghĩa Block từ bản vẽ đang mở khác.</p>
+      <p>Sync Block definitions from another open drawing.</p>
       <ul>
-        <li>Chọn bản vẽ nguồn (đang mở trong AutoCAD)</li>
-        <li>Cập nhật Block definition an toàn</li>
+        <li>Select the source drawing (must be open in AutoCAD)</li>
+        <li>Safely updates Block definitions without breaking existing instances</li>
       </ul>
     </div>
   </div>
 
-  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:14px;">Nhóm 2 — Drawing Collection</h3>
+  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:14px;">Group 2 — Drawing Collection</h3>
   <div class="white-card">
-    <p style="font-size:14px;color:#4a5a78;margin-bottom:16px;">Gom nội dung từ nhiều bản vẽ thành 1 file tổng hợp. Dùng để tổng hợp nhiều panel vào 1 bản vẽ MTO.</p>
+    <p style="font-size:14px;color:#4a5a78;margin-bottom:16px;">Merge content from multiple drawings into a single consolidated file. Used to combine multiple panels into one MTO drawing.</p>
     <div class="two-col">
       <div style="background:#f8faff;border:1px solid var(--border);border-radius:10px;padding:16px;">
         <h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Collect Drawings (.dwg)</h4>
         <ul style="font-size:13.5px;color:#4a5a78;padding-left:16px;line-height:1.9;">
-          <li>Chọn nhiều file <code>.dwg</code></li>
-          <li>Block đổi tên: <code>[FileName]_[BlockName]</code></li>
-          <li>Block đặc biệt <code>A1</code> và <code>CAS_HEAD</code> giữ nguyên</li>
-          <li>Block definition không dùng bị Purge</li>
-          <li>Bố cục ngang, khoảng cách 100mm giữa các frame</li>
-          <li>Cảnh báo nếu vượt giới hạn</li>
+          <li>Select multiple <code>.dwg</code> files</li>
+          <li>Blocks renamed: <code>[FileName]_[BlockName]</code></li>
+          <li>Special Blocks <code>A1</code> and <code>CAS_HEAD</code> are preserved</li>
+          <li>Unused Block definitions are purged</li>
+          <li>Horizontal layout with 100 mm gap between frames</li>
+          <li>Warning issued if limits are exceeded</li>
         </ul>
       </div>
       <div style="background:#f8faff;border:1px solid var(--border);border-radius:10px;padding:16px;">
         <h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Collect Drawings (.idw)</h4>
         <ul style="font-size:13.5px;color:#4a5a78;padding-left:16px;line-height:1.9;">
-          <li>Tương tự Collect .dwg</li>
-          <li>Đọc trực tiếp file Inventor <code>.idw</code></li>
-          <li>Tự động convert sang AutoCAD entities</li>
-          <li>Cùng logic đổi tên và Purge</li>
+          <li>Same logic as Collect .dwg</li>
+          <li>Reads Inventor <code>.idw</code> files directly</li>
+          <li>Automatically converts to AutoCAD entities</li>
+          <li>Same rename and purge logic applied</li>
         </ul>
       </div>
     </div>
@@ -862,54 +861,54 @@
 
 <!-- ═══════════════════════════════════════ FAQ ═══════════════════════════════════════ -->
 <div id="faq" class="section">
-  <h2 class="section-title">FAQ &amp; Khắc phục sự cố</h2>
+  <h2 class="section-title">FAQ &amp; Troubleshooting</h2>
 
   <div class="faq-item">
-    <div class="faq-q">Bấm Import .idw files nhưng không thấy gì xảy ra hoặc báo timeout?</div>
-    <div class="faq-a">Plugin cần giao tiếp với Autodesk Inventor — đảm bảo Inventor đã cài trên máy. <strong>Mẹo:</strong> Mở sẵn Inventor (để trống, không mở file nào) trước khi bấm Import. Quá trình sẽ mượt hơn và ít bị timeout.</div>
+    <div class="faq-q">I clicked Import .idw files but nothing happens, or it times out?</div>
+    <div class="faq-a">The plugin needs to communicate with Autodesk Inventor — make sure Inventor is installed on the machine. <strong>Tip:</strong> Open Inventor first (leave it idle with no file open) before clicking Import. This prevents timeouts and speeds up the process significantly.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Quét BOM (Scan &amp; Count) nhưng số lượng bị thiếu so với thực tế trên bản vẽ?</div>
-    <div class="faq-a">Hệ thống chỉ đếm Block có đuôi <code>-tv</code>. Kiểm tra lại: bạn có thể chỉ chèn hình chiếu <code>-fv</code> hoặc <code>-sv</code> mà quên chèn <code>-tv</code>. Mỗi Fitting cần ít nhất 1 Block <code>-tv</code> trên bản vẽ để được đếm.</div>
+    <div class="faq-q">After Scan &amp; Count, the quantity is lower than what I drew on the CAD?</div>
+    <div class="faq-a">The system only counts Blocks ending in <code>-tv</code>. Check whether you have only inserted <code>-fv</code> or <code>-sv</code> views without inserting the main <code>-tv</code> view. Every Fitting needs at least one <code>-tv</code> Block on the drawing to be counted.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Cắm Balloon báo lỗi "Không tìm thấy POS_NUM" hoặc cắm ra balloon trống?</div>
-    <div class="faq-a">Chưa đồng bộ dữ liệu. Sau khi Scan và Auto-Assign trong cửa sổ BOM, <strong>bắt buộc phải bấm Sync Pos to CAD</strong> để bơm số vào Attribute ẩn. Thứ tự đúng: Scan → Auto-Assign → <strong>Sync Pos to CAD</strong> → Balloon.</div>
+    <div class="faq-q">Balloon placement reports "POS_NUM not found" or places an empty balloon?</div>
+    <div class="faq-a">Data has not been synchronised. After running Scan and Auto-Assign in the BOM window, you <strong>must click Sync Pos to CAD</strong> to write the numbers into the hidden Attributes. Correct order: Scan → Auto-Assign → <strong>Sync Pos to CAD</strong> → Balloon.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Khi Add from CAD vào Library, báo lỗi "Trùng tên"?</div>
-    <div class="faq-a">Part ID đã tồn tại trong Library. Đảm bảo ô "Part ID" là duy nhất và không chứa ký tự cấm AutoCAD (<code>\ / : * ? " &lt; &gt; |</code>). Dùng lệnh <strong>Rename Block</strong> (Tab 4) để đặt lại tên trước khi Add.</div>
+    <div class="faq-q">When using Add from CAD to the Library, it reports a "Duplicate name" error?</div>
+    <div class="faq-a">The Part ID you entered already exists in the Library. Ensure the Part ID field is unique and does not contain AutoCAD-reserved characters (<code>\ / : * ? " &lt; &gt; |</code>). Use the <strong>Rename Block</strong> command (Tab 4) to rename the Block before adding it to the Library.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Balloon bị cắm sai vị trí hoặc cắm vào Block -fv thay vì -tv?</div>
-    <div class="faq-a">Mass Auto-Balloon chỉ cắm vào Block <code>-tv</code>. Kiểm tra tên Block: phải kết thúc đúng bằng <code>-tv</code>. Dùng <strong>Rename Block</strong> (Tab 4) để sửa tên nếu cần.</div>
+    <div class="faq-q">Balloons are placed in the wrong position, or on a -fv Block instead of -tv?</div>
+    <div class="faq-a">Mass Auto-Balloon only places on Blocks ending in <code>-tv</code>. Verify the Block name ends exactly with <code>-tv</code> (case-sensitive). Use <strong>Rename Block</strong> (Tab 4) to correct the name if needed.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Tôi sửa số lượng trên Excel, giờ số trên CAD bị lệch với Excel?</div>
-    <div class="faq-a"><strong>KHÔNG sửa số trên Excel.</strong> Bản vẽ CAD là chân lý duy nhất. Mọi thay đổi thực hiện trên CAD (thêm/bớt Block), sau đó: Scan → Auto-Assign → Sync → Export Excel lại từ đầu.</div>
+    <div class="faq-q">I edited quantities in the Excel file, now the numbers are out of sync with CAD?</div>
+    <div class="faq-a"><strong>Do not edit numbers in Excel.</strong> The CAD drawing is the sole source of truth. All changes must be made in CAD (add/remove Blocks), then: Scan → Auto-Assign → Sync → Export Excel again from scratch.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Plugin không load sau cài đặt — lệnh MCG_Fitting không nhận?</div>
-    <div class="faq-a">Kiểm tra theo thứ tự:
+    <div class="faq-q">Plugin does not load after installation — MCG_Fitting command not recognised?</div>
+    <div class="faq-a">Check in this order:
       <ol>
-        <li>Thư mục <code>%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\</code> có tồn tại không?</li>
-        <li>Trong đó có file <code>PackageContents.xml</code> không?</li>
-        <li>Thư mục <code>Contents\</code> có file <code>MCG_FittingManagement.dll</code> không?</li>
-        <li>Chạy lại <code>Install_AutoLoadCadAddin.bat</code> với quyền Administrator.</li>
-        <li>Restart AutoCAD hoàn toàn (không chỉ đóng bản vẽ).</li>
+        <li>Does the folder <code>%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\</code> exist?</li>
+        <li>Does it contain a <code>PackageContents.xml</code> file?</li>
+        <li>Does the <code>Contents\</code> subfolder contain <code>MCG_FittingManagement.dll</code>?</li>
+        <li>Re-run <code>Install_AutoLoadCadAddin.bat</code> with Administrator rights.</li>
+        <li>Fully restart AutoCAD (do not just close the drawing).</li>
       </ol>
     </div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Dùng Change Insertion Point nhưng các Block cùng tên bị lệch vị trí?</div>
-    <div class="faq-a">Đây là hành vi đúng — hệ thống tự bù trừ tọa độ cho TẤT CẢ Block cùng tên. Nếu nhìn thấy "lệch", Zoom to All để xem toàn cảnh. Nếu thực sự sai, dùng <kbd>Ctrl+Z</kbd> ngay để Undo.</div>
+    <div class="faq-q">After using Change Insertion Point, same-name Blocks appear to have shifted position?</div>
+    <div class="faq-a">This is the expected behaviour — the system automatically compensates coordinates for ALL same-name Blocks. If it looks like a shift, use Zoom to Extents to see the full picture. If genuinely incorrect, press <kbd>Ctrl+Z</kbd> immediately to Undo.</div>
   </div>
 
 </div>
