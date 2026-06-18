@@ -232,11 +232,18 @@ namespace MCGCadPlugin.Services.FittingManagement
                         destBt.Add(newBtr);
                         destTr.AddNewlyCreatedDBObject(newBtr, true);
 
-                        // Cross-db clone — tiết kiệm 1 round-trip so với db.Insert temp block
-                        IdMapping mapping = new IdMapping();
-                        sourceDb.WblockCloneObjects(
-                            entsToClone, newBtr.ObjectId, mapping,
-                            DuplicateRecordCloning.Ignore, false);
+                        // Clone từng entity riêng — tránh eHandleExists khi WblockCloneObjects gặp
+                        // handle collision cross-db (handle gốc từ Inventor DWG trùng với active drawing).
+                        // AppendEntity luôn gán handle mới trong destination DB.
+                        foreach (ObjectId eid in entsToClone)
+                        {
+                            Entity srcEnt = srcTr.GetObject(eid, OpenMode.ForRead) as Entity;
+                            if (srcEnt == null) continue;
+                            Entity cloned = srcEnt.Clone() as Entity;
+                            if (cloned == null) continue;
+                            newBtr.AppendEntity(cloned);
+                            destTr.AddNewlyCreatedDBObject(cloned, true);
+                        }
 
                         // Translate về origin + remap layer theo kiểu nét + force ByLayer
                         TransformAndStyleEntities(newBtr, destTr,
@@ -363,7 +370,8 @@ namespace MCGCadPlugin.Services.FittingManagement
                 if (ly.Contains("VISIBLE")) ent.Layer = LAYER_VISIBLE;
                 else if (ly.Contains("HIDDEN")) ent.Layer = LAYER_HIDDEN;
                 else if (ly.Contains("CENTER")) ent.Layer = LAYER_CENTER;
-                // Layer không match các pattern → giữ nguyên layer gốc
+                // Layer không match → về "0" (layer gốc Inventor không tồn tại trong destination DB)
+                else ent.Layer = LAYER_VISIBLE;
 
                 // Force ByLayer cho mọi property hiển thị — layer rules sẽ quyết định màu/nét/weight
                 try
