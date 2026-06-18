@@ -68,8 +68,10 @@ namespace MCGCadPlugin.Commands
                 if (!IsInitialized)
                     Initialize();
 
+                // Visible phải set TRƯỚC Dock — AutoCAD chỉ cho phép dock sau khi palette đã visible.
                 _paletteSet.Visible = true;
-                Debug.WriteLine($"{LOG_PREFIX} PaletteSet hiển thị THÀNH CÔNG.");
+                _paletteSet.Dock = DockSides.Right;
+                Debug.WriteLine($"{LOG_PREFIX} PaletteSet hiển thị THÀNH CÔNG — docked Right.");
             }
             catch (Exception ex)
             {
@@ -135,7 +137,7 @@ namespace MCGCadPlugin.Commands
             _paletteSet.AddVisual("Block Utilities", new BlockUtilitiesView());
 
             // 3. Thiết lập thuộc tính — SAU AddVisual
-            _paletteSet.DockEnabled = DockSides.Right | DockSides.Left;
+            _paletteSet.DockEnabled = DockSides.Right;  // Chỉ cho phép dock phải
             _paletteSet.Size = new Size(400, 600);
             _paletteSet.Style = PaletteSetStyles.ShowTabForSingle
                               | PaletteSetStyles.Snappable;
