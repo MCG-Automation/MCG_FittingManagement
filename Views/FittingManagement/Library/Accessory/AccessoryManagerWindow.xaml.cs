@@ -8,10 +8,10 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using Newtonsoft.Json;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Services.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Services.FittingManagement;
 
-namespace MCGCadPlugin.Views.FittingManagement
+namespace MCG_FittingManagement.Views.FittingManagement
 {
     public partial class AccessoryManagerWindow : Window
     {

@@ -1,4 +1,4 @@
-namespace MCGCadPlugin.Models.FittingManagement
+namespace MCG_FittingManagement.Models.FittingManagement
 {
     /// <summary>
     /// Một entry trong danh sách "Recently" của Library window.

@@ -6,7 +6,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     public partial class FittingManagementService
     {

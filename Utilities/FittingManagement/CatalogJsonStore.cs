@@ -4,9 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
-using MCGCadPlugin.Models.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
 
-namespace MCGCadPlugin.Utilities.FittingManagement
+namespace MCG_FittingManagement.Utilities.FittingManagement
 {
     /// <summary>
     /// Helper đọc/ghi/merge JSON catalog (Master và Project dùng chung định dạng).

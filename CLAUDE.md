@@ -1,4 +1,4 @@
-# CLAUDE.md — MCGCadPlugin
+# CLAUDE.md — MCG_FittingManagement
 
 # AutoCAD 2023 | C# | .NET Framework 4.8 | WPF | VS Code
 
@@ -22,9 +22,9 @@ Sau khi đọc xong, **báo cáo ngắn**:
 ## 2. Thông tin dự án
 
 ```
-Tên project   : MCGCadPlugin
+Tên project   : MCG_FittingManagement
 Mục tiêu      : Plugin AutoCAD .NET API để bóc tách dữ liệu hình học (MTO)
-Thư mục chuẩn : C:\CustomTools\Autocad\MCGCadPlugin
+Thư mục chuẩn : C:\CustomTools\Autocad\MCG_FittingManagement
 Runtime        : .NET Framework 4.8, x64
 UI             : WPF + AutoCAD PaletteSet (Singleton)
 API DLLs       : C:\Program Files\Autodesk\AutoCAD 2023\acmgd.dll
@@ -35,49 +35,49 @@ Bundle folder  : %APPDATA%\Autodesk\ApplicationPlugins\
 Build          : dotnet build -c Debug (chạy với quyền Administrator)
 ```
 
-> ⚠️ **Hạn chế chỉnh sửa `MCGCadPlugin.csproj`** — chỉ sửa khi có lý do rõ ràng (đổi `PluginName`, thêm `PackageReference`, đổi target framework). Không chạm các field không hiểu rõ.
+> ⚠️ **Hạn chế chỉnh sửa `MCG_FittingManagement.csproj`** — chỉ sửa khi có lý do rõ ràng (đổi `PluginName`, thêm `PackageReference`, đổi target framework). Không chạm các field không hiểu rõ.
 
 ---
 
 ## 3. Namespace — BẮT BUỘC TUÂN THỦ
 
 ```
-MCGCadPlugin                                    ← Root
-├── MCGCadPlugin.Commands                       ← Đăng ký lệnh CommandMethod
-│   ├── MCGCadPlugin.Commands.DetailDesign
-│   ├── MCGCadPlugin.Commands.FittingManagement
-│   ├── MCGCadPlugin.Commands.PanelData
-│   ├── MCGCadPlugin.Commands.TableOfContent
-│   └── MCGCadPlugin.Commands.Weight
-├── MCGCadPlugin.Models                         ← Data objects thuần, không import AutoCAD
-│   ├── MCGCadPlugin.Models.DetailDesign
-│   ├── MCGCadPlugin.Models.FittingManagement
-│   ├── MCGCadPlugin.Models.PanelData
-│   ├── MCGCadPlugin.Models.TableOfContent
-│   └── MCGCadPlugin.Models.Weight
-├── MCGCadPlugin.Services                       ← Business logic, luôn có Interface
-│   ├── MCGCadPlugin.Services.DetailDesign
-│   ├── MCGCadPlugin.Services.FittingManagement
-│   ├── MCGCadPlugin.Services.PanelData
-│   ├── MCGCadPlugin.Services.TableOfContent
-│   └── MCGCadPlugin.Services.Weight
-├── MCGCadPlugin.Views                          ← WPF XAML + code-behind tối thiểu
-│   ├── MCGCadPlugin.Views.DetailDesign
-│   ├── MCGCadPlugin.Views.FittingManagement
-│   ├── MCGCadPlugin.Views.PanelData
-│   ├── MCGCadPlugin.Views.TableOfContent
-│   └── MCGCadPlugin.Views.Weight
-└── MCGCadPlugin.Utilities                      ← Hàm dùng chung toàn project
+MCG_FittingManagement                                    ← Root
+├── MCG_FittingManagement.Commands                       ← Đăng ký lệnh CommandMethod
+│   ├── MCG_FittingManagement.Commands.DetailDesign
+│   ├── MCG_FittingManagement.Commands.FittingManagement
+│   ├── MCG_FittingManagement.Commands.PanelData
+│   ├── MCG_FittingManagement.Commands.TableOfContent
+│   └── MCG_FittingManagement.Commands.Weight
+├── MCG_FittingManagement.Models                         ← Data objects thuần, không import AutoCAD
+│   ├── MCG_FittingManagement.Models.DetailDesign
+│   ├── MCG_FittingManagement.Models.FittingManagement
+│   ├── MCG_FittingManagement.Models.PanelData
+│   ├── MCG_FittingManagement.Models.TableOfContent
+│   └── MCG_FittingManagement.Models.Weight
+├── MCG_FittingManagement.Services                       ← Business logic, luôn có Interface
+│   ├── MCG_FittingManagement.Services.DetailDesign
+│   ├── MCG_FittingManagement.Services.FittingManagement
+│   ├── MCG_FittingManagement.Services.PanelData
+│   ├── MCG_FittingManagement.Services.TableOfContent
+│   └── MCG_FittingManagement.Services.Weight
+├── MCG_FittingManagement.Views                          ← WPF XAML + code-behind tối thiểu
+│   ├── MCG_FittingManagement.Views.DetailDesign
+│   ├── MCG_FittingManagement.Views.FittingManagement
+│   ├── MCG_FittingManagement.Views.PanelData
+│   ├── MCG_FittingManagement.Views.TableOfContent
+│   └── MCG_FittingManagement.Views.Weight
+└── MCG_FittingManagement.Utilities                      ← Hàm dùng chung toàn project
 ```
 
 **Quy tắc namespace theo vị trí file:**
 ```
-Services/DetailDesign/DetailExtractionService.cs     → namespace MCGCadPlugin.Services.DetailDesign
-Models/FittingManagement/FittingData.cs              → namespace MCGCadPlugin.Models.FittingManagement
-Views/PanelData/PanelDataView.xaml.cs                → namespace MCGCadPlugin.Views.PanelData
-Services/TableOfContent/TableGeneratorService.cs     → namespace MCGCadPlugin.Services.TableOfContent
-Models/Weight/WeightCalculationResult.cs             → namespace MCGCadPlugin.Models.Weight
-Utilities/CoordinateHelper.cs                        → namespace MCGCadPlugin.Utilities
+Services/DetailDesign/DetailExtractionService.cs     → namespace MCG_FittingManagement.Services.DetailDesign
+Models/FittingManagement/FittingData.cs              → namespace MCG_FittingManagement.Models.FittingManagement
+Views/PanelData/PanelDataView.xaml.cs                → namespace MCG_FittingManagement.Views.PanelData
+Services/TableOfContent/TableGeneratorService.cs     → namespace MCG_FittingManagement.Services.TableOfContent
+Models/Weight/WeightCalculationResult.cs             → namespace MCG_FittingManagement.Models.Weight
+Utilities/CoordinateHelper.cs                        → namespace MCG_FittingManagement.Utilities
 ```
 
 ---
@@ -350,7 +350,7 @@ Mỗi layer có folder `_Template/` chứa file mẫu. Khi tạo Module mới, *
 
 ```csharp
 // File: Services/Module1/TenService.cs
-namespace MCGCadPlugin.Services.Module1
+namespace MCG_FittingManagement.Services.Module1
 {
     /// <summary>
     /// TODO: Mô tả class này làm gì

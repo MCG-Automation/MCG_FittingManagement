@@ -5,11 +5,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Win32;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Services.FittingManagement;
-using MCGCadPlugin.Utilities;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Services.FittingManagement;
+using MCG_FittingManagement.Utilities;
 
-namespace MCGCadPlugin.Views.FittingManagement
+namespace MCG_FittingManagement.Views.FittingManagement
 {
     /// <summary>
     /// Tab "Block Utilities" — công cụ thao tác block + Drawing Collection:

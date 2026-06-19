@@ -51,8 +51,8 @@
       Query="//ComponentEntry[contains(@ModuleName,'.dll')]/@ModuleName"
       Value="./Contents/$(AssemblyName).dll" />
 
-    <Message Text="[MCGCadPlugin Build] DLL: $(AssemblyName).dll" Importance="High" />
-    <Message Condition="!Exists('$(PackageContentsPath)')" Text="[MCGCadPlugin Build] PackageContents.xml chua ton tai — can chay build-and-launch.bat de tao lan dau." Importance="High" />
+    <Message Text="[MCG_FittingManagement Build] DLL: $(AssemblyName).dll" Importance="High" />
+    <Message Condition="!Exists('$(PackageContentsPath)')" Text="[MCG_FittingManagement Build] PackageContents.xml chua ton tai — can chay build-and-launch.bat de tao lan dau." Importance="High" />
   </Target>
   <ItemGroup>
     <Reference Include="System.Windows.Forms" />

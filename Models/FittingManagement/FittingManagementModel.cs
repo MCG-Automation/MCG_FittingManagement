@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 // TUYỆT ĐỐI KHÔNG using Autodesk.AutoCAD... ở đây theo quy tắc của CLAUDE.md
 
-namespace MCGCadPlugin.Models.FittingManagement
+namespace MCG_FittingManagement.Models.FittingManagement
 {
     /// <summary>
     /// Chứa thông tin hình học của từng hình chiếu trích xuất từ Inventor.

@@ -1,4 +1,4 @@
-namespace MCGCadPlugin.Models.FittingManagement
+namespace MCG_FittingManagement.Models.FittingManagement
 {
     /// <summary>
     /// Thông tin kết nối Vault (auto-detect từ LoginHistory.xml hoặc user config).

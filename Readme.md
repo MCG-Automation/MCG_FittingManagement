@@ -1,4 +1,4 @@
-# 🚢 MCGCadPlugin
+# 🚢 MCG_FittingManagement
 
 > Template chuẩn hóa dành cho việc phát triển các công cụ trên nền tảng **AutoCAD .NET API**.  
 > Bộ khung này được xây dựng dựa trên kiến trúc **Module hóa** và nguyên lý **Clean Code**, giúp bóc tách dữ liệu hình học (MTO) chính xác và nhanh chóng.
@@ -9,7 +9,7 @@
 
 | Nền tảng | Tên Project | Thư mục |
 |---|---|---|
-| AutoCAD | `MCGCadPlugin` | `C:\CustomTools\Autocad` |
+| AutoCAD | `MCG_FittingManagement` | `C:\CustomTools\Autocad` |
 | Inventor | `MCGInventorPlugin` | `C:\CustomTools\Inventor` |
 
 ---
@@ -19,7 +19,7 @@
 Dự án được phân chia thành các **Module độc lập** để dễ bảo trì và mở rộng:
 
 ```
-MCGCadPlugin/
+MCG_FittingManagement/
 ├── Commands/       # Đăng ký lệnh và quản lý vòng đời Palette
 ├── Models/         # Định nghĩa đối tượng (POCO), tách biệt với AutoCAD
 ├── Services/       # Logic xử lý chính (ExtractionService)
@@ -43,7 +43,7 @@ Chứa `ExtractionService` thực hiện toàn bộ logic bóc tách dữ liệu
 **📁 Utilities** — Các hàm tiện ích dùng chung:
 tính COG, đổi đơn vị, định dạng tọa độ WCS.
 
-> ⚠️ **Không chỉnh sửa file `MCGCadPlugin.csproj`**
+> ⚠️ **Không chỉnh sửa file `MCG_FittingManagement.csproj`**
 
 ---
 
@@ -57,7 +57,7 @@ tính COG, đổi đơn vị, định dạng tọa độ WCS.
 ### Clone dự án về máy
 ```bash
 git clone <url-repo>
-cd MCGCadPlugin
+cd MCG_FittingManagement
 ```
 
 ---

@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Autodesk.AutoCAD.DatabaseServices;
-using MCGCadPlugin.Models.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// Hợp đồng cho thư viện Master — nguồn template gốc tại <see cref="MasterCatalogPath"/>.

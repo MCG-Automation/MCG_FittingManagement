@@ -1,8 +1,8 @@
 using System;
 using System.IO;
-using MCGCadPlugin.Utilities;
+using MCG_FittingManagement.Utilities;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// IDW Import — phần export Inventor drawing sang DWG: thử <c>Document.SaveAs</c> trước (đơn giản),
@@ -90,7 +90,7 @@ namespace MCGCadPlugin.Services.FittingManagement
             string iniPath = FindInventorDwgIniPath();
             if (string.IsNullOrEmpty(iniPath))
             {
-                // Không tìm được INI chuẩn — tạo INI tối thiểu trong %APPDATA%\MCGCadPlugin\
+                // Không tìm được INI chuẩn — tạo INI tối thiểu trong %APPDATA%\MCG_FittingManagement\
                 iniPath = CreateMinimalDwgIni();
                 FileLogger.Log(LOG_PREFIX, $"    [B3] Đã tạo INI tối thiểu: {iniPath}");
             }
@@ -119,7 +119,7 @@ namespace MCGCadPlugin.Services.FittingManagement
 
         /// <summary>
         /// Tạo file INI tối thiểu cho DWG export khi không tìm thấy INI chuẩn của Inventor.
-        /// Lưu tại %APPDATA%\MCGCadPlugin\DWG-AutoCAD Export.ini.
+        /// Lưu tại %APPDATA%\MCG_FittingManagement\DWG-AutoCAD Export.ini.
         /// </summary>
         private string CreateMinimalDwgIni()
         {

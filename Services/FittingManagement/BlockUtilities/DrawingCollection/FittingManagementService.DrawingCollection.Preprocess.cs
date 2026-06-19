@@ -4,10 +4,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Autodesk.AutoCAD.DatabaseServices;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Utilities;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Utilities;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// Drawing Collection — Phase 1 (worker thread): đọc side db, rename block,

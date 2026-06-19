@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using Autodesk.AutoCAD.Runtime;
-using MCGCadPlugin.Commands; // Gọi đến PaletteManager của hệ thống
+using MCG_FittingManagement.Commands; // Gọi đến PaletteManager của hệ thống
 
-namespace MCGCadPlugin.Commands.FittingManagement
+namespace MCG_FittingManagement.Commands.FittingManagement
 {
     /// <summary>
     /// Đăng ký 1 lệnh duy nhất để gọi toàn bộ giao diện Fitting Tools.

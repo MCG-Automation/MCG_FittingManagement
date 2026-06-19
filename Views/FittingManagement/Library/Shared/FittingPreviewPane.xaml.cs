@@ -1,10 +1,10 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Services.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Services.FittingManagement;
 
-namespace MCGCadPlugin.Views.FittingManagement
+namespace MCG_FittingManagement.Views.FittingManagement
 {
     /// <summary>
     /// Pane hiển thị preview thumbnail + properties cho 1 <see cref="CatalogItem"/>.

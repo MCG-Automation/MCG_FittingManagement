@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Utilities;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Utilities;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// Drawing Collection — End-of-run summary: per-file breakdown table, totals, layout sanity,

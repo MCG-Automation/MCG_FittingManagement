@@ -1,7 +1,7 @@
 using System.Windows.Media.Imaging;
-using MCGCadPlugin.Models.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// Cung cấp BitmapSource preview cho từng <see cref="CatalogItem"/>.

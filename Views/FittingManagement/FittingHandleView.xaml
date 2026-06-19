@@ -1,4 +1,4 @@
-<UserControl x:Class="MCGCadPlugin.Views.FittingManagement.FittingHandleView"
+<UserControl x:Class="MCG_FittingManagement.Views.FittingManagement.FittingHandleView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="#FFF2F2F2"

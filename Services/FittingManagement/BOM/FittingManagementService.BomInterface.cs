@@ -6,10 +6,10 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Utilities.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Utilities.FittingManagement;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     public partial class FittingManagementService
     {

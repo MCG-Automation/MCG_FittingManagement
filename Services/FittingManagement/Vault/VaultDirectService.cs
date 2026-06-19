@@ -2,8 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Utilities;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Utilities;
 
 using VDF = Autodesk.DataManagement.Client.Framework;
 using VltConn = Autodesk.DataManagement.Client.Framework.Vault.Currency.Connections;
@@ -14,7 +14,7 @@ using VDFCurrency = Autodesk.DataManagement.Client.Framework.Currency;
 using VltFormsSettings = Autodesk.DataManagement.Client.Framework.Vault.Forms.Settings;
 using VltFormsLib = Autodesk.DataManagement.Client.Framework.Vault.Forms.Library;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// VDF SDK wrapper — pull latest file trực tiếp từ Vault server, không qua Inventor.

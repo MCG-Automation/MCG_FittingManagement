@@ -1,10 +1,10 @@
 using System;
 using System.Globalization;
 using System.Text.RegularExpressions;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Utilities;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Utilities;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// IDW Import — phần trích xuất iProperties (Part Number/Description/Material/Mass/Revision/Designer/Title)

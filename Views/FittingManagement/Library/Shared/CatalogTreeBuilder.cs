@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using MCGCadPlugin.Models.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
 
-namespace MCGCadPlugin.Views.FittingManagement
+namespace MCG_FittingManagement.Views.FittingManagement
 {
     /// <summary>
     /// Build TreeView nodes + filter logic dùng chung cho Master/Project Library window.

@@ -7,7 +7,7 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using Autodesk.AutoCAD.DatabaseServices;
 
-namespace MCGCadPlugin.Utilities.FittingManagement
+namespace MCG_FittingManagement.Utilities.FittingManagement
 {
     /// <summary>
     /// Trích thumbnail từ file .dwg qua side-database.

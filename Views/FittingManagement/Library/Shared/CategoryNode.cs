@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using MCGCadPlugin.Models.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
 
-namespace MCGCadPlugin.Views.FittingManagement
+namespace MCG_FittingManagement.Views.FittingManagement
 {
     /// <summary>
     /// Node hiển thị trong TreeView của Library window — group theo BomType → Title.

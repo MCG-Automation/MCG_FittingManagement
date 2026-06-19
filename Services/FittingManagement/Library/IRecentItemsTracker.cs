@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// Theo dõi các item vừa được dùng trong 1 Library window (Master hoặc Project).

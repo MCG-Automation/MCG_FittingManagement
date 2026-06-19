@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Utilities;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Utilities;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// IDW Import — phần trích xuất Drawing Views: convert tâm/kích thước từ sheet coords (cm)

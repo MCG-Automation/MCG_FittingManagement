@@ -1,9 +1,9 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using MCGCadPlugin.Services.FittingManagement;
+using MCG_FittingManagement.Services.FittingManagement;
 
-namespace MCGCadPlugin.Views.FittingManagement
+namespace MCG_FittingManagement.Views.FittingManagement
 {
     /// <summary>
     /// Tab "Fitting Handle" — các công cụ người dùng cuối tương tác với fitting đã có trong bản vẽ:

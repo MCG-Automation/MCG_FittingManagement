@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Services.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Services.FittingManagement;
 
-namespace MCGCadPlugin.Views.FittingManagement
+namespace MCG_FittingManagement.Views.FittingManagement
 {
     public partial class VirtualItemWindow : Window
     {

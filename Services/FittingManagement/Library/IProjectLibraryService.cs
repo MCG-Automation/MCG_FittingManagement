@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using MCGCadPlugin.Models.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// Hợp đồng cho thư viện Project — file JSON do user tự đặt vị trí, gắn với 1 project cụ thể.

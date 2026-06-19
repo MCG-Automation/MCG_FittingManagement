@@ -2,10 +2,10 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using Newtonsoft.Json;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Utilities;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Utilities;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// IDW Import — phần Inventor COM lifecycle: acquire/release Inventor instance + xử lý 1 file IDW

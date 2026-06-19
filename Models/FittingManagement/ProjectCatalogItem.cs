@@ -1,5 +1,5 @@
 // TUYỆT ĐỐI KHÔNG using Autodesk.AutoCAD... ở đây theo quy tắc của CLAUDE.md
-namespace MCGCadPlugin.Models.FittingManagement
+namespace MCG_FittingManagement.Models.FittingManagement
 {
     /// <summary>
     /// Catalog item dành cho Project Library. Kế thừa toàn bộ field của <see cref="CatalogItem"/>

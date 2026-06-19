@@ -5,8 +5,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.IO;
 using Microsoft.Win32;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Services.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Services.FittingManagement;
 using Autodesk.AutoCAD.DatabaseServices;
 
 // GIẢI QUYẾT LỖI XUNG ĐỘT TÊN DATATABLE
@@ -14,7 +14,7 @@ using DataTable = System.Data.DataTable;
 using DataRow = System.Data.DataRow;
 using DataColumn = System.Data.DataColumn;
 
-namespace MCGCadPlugin.Views.FittingManagement
+namespace MCG_FittingManagement.Views.FittingManagement
 {
     public partial class BomPreviewWindow : Window
     {

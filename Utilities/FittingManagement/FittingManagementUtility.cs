@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Colors;
 
-namespace MCGCadPlugin.Utilities.FittingManagement
+namespace MCG_FittingManagement.Utilities.FittingManagement
 {
     /// <summary>
     /// Chứa các hàm tiện ích xử lý Block, Layer, Attribute tĩnh.

@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 
-namespace MCGCadPlugin.Utilities
+namespace MCG_FittingManagement.Utilities
 {
     /// <summary>
     /// Resolver assembly cho Autodesk Vault SDK (VDF) DLLs.

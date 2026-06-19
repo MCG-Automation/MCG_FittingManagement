@@ -2,7 +2,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MCGCadPlugin", "MCGCadPlugin.csproj", "{31F4D863-AA26-D18B-5793-134DC63CF750}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MCG_FittingManagement", "MCG_FittingManagement.csproj", "{31F4D863-AA26-D18B-5793-134DC63CF750}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

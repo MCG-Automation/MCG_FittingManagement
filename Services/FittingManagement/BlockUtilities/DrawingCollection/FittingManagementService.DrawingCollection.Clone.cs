@@ -1,9 +1,9 @@
 using System;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using MCGCadPlugin.Utilities;
+using MCG_FittingManagement.Utilities;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// Drawing Collection — Phase 2 (UI thread): clone entity từ side db sang dest db,

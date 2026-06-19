@@ -6,7 +6,7 @@ using System.Drawing.Drawing2D;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 
-namespace MCGCadPlugin.Utilities.FittingManagement
+namespace MCG_FittingManagement.Utilities.FittingManagement
 {
     /// <summary>
     /// Render hình học của 1 BlockTableRecord (hoặc ModelSpace) ra <see cref="Bitmap"/> 2D wireframe.

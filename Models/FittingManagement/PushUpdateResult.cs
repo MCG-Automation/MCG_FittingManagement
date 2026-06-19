@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace MCGCadPlugin.Models.FittingManagement
+namespace MCG_FittingManagement.Models.FittingManagement
 {
     /// <summary>
     /// Kết quả của thao tác Push Update — Wblock block từ drawing đang mở

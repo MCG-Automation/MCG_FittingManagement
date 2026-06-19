@@ -1,4 +1,4 @@
-<Window x:Class="MCGCadPlugin.Views.FittingManagement.NewAccessoryWindow"
+<Window x:Class="MCG_FittingManagement.Views.FittingManagement.NewAccessoryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Create New Accessory" Height="400" Width="350"

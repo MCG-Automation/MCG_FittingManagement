@@ -46,7 +46,7 @@ Mọi thứ liên quan PaletteSet đều đi qua PaletteManager.
 ## Cấu trúc file
 
 ```
-MCGCadPlugin/
+MCG_FittingManagement/
 ├── Commands/
 │   ├── PaletteManager.cs              ← NGUỒN GỐC DUY NHẤT
 │   ├── DetailDesign/
@@ -106,7 +106,7 @@ private static readonly Guid PaletteGuid =
 
 ```csharp
 // Commands/DetailDesign/DetailDesignCommand.cs
-namespace MCGCadPlugin.Commands.DetailDesign
+namespace MCG_FittingManagement.Commands.DetailDesign
 {
     /// <summary>Các lệnh AutoCAD cho module Detail Design</summary>
     public class DetailDesignCommand

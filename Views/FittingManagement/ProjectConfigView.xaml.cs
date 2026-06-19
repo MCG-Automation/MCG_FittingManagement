@@ -1,9 +1,9 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using MCGCadPlugin.Services.FittingManagement;
+using MCG_FittingManagement.Services.FittingManagement;
 
-namespace MCGCadPlugin.Views.FittingManagement
+namespace MCG_FittingManagement.Views.FittingManagement
 {
     /// <summary>
     /// Tab "Project Config" — setup cho project: mở Project Library để duyệt/chèn fitting đã cấu hình cho project hiện tại.

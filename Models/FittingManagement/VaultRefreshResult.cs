@@ -1,4 +1,4 @@
-namespace MCGCadPlugin.Models.FittingManagement
+namespace MCG_FittingManagement.Models.FittingManagement
 {
     /// <summary>Trạng thái kết quả khi thử pull latest từ Vault qua VDF SDK.</summary>
     public enum VaultRefreshStatus

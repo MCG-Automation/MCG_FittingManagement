@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Utilities.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Utilities.FittingManagement;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// Phần partial xử lý Project Library — load/create/save/auto-assign cho file project JSON do user chọn.

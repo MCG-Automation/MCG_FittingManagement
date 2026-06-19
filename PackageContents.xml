@@ -8,6 +8,6 @@
 <ApplicationPackage SchemaVersion="1.0" AppVersion="1.0.0" Author="MCG Team" Name="MCG_FittingManagement">
   <Components>
     <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.0" />
-    <ComponentEntry AppName="MCG_FittingManagement" Version="1.0.0" ModuleName="./Contents/MCG_FittingManagement_20260618_160149.dll" LoadOnAutoCADStartup="True" />
+    <ComponentEntry AppName="MCG_FittingManagement" Version="1.0.0" ModuleName="./Contents/MCG_FittingManagement.dll" LoadOnAutoCADStartup="True" />
   </Components>
 </ApplicationPackage>

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace MCGCadPlugin.Models.FittingManagement
+namespace MCG_FittingManagement.Models.FittingManagement
 {
     /// <summary>
     /// Ket qua cua mot batch import (IDW hoac JSON).

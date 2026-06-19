@@ -5,10 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Services.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Services.FittingManagement;
 
-namespace MCGCadPlugin.Views.FittingManagement
+namespace MCG_FittingManagement.Views.FittingManagement
 {
     /// <summary>
     /// Window quản lý Master Library — nguồn template gốc tại MasterCatalog.json.

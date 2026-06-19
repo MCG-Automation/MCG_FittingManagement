@@ -4,9 +4,9 @@ using System.Drawing;
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Windows;
 using Exception = System.Exception;
-using MCGCadPlugin.Views.FittingManagement;
+using MCG_FittingManagement.Views.FittingManagement;
 
-namespace MCGCadPlugin.Commands
+namespace MCG_FittingManagement.Commands
 {
     /// <summary>
     /// Quản lý PaletteSet duy nhất của toàn plugin — Singleton.

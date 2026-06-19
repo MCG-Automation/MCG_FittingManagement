@@ -87,7 +87,7 @@
 **File sửa (2):**
 | File | Thay đổi |
 |---|---|
-| [MCGCadPlugin.csproj](MCGCadPlugin.csproj) | Đổi `PluginName` từ `MCGCadPlugin.FittingManagement` → `MCG_FittingManagement`; sửa XmlPoke Value thêm `./Contents/` prefix; thêm XmlPoke thứ 2 cho bundle dir |
+| [MCG_FittingManagement.csproj](MCG_FittingManagement.csproj) | Đổi `PluginName` từ `MCG_FittingManagement.FittingManagement` → `MCG_FittingManagement`; sửa XmlPoke Value thêm `./Contents/` prefix; thêm XmlPoke thứ 2 cho bundle dir |
 | [build-and-launch.bat](build-and-launch.bat) | Đổi `PROJECT_NAME` và `BUNDLE_DIR` theo tên mới; thêm bước copy `PackageContents.xml` vào bundle lần đầu; sửa lệnh kiểm tra `MCG_Show` → `MCG_Fitting` |
 
 **File mới (1):**
@@ -98,10 +98,10 @@
 ### Vấn đề đã giải quyết
 | Vấn đề | Nguyên nhân | Fix |
 |---|---|---|
-| Bat install không pick up DLL | `MCGCadPlugin.FittingManagement.dll` không khớp pattern `MCG_*.dll` | Đổi PluginName → `MCG_FittingManagement` |
+| Bat install không pick up DLL | `MCG_FittingManagement.FittingManagement.dll` không khớp pattern `MCG_*.dll` | Đổi PluginName → `MCG_FittingManagement` |
 | XmlPoke ghi ModuleName sai | Value `$(AssemblyName).dll` thiếu prefix `./Contents/` | Value → `./Contents/$(AssemblyName).dll` |
 | PackageContents.xml không tồn tại | Chưa có file → XmlPoke bị skip, AutoCAD không load | Tạo file template + bat copy lần đầu |
-| Bundle dir không nhất quán | `MCGCadPlugin.bundle` vs `MCG_Plugin.bundle` | Đổi về `MCG_FittingManagement.bundle` |
+| Bundle dir không nhất quán | `MCG_FittingManagement.bundle` vs `MCG_Plugin.bundle` | Đổi về `MCG_FittingManagement.bundle` |
 
 ### Trạng thái
 - DLL output (Release): `MCG_FittingManagement.dll` ✅ khớp `MCG_*.dll`
@@ -111,7 +111,7 @@
 
 ### Bước tiếp theo
 - Chạy `build-and-launch.bat` → tạo bundle lần đầu với PackageContents.xml mới
-- Xóa bundle cũ `MCGCadPlugin.bundle` nếu còn tồn tại trong `%PROGRAMDATA%`
+- Xóa bundle cũ `MCG_FittingManagement.bundle` nếu còn tồn tại trong `%PROGRAMDATA%`
 
 ---
 
@@ -184,7 +184,7 @@ Tổng 840 dòng (trước: 781) — chênh ~60 dòng do thêm header `using` + 
 - Khi cần sửa 1 phần (vd 2D/3D detection ở Session 4) — chỉ chạm `Views.cs`, các file khác không ảnh hưởng.
 
 ### Ghi chú API
-- Tất cả 5 file cùng `partial class FittingManagementService` cùng namespace `MCGCadPlugin.Services.FittingManagement` → compiler merge thành 1 class. Nested type `ExtractedIdw` (private) ở file gốc — file khác cùng partial class vẫn truy cập được vì cùng class scope.
+- Tất cả 5 file cùng `partial class FittingManagementService` cùng namespace `MCG_FittingManagement.Services.FittingManagement` → compiler merge thành 1 class. Nested type `ExtractedIdw` (private) ở file gốc — file khác cùng partial class vẫn truy cập được vì cùng class scope.
 - `LOG_PREFIX` + `_libraryFolderPath` ở `MasterLibrary.cs` — accessible từ mọi partial.
 - `using` directives khác nhau từng file (chỉ import những namespace cần) — gọn hơn 1 file ôm hết.
 
@@ -397,7 +397,7 @@ Sau Session 3 user test thấy MasterCatalog VẪN chứa iso block. 2 nguyên n
 - ⚠ Iso block đã có trong MasterCatalog từ trước phải user tự Remove qua Master Library window — code mới chỉ ngăn publish mới.
 
 ### Bước tiếp theo
-- User restart AutoCAD → re-import 1 file .idw → check `%APPDATA%\MCGCadPlugin\plugin.log` cho dòng `View_N: orient=..., dir=...`. Nếu còn iso vào catalog, gửi log lại.
+- User restart AutoCAD → re-import 1 file .idw → check `%APPDATA%\MCG_FittingManagement\plugin.log` cho dòng `View_N: orient=..., dir=...`. Nếu còn iso vào catalog, gửi log lại.
 - Nếu heuristic vector miss case "iso nhưng max component cao do camera setup khác" → giảm threshold xuống 0.90 hoặc dùng thêm `Camera.Projection == kPerspective`.
 
 ### Ghi chú API
@@ -446,7 +446,7 @@ User audit lại luồng tạo Master Library (Session trước phân tích 2 lu
 ## Session 2026-05-05 (2) — Drawing Collection: BTR walk fallback cho A1 bbox extraction
 
 ### Bối cảnh
-User chạy Hướng A + N=1 trên batch 6 file (`71-48963-10..15.dwg`), vẫn báo overlap A1. Phân tích log `%APPDATA%\MCGCadPlugin\plugin.log`:
+User chạy Hướng A + N=1 trên batch 6 file (`71-48963-10..15.dwg`), vẫn báo overlap A1. Phân tích log `%APPDATA%\MCG_FittingManagement\plugin.log`:
 - Mọi A1 ở Phase 1 đều ghi `bbox=[(0,0)-(0,0)]` → degenerate.
 - Bị filter `w <= 0.5` → `validA1Count = 0` → tất cả 6 file fallback bbox layout.
 - Summary xác nhận: `Sum effective widths : 10201772mm (0 file dùng A1.Width, 6 file fallback bbox)`.
@@ -589,7 +589,7 @@ Căn `dx` theo `A1.MinX` thay vì `Extents.MinX`. Advance offsetX bằng `A1.Wid
 
 ### Kết quả build
 - `dotnet build -c Debug`: **0 Errors**, 2 Warnings (Costura.Fody IncludeAssets + PowerShell post-build script bị group policy chặn — pre-existing, không liên quan).
-- DLL mới: `MCGCadPlugin.FittingManagement_20260504_141140.dll`.
+- DLL mới: `MCG_FittingManagement.FittingManagement_20260504_141140.dll`.
 
 ### Ghi chú API/kiến trúc
 - `FittingManagementService` giờ implement 3 interface (`IFittingManagementService`, `IMasterLibraryService`, `IProjectLibraryService`) qua 4 file partial (Master/Project Library + các phần BOM/Block/IDW Import vẫn nguyên). Caller chỉ nhận interface mỏng → DIP sạch.
@@ -660,7 +660,7 @@ User approve plan + không giữ UI toggle (commit hoàn toàn cho SDK approach)
 ### Đã làm
 
 **MỚI — VDF SDK scaffolding**:
-- [MCGCadPlugin.csproj](MCGCadPlugin.csproj): thêm 5 reference DLL (Private=False → Costura không embed):
+- [MCG_FittingManagement.csproj](MCG_FittingManagement.csproj): thêm 5 reference DLL (Private=False → Costura không embed):
   - `Autodesk.Connectivity.WebServices`
   - `Autodesk.DataManagement.Client.Framework`
   - `Autodesk.DataManagement.Client.Framework.Vault`
@@ -692,7 +692,7 @@ User approve plan + không giữ UI toggle (commit hoàn toàn cho SDK approach)
 
 ### Kết quả build
 - `dotnet build -c Debug`: **0 Errors**, 9 Warnings (pre-existing: file lock AutoCAD + PowerShell post-build).
-- DLL mới: `MCGCadPlugin.FittingManagement_20260423_100506.dll`.
+- DLL mới: `MCG_FittingManagement.FittingManagement_20260423_100506.dll`.
 
 ### Khám phá API thật (qua reflection probe)
 VDF API không như tài liệu online phổ biến — nhiều method/type khác tên:
@@ -747,7 +747,7 @@ User yêu cầu sửa cả 4 điểm đề xuất.
 
 ### Kết quả build
 - `dotnet build -c Debug`: **0 Errors**, warnings chỉ là pre-existing (file lock của AutoCAD đang mở, PowerShell post-build).
-- DLL mới: `MCGCadPlugin.FittingManagement_20260423_092707.dll`.
+- DLL mới: `MCG_FittingManagement.FittingManagement_20260423_092707.dll`.
 
 ### Test plan (user cần verify)
 - **Test 1 — chưa login Vault**: chạy Import với "Pull from Vault" = ON khi Inventor chưa mở Vault. Expected: log "pre-flight FAIL — 'VaultGetLatest' Enabled=false", UI summary group "Not Logged In" = N files, extraction vẫn chạy bình thường.
@@ -1191,7 +1191,7 @@ File `Services/FittingManagement/Utilities/FittingManagementService.DrawingColle
 ### Đã làm
 **1. Tạo folder mới**: `Services/FittingManagement/Utilities/DrawingCollection/`
 
-**2. Split thành 6 file partial** (tất cả cùng `namespace MCGCadPlugin.Services.FittingManagement`, cùng `public partial class FittingManagementService`):
+**2. Split thành 6 file partial** (tất cả cùng `namespace MCG_FittingManagement.Services.FittingManagement`, cùng `public partial class FittingManagementService`):
 
 | File | LOC | Nội dung |
 |---|---:|---|
@@ -1205,7 +1205,7 @@ File `Services/FittingManagement/Utilities/FittingManagementService.DrawingColle
 **3. Xoá file cũ** `Services/FittingManagement/Utilities/FittingManagementService.DrawingCollection.cs` (1372 dòng) → thay bằng 6 file trong subfolder.
 
 ### Thiết kế
-- **Namespace không đổi**: `MCGCadPlugin.Services.FittingManagement` — cần cho partial class lookup. Không đổi theo rule `§3` CLAUDE.md (đã có exception cho utility partial files từ trước).
+- **Namespace không đổi**: `MCG_FittingManagement.Services.FittingManagement` — cần cho partial class lookup. Không đổi theo rule `§3` CLAUDE.md (đã có exception cho utility partial files từ trước).
 - **File naming**: giữ pattern `FittingManagementService.DrawingCollection.<Section>.cs` — nhất quán với pattern các partial file khác của service (`.BomHelpers.cs`, `.BomInterface.cs`, `.IdwImport.cs`, …).
 - **Imports tối giản per file**: mỗi file chỉ `using` các namespace cần cho code của nó — giảm coupling khi navigate.
 - **Nested types tập trung 1 file**: các private classes `PreparedDrawing`, `RenameStats`, … dùng xuyên Preprocess/Clone/Summary → gom 1 chỗ để tránh phân tán, dễ sửa schema.
@@ -1294,7 +1294,7 @@ Scan dest ModelSpace: ...
 - **AutoCAD internal assert fail**: process abort.
 
 Khi FATAL thực sự xảy ra, user cần check:
-1. `%APPDATA%\MCGCadPlugin\plugin.log` — managed-side context (memory, last file processing).
+1. `%APPDATA%\MCG_FittingManagement\plugin.log` — managed-side context (memory, last file processing).
 2. `%LOCALAPPDATA%\Autodesk\AutoCAD 2023\R23.1\enu\AcadCoreStack.log` — AutoCAD crash dump.
 3. Windows Event Viewer → Application → `acad.exe` Error entries.
 
@@ -1732,7 +1732,7 @@ Timing: phase1=1820ms, phase2=4950ms, total=6770ms
 ## Session 2026-04-22 (8) — Cải thiện error handling + log cho Drawing Collection
 
 ### Bối cảnh
-Test session 7 với 9 file thật (log ở `%APPDATA%\MCGCadPlugin\plugin.log`):
+Test session 7 với 9 file thật (log ở `%APPDATA%\MCG_FittingManagement\plugin.log`):
 - 8/9 file collect thành công.
 - **File `71-57589-04.dwg`**: fail với `Exception: eDwgNeedsRecovery` (bong ra từ `Database.Purge`) — message thô, không user-friendly.
 - **File `71-57589-02.dwg`**: width=202,673mm (≈202m) — nghi có entity "orphan" trong Model Space kéo bbox quá xa; các file kế bị dời ra khu vực x≈200km.
@@ -1852,7 +1852,7 @@ System.MissingMethodException: No parameterless constructor defined for this obj
 ## Session 2026-04-22 (5) — Tách Palette thành 4 tab + rename title
 
 ### Yêu cầu user
-1. Palette title "MCGCadPlugin - FittingManagement" → "Fitting Management"
+1. Palette title "MCG_FittingManagement - FittingManagement" → "Fitting Management"
 2. Tách thành 4 tab: **Fitting Handle** / **Project Config** / **Template** / **Block Utilities**
 3. Block Utilities: 6 block utility buttons
 4. Template: Import .idw + Open Library
@@ -1865,7 +1865,7 @@ System.MissingMethodException: No parameterless constructor defined for this obj
 - [Views/FittingManagement/ProjectConfigView.xaml](Views/FittingManagement/ProjectConfigView.xaml) + [.xaml.cs](Views/FittingManagement/ProjectConfigView.xaml.cs) — **MỚI**: tab "Project Config" với 1 button `BtnOpenLibrary`.
 - [Views/FittingManagement/TemplateView.xaml](Views/FittingManagement/TemplateView.xaml) + [.xaml.cs](Views/FittingManagement/TemplateView.xaml.cs) — **MỚI**: tab "Template" với IMPORT TEMPLATE FROM IDW (RadioButton Panel/Detail + `BtnBatchImportInventor` async + `TxtImportStatus` + ShowImportResultDialog/ShowExceptionDialog/OpenLogFolder helpers) + FITTING LIBRARY (`BtnOpenLibrary`).
 - [Views/FittingManagement/BlockUtilitiesView.xaml](Views/FittingManagement/BlockUtilitiesView.xaml) + [.xaml.cs](Views/FittingManagement/BlockUtilitiesView.xaml.cs) — **MỚI**: tab "Block Utilities" với 6 button — Rename/Redefine/Replace/ChangeBasePoint/AddToBlock/ExtractFromBlock.
-- [Commands/PaletteManager.cs](Commands/PaletteManager.cs): title `"MCGCadPlugin - FittingManagement"` → `"Fitting Management"`; 1 `AddVisual` → 4 `AddVisual` theo thứ tự user yêu cầu (FittingHandle, ProjectConfig, Template, BlockUtilities).
+- [Commands/PaletteManager.cs](Commands/PaletteManager.cs): title `"MCG_FittingManagement - FittingManagement"` → `"Fitting Management"`; 1 `AddVisual` → 4 `AddVisual` theo thứ tự user yêu cầu (FittingHandle, ProjectConfig, Template, BlockUtilities).
 - **Xóa**: `Views/FittingManagement/FittingManagementView.xaml` + `.xaml.cs` (không còn dùng).
 - [CLAUDE.md §9](CLAUDE.md): cập nhật danh sách tab (4 tab thay vì 1), title mới, file tree.
 
@@ -2109,8 +2109,8 @@ Gộp 2 button "Import .idw files" + "Import .json files" thành 1 button `Impor
 - [Commands/PaletteManager.cs](Commands/PaletteManager.cs):
   - `[CommandMethod("MCG_Show")]` → `[CommandMethod("MCG_Fitting_Show")]`.
   - `[CommandMethod("MCG_Hide")]` → `[CommandMethod("MCG_Fitting_Hide")]`.
-  - PaletteSet title `"MCG Plugins"` → `"MCGCadPlugin - FittingManagement"`.
-- [MCGCadPlugin.csproj](MCGCadPlugin.csproj): `<PluginName>MCGCadPlugin</PluginName>` → `<PluginName>MCGCadPlugin.FittingManagement</PluginName>` → DLL xuất ra đổi thành `MCGCadPlugin.FittingManagement_<timestamp>.dll`.
+  - PaletteSet title `"MCG Plugins"` → `"MCG_FittingManagement - FittingManagement"`.
+- [MCG_FittingManagement.csproj](MCG_FittingManagement.csproj): `<PluginName>MCG_FittingManagement</PluginName>` → `<PluginName>MCG_FittingManagement.FittingManagement</PluginName>` → DLL xuất ra đổi thành `MCG_FittingManagement.FittingManagement_<timestamp>.dll`.
 - [CLAUDE.md](CLAUDE.md): nới rule §2 (hạn chế chứ không cấm tuyệt đối sửa csproj khi có lý do rõ ràng), cập nhật §9 (title + command names).
 
 ### Trạng thái
@@ -2118,7 +2118,7 @@ Gộp 2 button "Import .idw files" + "Import .json files" thành 1 button `Impor
 - **Build:** Succeeded — 0 errors.
 
 ### Bước tiếp theo
-- Test trong AutoCAD: gõ `MCG_Fitting_Show` / `MCG_Fitting_Hide`, xác nhận title `"MCGCadPlugin - FittingManagement"`.
+- Test trong AutoCAD: gõ `MCG_Fitting_Show` / `MCG_Fitting_Hide`, xác nhận title `"MCG_FittingManagement - FittingManagement"`.
 - Load song song với plugin CheckList (GUID `7b3e9a2c-...`, command `MCG_Checklist_Show/Hide`) để confirm không xung đột.
 
 ### Ghi chú API
@@ -2132,7 +2132,7 @@ Gộp 2 button "Import .idw files" + "Import .json files" thành 1 button `Impor
 ### Đã làm
 - Tách nội dung module CheckList sang repo `https://github.com/MCG-Automation/CheckList.git` (branch `main`, giữ full git history qua clone local → modify → push).
 - Xóa trong repo này: `Models/CheckList/`, `Services/CheckList/`, `Views/CheckList/`, `Docs/Macgregor_CheckList_UserGuide.html`.
-- [Commands/PaletteManager.cs](Commands/PaletteManager.cs): bỏ `using MCGCadPlugin.Views.CheckList`, `Initialize()` chỉ còn 1 `AddVisual` cho FittingManagement.
+- [Commands/PaletteManager.cs](Commands/PaletteManager.cs): bỏ `using MCG_FittingManagement.Views.CheckList`, `Initialize()` chỉ còn 1 `AddVisual` cho FittingManagement.
 - [CLAUDE.md](CLAUDE.md): cập nhật §3 namespace tree và §9 PaletteSet (1 Module — 1 Tab) cho scope FittingManagement.
 
 ### Trạng thái
@@ -2210,7 +2210,7 @@ Gộp 2 button "Import .idw files" + "Import .json files" thành 1 button `Impor
 ### Đã làm
 - Thêm nút `BtnClosePalette` (ký tự `X`, 24×24) ở **góc trên phải** của [Views/CheckList/CheckList.View.xaml](Views/CheckList/CheckList.View.xaml) — `Grid.Row=0`, `HorizontalAlignment=Right`.
 - Shift các row hiện có xuống: Status GroupBox → Row 1, action buttons → Row 2, `PanelChecklist` → Row 3. Tổng grid nay 4 rows (`Auto, Auto, Auto, *`).
-- Thêm handler `BtnClosePalette_Click` trong [Views/CheckList/CheckList.View.xaml.cs](Views/CheckList/CheckList.View.xaml.cs) gọi `PaletteManager.Instance.Hide()` (import thêm `MCGCadPlugin.Commands`).
+- Thêm handler `BtnClosePalette_Click` trong [Views/CheckList/CheckList.View.xaml.cs](Views/CheckList/CheckList.View.xaml.cs) gọi `PaletteManager.Instance.Hide()` (import thêm `MCG_FittingManagement.Commands`).
 
 ### Trạng thái
 - **Phase:** 1 — Feature Implementation (Checklist module).
@@ -2341,7 +2341,7 @@ Gộp 2 button "Import .idw files" + "Import .json files" thành 1 button `Impor
 
 **Fix toàn bộ build errors (4 root causes):**
 
-1. **Fix x:Class namespace trong 5 XAML files** — `ShipAutoCadPlugin.UI.*` → `MCGCadPlugin.Views.FittingManagement.*`:
+1. **Fix x:Class namespace trong 5 XAML files** — `ShipAutoCadPlugin.UI.*` → `MCG_FittingManagement.Views.FittingManagement.*`:
    - `Views/FittingManagement/BOM/BomPreviewWindow.xaml`
    - `Views/FittingManagement/Library/FittingLibraryWindow.xaml`
    - `Views/FittingManagement/Library/Accessory/AccessoryManagerWindow.xaml`
@@ -2371,7 +2371,7 @@ Gộp 2 button "Import .idw files" + "Import .json files" thành 1 button `Impor
 
 ### Ghi chú API
 
-- **x:Class phải khớp namespace code-behind** — nếu XAML dùng `ShipAutoCadPlugin.UI.X` mà code-behind dùng `MCGCadPlugin.Views.Y.X` thì WPF không generate partial class, gây lỗi `InitializeComponent` và tất cả control names
+- **x:Class phải khớp namespace code-behind** — nếu XAML dùng `ShipAutoCadPlugin.UI.X` mà code-behind dùng `MCG_FittingManagement.Views.Y.X` thì WPF không generate partial class, gây lỗi `InitializeComponent` và tất cả control names
 - **`Autodesk.AutoCAD.Runtime.Exception` xung đột với `System.Exception`** — khi `using Autodesk.AutoCAD.Runtime`, cần disambiguate bằng `using Exception = System.Exception;`
 - **`PaletteSet.RecalculateSize` không có trong AutoCAD 2023 .NET API** — property này không tồn tại, xóa bỏ
 

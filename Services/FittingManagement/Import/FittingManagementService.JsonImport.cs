@@ -6,11 +6,11 @@ using System.Linq;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Utilities;
-using MCGCadPlugin.Utilities.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Utilities;
+using MCG_FittingManagement.Utilities.FittingManagement;
 
-namespace MCGCadPlugin.Services.FittingManagement
+namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// PHASE 2 của luồng Import IDW — tách từng drawing view trong DWG (đã export từ Inventor)

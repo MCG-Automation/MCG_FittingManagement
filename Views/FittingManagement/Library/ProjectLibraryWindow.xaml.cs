@@ -6,10 +6,10 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
-using MCGCadPlugin.Models.FittingManagement;
-using MCGCadPlugin.Services.FittingManagement;
+using MCG_FittingManagement.Models.FittingManagement;
+using MCG_FittingManagement.Services.FittingManagement;
 
-namespace MCGCadPlugin.Views.FittingManagement
+namespace MCG_FittingManagement.Views.FittingManagement
 {
     /// <summary>
     /// Window quản lý Project Library — file JSON gắn với 1 project cụ thể.

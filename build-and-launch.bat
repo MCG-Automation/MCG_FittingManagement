@@ -15,7 +15,7 @@ set "CONTENTS_DIR=%BUNDLE_DIR%\Contents"
 :: ==========================================
 echo.
 echo ===================================================
-echo   MCGCadPlugin — Build ^& Launch AutoCAD
+echo   MCG_FittingManagement — Build ^& Launch AutoCAD
 echo ===================================================
 echo.
 echo   Chon che do build:
