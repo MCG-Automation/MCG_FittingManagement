@@ -4,6 +4,29 @@
 
 ---
 
+## Session 2026-06-22 — Viết lại User Guide chi tiết từng Button
+
+### Đã làm
+- Đọc toàn bộ 4 XAML View (FittingHandleView, ProjectConfigView, TemplateView, BlockUtilitiesView)
+- Đọc BomPreviewWindow.xaml, ProjectLibraryWindow.xaml, MasterLibraryWindow.xaml để lấy đúng tên button
+- Viết lại hoàn toàn `Docs/Macgregor_FittingTool_UserGuide.html` (tiếng Việt)
+- Viết lại hoàn toàn `Docs/Macgregor_FittingTool_UserGuide_EN.html` (tiếng Anh)
+
+### Nội dung mới so với phiên bản cũ
+- Nav tabs tách thành 8 tab (thêm Tab1/Tab2/Tab3/Tab4 riêng biệt)
+- Mỗi button có card riêng: mô tả, "Khi nào dùng?", các bước step-by-step, result/warn/danger box
+- Các tình huống thực tế cụ thể cho từng button
+- Bổ sung các button trong cửa sổ con: BomPreviewWindow (Scan, Auto-Assign, Sync, Export), ProjectLibraryWindow (Load/Create Project, Insert, Remove, AutoAssignPos, Refresh), MasterLibraryWindow (Add from CAD, Sub-BOM, Push Update, Add to Project, Remove)
+- FAQ mở rộng thêm 3 câu hỏi mới (Collect Drawings, Add Objects lệch, Project Library Refresh)
+
+### Trạng thái
+- HOÀN THÀNH — cả 2 file HTML đã được ghi
+
+### Bước tiếp theo
+- Không có task tồn đọng về docs
+
+---
+
 ## Session 2026-06-16 (16) — Tạo Install_AutoLoadCadAddin.bat
 
 ### Đã làm

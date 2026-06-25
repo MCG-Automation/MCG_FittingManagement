@@ -7,244 +7,170 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --navy: #0d2045;
-    --navy-mid: #1a3060;
-    --navy-light: #253d72;
-    --accent: #c0392b;
-    --gold: #f0a500;
-    --white: #ffffff;
-    --off-white: #f4f6fb;
-    --text: #1e2d4a;
-    --muted: #6b7fa3;
-    --border: #dce3f0;
-    --code-bg: #eef2fa;
+    --navy: #0d2045; --navy-mid: #1a3060; --navy-light: #253d72;
+    --accent: #c0392b; --gold: #f0a500; --white: #ffffff;
+    --off-white: #f4f6fb; --text: #1e2d4a; --muted: #6b7fa3;
+    --border: #dce3f0; --code-bg: #eef2fa;
+    --t1: #1565c0; --t2: #6a1b9a; --t3: #1b5e20; --t4: #bf360c;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: var(--text); line-height: 1.6; }
-
-  /* HEADER */
-  header {
-    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 60%, var(--navy-light) 100%);
-    color: var(--white); padding: 60px 40px 50px; position: relative; overflow: hidden;
-  }
-  header::before {
-    content: ''; position: absolute; inset: 0;
-    background: radial-gradient(ellipse at 80% 50%, rgba(192,57,43,0.18) 0%, transparent 65%);
-  }
-  header::after {
-    content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 32px;
-    background: var(--off-white); clip-path: ellipse(55% 100% at 50% 100%);
-  }
-  .header-inner { max-width: 960px; margin: auto; position: relative; z-index: 1; }
-  .header-badge {
-    display: inline-block; background: rgba(192,57,43,0.85); color: var(--white);
-    font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-    padding: 4px 14px; border-radius: 20px; margin-bottom: 18px;
-  }
+  header { background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 60%, var(--navy-light) 100%); color: var(--white); padding: 60px 40px 50px; position: relative; overflow: hidden; }
+  header::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 80% 50%, rgba(192,57,43,0.18) 0%, transparent 65%); }
+  header::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 32px; background: var(--off-white); clip-path: ellipse(55% 100% at 50% 100%); }
+  .header-inner { max-width: 980px; margin: auto; position: relative; z-index: 1; }
+  .header-badge { display: inline-block; background: rgba(192,57,43,0.85); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 4px 14px; border-radius: 20px; margin-bottom: 18px; }
   header h1 { font-size: clamp(26px,4vw,42px); font-weight: 700; line-height: 1.2; margin-bottom: 10px; }
   header h1 span { color: var(--gold); }
   header p.subtitle { font-size: 15px; color: rgba(255,255,255,0.65); max-width: 560px; margin-bottom: 20px; }
   .header-meta { display: flex; gap: 24px; flex-wrap: wrap; }
   .meta-tag { font-size: 12px; color: rgba(255,255,255,0.55); }
   .meta-tag strong { color: rgba(255,255,255,0.9); margin-right: 4px; }
-
-  /* NAV */
   nav.tabs { background: var(--white); box-shadow: 0 2px 12px rgba(13,32,69,0.08); position: sticky; top: 0; z-index: 100; }
-  .tabs-inner { max-width: 960px; margin: auto; display: flex; gap: 4px; padding: 0 24px; overflow-x: auto; scrollbar-width: none; }
+  .tabs-inner { max-width: 980px; margin: auto; display: flex; gap: 4px; padding: 0 24px; overflow-x: auto; scrollbar-width: none; }
   .tabs-inner::-webkit-scrollbar { display: none; }
-  .tab-btn {
-    background: none; border: none; padding: 16px 18px; font-family: 'DM Sans', sans-serif;
-    font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer;
-    white-space: nowrap; border-bottom: 3px solid transparent; transition: all 0.2s;
-  }
+  .tab-btn { background: none; border: none; padding: 16px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent; transition: all 0.2s; }
   .tab-btn:hover { color: var(--navy); }
   .tab-btn.active { color: var(--navy); border-bottom-color: var(--accent); }
-
-  /* MAIN */
-  main { max-width: 960px; margin: 40px auto; padding: 0 24px 80px; }
+  main { max-width: 980px; margin: 40px auto; padding: 0 24px 80px; }
   .section { display: none; }
   .section.active { display: block; }
+  .section-title { font-size: 28px; font-weight: 700; color: var(--navy); margin-bottom: 32px; padding-bottom: 14px; border-bottom: 2px solid var(--border); position: relative; }
+  .section-title::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 60px; height: 2px; background: var(--accent); }
 
-  .section-title {
-    font-size: 28px; font-weight: 700; color: var(--navy);
-    margin-bottom: 32px; padding-bottom: 14px; border-bottom: 2px solid var(--border); position: relative;
-  }
-  .section-title::after {
-    content: ''; position: absolute; bottom: -2px; left: 0; width: 60px; height: 2px; background: var(--accent);
-  }
+  /* TAB HEADER */
+  .tab-header { border-radius: 16px; padding: 20px 26px; margin-bottom: 24px; }
+  .tab-header.t1 { background: linear-gradient(135deg,#e0f0ff,#f0f8ff); border-left: 6px solid #1565c0; }
+  .tab-header.t2 { background: linear-gradient(135deg,#f0e8ff,#faf0ff); border-left: 6px solid #6a1b9a; }
+  .tab-header.t3 { background: linear-gradient(135deg,#e8fff0,#f0fff5); border-left: 6px solid #1b5e20; }
+  .tab-header.t4 { background: linear-gradient(135deg,#fff4e8,#fff8f0); border-left: 6px solid #bf360c; }
+  .tab-label { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 10px; border-radius: 4px; margin-bottom: 8px; }
+  .lbl-t1 { background: #e0f0ff; color: #1565c0; }
+  .lbl-t2 { background: #f0e8ff; color: #6a1b9a; }
+  .lbl-t3 { background: #e8fff0; color: #1b5e20; }
+  .lbl-t4 { background: #fff4e8; color: #bf360c; }
+  .tab-header h2 { font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 5px; }
+  .tab-header p { font-size: 13.5px; color: #4a5a78; }
 
-  /* STEP CARDS */
-  .steps { display: flex; flex-direction: column; gap: 20px; }
-  .step-card {
-    background: var(--white); border-radius: 16px; padding: 24px 28px;
-    display: flex; gap: 20px; align-items: flex-start;
-    box-shadow: 0 2px 16px rgba(13,32,69,0.07); border: 1px solid var(--border);
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  .step-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(13,32,69,0.12); }
-  .step-num {
-    flex-shrink: 0; width: 48px; height: 48px; background: var(--navy); color: var(--white);
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: 700;
-  }
-  .step-num.warn { background: #f59e0b; color: var(--navy); }
-  .step-body { flex: 1; }
-  .step-body h3 { font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
-  .step-body p { font-size: 14px; color: #4a5a78; margin-bottom: 8px; }
-  .step-body ol, .step-body ul { padding-left: 18px; margin-top: 8px; }
-  .step-body li { font-size: 14px; color: #4a5a78; margin-bottom: 4px; }
+  /* BUTTON DETAIL CARD */
+  .btn-group { margin-bottom: 30px; }
+  .group-title { font-size: 14px; font-weight: 700; color: var(--white); padding: 8px 16px; border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 8px; }
+  .group-t1 { background: #1565c0; }
+  .group-t2 { background: #6a1b9a; }
+  .group-t3 { background: #1b5e20; }
+  .group-t4 { background: #bf360c; }
+  .group-body { background: var(--white); border: 1px solid var(--border); border-top: none; border-radius: 0 0 12px 12px; padding: 6px; }
+  .btn-card { background: #fafbff; border: 1px solid #e8eef8; border-radius: 10px; padding: 18px 20px; margin: 8px 0; }
+  .btn-card:first-child { margin-top: 0; }
+  .btn-name { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .btn-pill { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700; background: var(--navy); color: white; padding: 4px 14px; border-radius: 6px; border-bottom: 3px solid rgba(0,0,0,0.3); }
+  .btn-pill.primary { background: #005E9E; }
+  .btn-pill.danger { background: #b71c1c; }
+  .btn-pill.success { background: #1b5e20; }
+  .scenario-tag { font-size: 11px; font-weight: 700; background: #fff8e1; color: #7a5f00; padding: 2px 8px; border-radius: 10px; border: 1px solid #f0c060; }
+  .btn-desc { font-size: 13.5px; color: #4a5a78; margin-bottom: 12px; line-height: 1.7; }
+  .when-box { background: #f0f8ff; border: 1px solid #90caf9; border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; font-size: 13px; color: #1a3060; }
+  .when-box strong { color: #0d2045; display: block; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .steps-inline { counter-reset: si; margin: 0; padding: 0; list-style: none; }
+  .steps-inline li { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: #4a5a78; padding: 5px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.6; }
+  .steps-inline li:last-child { border-bottom: none; }
+  .si-num { flex-shrink: 0; width: 22px; height: 22px; background: var(--navy); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-top: 2px; counter-increment: si; }
+  .result-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 8px 14px; margin-top: 10px; font-size: 13px; color: #166534; }
+  .warn-box { background: #fff8e1; border: 1px solid #f59e0b; border-radius: 8px; padding: 8px 14px; margin-top: 8px; font-size: 13px; color: #7a5f00; }
+  .danger-box { background: #fef2f2; border: 1px solid #ef4444; border-radius: 8px; padding: 8px 14px; margin-top: 8px; font-size: 13px; color: #991b1b; }
+  .info-box { background: #eef6ff; border: 1px solid #93c5fd; border-radius: 8px; padding: 8px 14px; margin-top: 8px; font-size: 13px; color: #1e3a5f; }
+  .divider { border: none; border-top: 1px dashed #dce3f0; margin: 12px 0; }
 
-  /* CALLOUTS */
+  /* GENERAL CALLOUTS */
   .callout { border-radius: 10px; padding: 14px 18px; margin: 12px 0; font-size: 13.5px; line-height: 1.65; border-left: 4px solid; }
   .callout.info    { background: #eef6ff; border-color: #3b82f6; color: #1e3a5f; }
   .callout.warning { background: #fff8e1; border-color: #f59e0b; color: #7a5f00; }
   .callout.success { background: #f0fdf4; border-color: #22c55e; color: #166534; }
   .callout.danger  { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
   .callout strong  { font-weight: 700; }
-  .callout ul      { padding-left: 18px; margin-top: 8px; }
-  .callout ul li   { margin-bottom: 4px; }
+  .callout ul, .callout ol { padding-left: 18px; margin-top: 8px; }
+  .callout li   { margin-bottom: 4px; }
 
-  /* INLINE CODE / PATH / CMD */
-  .path {
-    display: inline-block; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500;
-    color: var(--accent); background: #fdf0ef; border: 1px solid #f5c6c2;
-    border-radius: 6px; padding: 3px 9px;
-  }
-  .cmd {
-    display: inline-block; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500;
-    color: var(--navy); background: var(--code-bg); border: 1px solid #c9d4ea;
-    border-radius: 6px; padding: 3px 9px;
-  }
-  kbd {
-    display: inline-block; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600;
-    color: var(--navy); background: #fff; border: 1px solid #c9d4ea;
-    border-bottom: 3px solid #b0bedd; border-radius: 5px; padding: 2px 8px;
-  }
-  code { font-family: 'DM Mono', monospace; font-size: 12.5px; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
-
-  /* FEATURE HEADER */
-  .feature-header {
-    background: var(--white); border: 1px solid var(--border); border-radius: 16px;
-    padding: 22px 28px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(13,32,69,0.06);
-  }
-  .fh-badge {
-    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 1px;
-    text-transform: uppercase; padding: 3px 10px; border-radius: 4px; margin-bottom: 10px;
-  }
-  .fh-tab1 { background: #e0f0ff; color: #1565c0; }
-  .fh-tab2 { background: #f0e8ff; color: #6a1b9a; }
-  .fh-tab3 { background: #e8fff0; color: #1b5e20; }
-  .fh-tab4 { background: #fff4e8; color: #bf360c; }
-  .feature-header h3 { font-size: 19px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
-  .feature-header p  { font-size: 14px; color: var(--muted); }
-
-  /* GRID */
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 16px 0; }
+  /* MISC */
+  .path { display: inline-block; font-family: 'DM Mono', monospace; font-size: 12.5px; color: var(--accent); background: #fdf0ef; border: 1px solid #f5c6c2; border-radius: 5px; padding: 2px 8px; }
+  .cmd  { display: inline-block; font-family: 'DM Mono', monospace; font-size: 12.5px; color: var(--navy); background: var(--code-bg); border: 1px solid #c9d4ea; border-radius: 5px; padding: 2px 8px; }
+  kbd   { display: inline-block; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600; color: var(--navy); background: #fff; border: 1px solid #c9d4ea; border-bottom: 3px solid #b0bedd; border-radius: 5px; padding: 1px 7px; }
+  code  { font-family: 'DM Mono', monospace; font-size: 12px; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
   @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
-
-  /* WHITE CARD */
-  .white-card {
-    background: var(--white); border: 1px solid var(--border); border-radius: 14px;
-    padding: 22px 26px; box-shadow: 0 2px 12px rgba(13,32,69,0.06);
-  }
-  .white-card h4 { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 12px; }
-  .white-card p  { font-size: 13.5px; color: #4a5a78; margin-bottom: 6px; }
+  .white-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 2px 12px rgba(13,32,69,0.06); }
+  .white-card h4 { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 10px; }
+  .white-card p { font-size: 13.5px; color: #4a5a78; margin-bottom: 6px; }
   .white-card ul { padding-left: 16px; }
   .white-card ul li { font-size: 13.5px; color: #4a5a78; margin-bottom: 5px; }
-
-  /* FEATURE GRID 2x2 */
-  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
-  @media (max-width: 640px) { .feature-grid { grid-template-columns: 1fr; } }
-  .feature-card {
-    background: var(--white); border: 1px solid var(--border); border-radius: 14px;
-    padding: 20px 22px; box-shadow: 0 2px 10px rgba(13,32,69,0.05);
-  }
-  .feature-card h4 { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
-  .feature-card p  { font-size: 13px; color: #4a5a78; margin-bottom: 6px; }
-  .feature-card ul { padding-left: 15px; }
-  .feature-card ul li { font-size: 13px; color: #4a5a78; margin-bottom: 4px; }
-
-  /* TABLE */
-  .data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 14px 0; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 12px 0; }
   .data-table thead tr { background: var(--navy); color: var(--white); }
-  .data-table thead th { padding: 11px 14px; text-align: left; font-weight: 600; }
+  .data-table thead th { padding: 10px 14px; text-align: left; font-weight: 600; }
   .data-table thead th:first-child { border-radius: 8px 0 0 0; }
   .data-table thead th:last-child  { border-radius: 0 8px 0 0; }
   .data-table tbody tr { border-bottom: 1px solid var(--border); }
   .data-table tbody tr:hover { background: #f8faff; }
-  .data-table tbody td { padding: 11px 14px; color: #4a5a78; vertical-align: top; }
+  .data-table tbody td { padding: 10px 14px; color: #4a5a78; vertical-align: top; }
   .data-table tbody td:first-child { color: var(--navy); font-weight: 600; }
-
-  /* QUICK-START STEPS */
-  .qs-steps { display: flex; flex-direction: column; gap: 12px; }
-  .qs-step {
-    background: var(--white); border: 1px solid var(--border); border-radius: 12px;
-    padding: 16px 20px; display: flex; gap: 16px; align-items: flex-start;
-    box-shadow: 0 2px 8px rgba(13,32,69,0.05);
-  }
-  .qs-num {
-    flex-shrink: 0; width: 36px; height: 36px; background: var(--accent); color: white;
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 700;
-  }
-  .qs-body h4 { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 5px; }
+  .qs-steps { display: flex; flex-direction: column; gap: 10px; }
+  .qs-step { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; display: flex; gap: 14px; align-items: flex-start; }
+  .qs-num { flex-shrink: 0; width: 34px; height: 34px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; }
+  .qs-body h4 { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
   .qs-body p  { font-size: 13.5px; color: #4a5a78; }
   .qs-body ol { padding-left: 18px; margin-top: 6px; }
   .qs-body ol li { font-size: 13.5px; color: #4a5a78; margin-bottom: 3px; }
-  .tag-badge {
-    display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px;
-    border-radius: 4px; margin-right: 4px; vertical-align: middle;
-  }
+  .tag-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; margin-right: 4px; vertical-align: middle; }
   .t1 { background: #e0f0ff; color: #1565c0; }
   .t2 { background: #f0e8ff; color: #6a1b9a; }
   .t3 { background: #e8fff0; color: #1b5e20; }
   .t4 { background: #fff4e8; color: #bf360c; }
-
-  /* CONCEPT TABLE */
+  .step-card { background: var(--white); border-radius: 14px; padding: 20px 24px; display: flex; gap: 18px; align-items: flex-start; box-shadow: 0 2px 14px rgba(13,32,69,0.07); border: 1px solid var(--border); margin-bottom: 16px; }
+  .step-num { flex-shrink: 0; width: 44px; height: 44px; background: var(--navy); color: var(--white); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; }
+  .step-num.warn { background: #f59e0b; color: var(--navy); }
+  .step-body { flex: 1; }
+  .step-body h3 { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+  .step-body p { font-size: 13.5px; color: #4a5a78; margin-bottom: 6px; }
+  .step-body ul, .step-body ol { padding-left: 18px; margin-top: 6px; }
+  .step-body li { font-size: 13.5px; color: #4a5a78; margin-bottom: 4px; }
+  .flow-item { display: flex; gap: 0; align-items: stretch; }
+  .flow-left { display: flex; flex-direction: column; align-items: center; width: 46px; flex-shrink: 0; }
+  .flow-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .flow-line { width: 2px; flex: 1; background: var(--border); margin: 4px 0; }
+  .flow-body { padding: 0 0 16px 14px; }
+  .flow-body .role-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-bottom: 5px; }
+  .flow-body h5 { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
+  .flow-body p  { font-size: 13px; color: #4a5a78; }
   .concept-row { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--border); }
   .concept-row:last-child { border-bottom: none; }
-  .concept-pill {
-    flex-shrink: 0; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700;
-    padding: 3px 9px; border-radius: 4px; margin-top: 2px; white-space: nowrap;
-  }
+  .concept-pill { flex-shrink: 0; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 4px; margin-top: 2px; white-space: nowrap; }
   .concept-row p { font-size: 13.5px; color: #4a5a78; line-height: 1.6; }
-
-  /* FAQ */
-  .faq-item { background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(13,32,69,0.05); }
+  .faq-item { background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 18px 22px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(13,32,69,0.05); }
   .faq-q { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 10px; display: flex; align-items: flex-start; gap: 10px; }
-  .faq-q::before {
-    content: 'Q'; flex-shrink: 0; width: 24px; height: 24px; background: var(--accent);
-    color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700; margin-top: 1px;
-  }
+  .faq-q::before { content: 'Q'; flex-shrink: 0; width: 24px; height: 24px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-top: 1px; }
   .faq-a { font-size: 13.5px; color: #4a5a78; padding-left: 34px; line-height: 1.7; }
   .faq-a ol { padding-left: 18px; margin-top: 6px; }
   .faq-a ol li { margin-bottom: 4px; }
-
-  /* FLOW TIMELINE */
-  .flow-item { display: flex; gap: 0; align-items: stretch; }
-  .flow-item + .flow-item { margin-top: 0; }
-  .flow-left { display: flex; flex-direction: column; align-items: center; width: 48px; flex-shrink: 0; }
-  .flow-dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; flex-shrink: 0; }
-  .flow-line { width: 2px; flex: 1; background: var(--border); margin: 4px 0; }
-  .flow-body { padding: 0 0 18px 16px; }
-  .flow-body .role-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-bottom: 6px; }
-  .flow-body h5 { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 3px; }
-  .flow-body p  { font-size: 13px; color: #4a5a78; }
-
-  /* FOOTER */
-  footer { background: var(--navy); color: rgba(255,255,255,0.45); text-align: center; padding: 24px; font-size: 12px; letter-spacing: 0.5px; }
+  footer { background: var(--navy); color: rgba(255,255,255,0.45); text-align: center; padding: 22px; font-size: 12px; letter-spacing: 0.5px; }
   footer strong { color: rgba(255,255,255,0.75); }
+  .sub-section { font-size: 16px; font-weight: 700; color: var(--navy); margin: 26px 0 14px; padding-left: 12px; border-left: 4px solid var(--accent); }
+  .window-banner { background: var(--navy); color: white; border-radius: 10px 10px 0 0; padding: 10px 18px; font-size: 13px; font-weight: 600; margin-top: 20px; }
+  .window-body { background: var(--white); border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; padding: 16px; margin-bottom: 20px; }
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 12px 0; }
+  @media (max-width: 640px) { .feature-grid { grid-template-columns: 1fr; } }
+  .feature-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .feature-card h4 { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+  .feature-card p  { font-size: 13px; color: #4a5a78; margin-bottom: 5px; }
+  .feature-card ul { padding-left: 15px; }
+  .feature-card ul li { font-size: 13px; color: #4a5a78; margin-bottom: 4px; }
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <header>
   <div class="header-inner">
     <span class="header-badge">MCG Internal Tool</span>
     <h1>MacGregor<br><span>Fitting Tools</span></h1>
-    <p class="subtitle">Hướng dẫn sử dụng toàn tập — Trích xuất Inventor, quản lý thư viện, xuất BOM và cắm Balloon tự động trong AutoCAD.</p>
+    <p class="subtitle">Hướng dẫn chi tiết từng Button — Tab 1 đến Tab 4 — kèm tình huống thực tế.</p>
     <div class="header-meta">
       <span class="meta-tag"><strong>Plugin:</strong> MCG_FittingManagement</span>
       <span class="meta-tag"><strong>AutoCAD:</strong> 2023+</span>
@@ -254,653 +180,714 @@
   </div>
 </header>
 
-<!-- NAV -->
 <nav class="tabs">
   <div class="tabs-inner">
     <button class="tab-btn active" onclick="showTab('overview')">Tổng quan</button>
     <button class="tab-btn" onclick="showTab('install')">Cài đặt</button>
     <button class="tab-btn" onclick="showTab('quickstart')">Quick Start</button>
-    <button class="tab-btn" onclick="showTab('bom')">BOM &amp; Balloon</button>
-    <button class="tab-btn" onclick="showTab('library')">Thư viện</button>
-    <button class="tab-btn" onclick="showTab('utilities')">Block Utilities</button>
+    <button class="tab-btn" onclick="showTab('tab1')">Tab 1 — BOM &amp; Balloon</button>
+    <button class="tab-btn" onclick="showTab('tab2')">Tab 2 — Project Library</button>
+    <button class="tab-btn" onclick="showTab('tab3')">Tab 3 — Template (Admin)</button>
+    <button class="tab-btn" onclick="showTab('tab4')">Tab 4 — Block Utilities</button>
     <button class="tab-btn" onclick="showTab('faq')">FAQ</button>
   </div>
 </nav>
 
 <main>
 
-<!-- ═══════════════════════════════════════ TỔNG QUAN ═══════════════════════════════════════ -->
+<!-- ═══ TỔNG QUAN ═══ -->
 <div id="overview" class="section active">
   <h2 class="section-title">Tổng quan công cụ</h2>
-
   <div class="white-card" style="margin-bottom:22px;">
     <p style="font-size:15px;color:#4a5a78;line-height:1.8;">
       <strong style="color:var(--navy);">MacGregor Fitting Tools</strong> là plugin AutoCAD quản lý toàn vòng đời Fitting —
-      từ trích xuất dữ liệu từ bản vẽ Inventor 3D, xây dựng thư viện Block tiêu chuẩn, thiết kế trên CAD,
-      đến xuất bảng BOM và cắm Balloon tự động.
-      Plugin tích hợp trực tiếp vào AutoCAD dưới dạng <strong style="color:var(--navy);">PaletteSet</strong> gồm 4 tab chức năng.
+      từ trích xuất từ Inventor 3D, xây dựng thư viện Block tiêu chuẩn, thiết kế trên CAD,
+      đến xuất BOM và cắm Balloon tự động.
+      Plugin tích hợp thành <strong style="color:var(--navy);">PaletteSet</strong> duy nhất với 4 tab.
     </p>
   </div>
 
-  <!-- 4 tab overview -->
   <h3 style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:14px;">4 Tab chức năng</h3>
   <div class="feature-grid" style="margin-bottom:28px;">
-    <div class="feature-card">
-      <div class="fh-badge fh-tab1" style="margin-bottom:8px;">TAB 1 — FITTING HANDLE</div>
-      <h4>BOM Export &amp; Balloon</h4>
-      <p>Quét &amp; đếm Block, đánh số Position, đồng bộ ngược CAD, cắm Balloon hàng loạt, xuất Excel 2 sheet.</p>
-    </div>
-    <div class="feature-card">
-      <div class="fh-badge fh-tab2" style="margin-bottom:8px;">TAB 2 — PROJECT CONFIG</div>
-      <h4>Project Library</h4>
-      <p>Duyệt thư viện Fitting theo dự án, chèn Block vào bản vẽ, gán số Position cho từng item.</p>
-    </div>
-    <div class="feature-card">
-      <div class="fh-badge fh-tab3" style="margin-bottom:8px;">TAB 3 — TEMPLATE (ADMIN)</div>
-      <h4>Master Library &amp; Import</h4>
-      <p>Admin nhập file <code>.idw</code> từ Inventor, chọn BOM Type, quản lý thư viện Fitting chuẩn của công ty.</p>
-    </div>
-    <div class="feature-card">
-      <div class="fh-badge fh-tab4" style="margin-bottom:8px;">TAB 4 — BLOCK UTILITIES</div>
-      <h4>Công cụ sửa Block</h4>
-      <p>Đổi tên, nhân bản, thêm/bỏ đối tượng, đổi điểm gốc, thay thế hàng loạt — không cần Explode, không mất Attribute.</p>
-    </div>
+    <div class="feature-card"><div class="tag-badge t1" style="margin-bottom:8px;">TAB 1 — FITTING HANDLE</div><h4>BOM Export &amp; Balloon</h4><p>Quét bản vẽ, đánh số Position, đồng bộ CAD, cắm Balloon hàng loạt, xuất Excel 2 sheet.</p></div>
+    <div class="feature-card"><div class="tag-badge t2" style="margin-bottom:8px;">TAB 2 — PROJECT CONFIG</div><h4>Project Library</h4><p>Duyệt thư viện Fitting theo dự án, chèn Block vào bản vẽ, gán Position sơ bộ.</p></div>
+    <div class="feature-card"><div class="tag-badge t3" style="margin-bottom:8px;">TAB 3 — TEMPLATE (ADMIN)</div><h4>Master Library &amp; Import</h4><p>Admin nhập <code>.idw</code> từ Inventor, chọn BOM Type, quản lý thư viện chuẩn công ty.</p></div>
+    <div class="feature-card"><div class="tag-badge t4" style="margin-bottom:8px;">TAB 4 — BLOCK UTILITIES</div><h4>Công cụ sửa Block</h4><p>Đổi tên, thêm/kéo đối tượng, đổi điểm gốc, thay thế hàng loạt — không Explode.</p></div>
   </div>
 
-  <!-- Workflow -->
   <h3 style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:14px;">Luồng làm việc tổng thể</h3>
   <div class="white-card" style="margin-bottom:22px;">
-    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-      <span style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;background:#e8fff0;color:#1b5e20;">ADMIN / KEY USER</span>
-      <span style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;background:#e0f0ff;color:#1565c0;">ENGINEER / DRAFTER</span>
-    </div>
-
-    <div class="flow-item">
-      <div class="flow-left">
-        <div class="flow-dot" style="background:#1b5e20;">1</div>
-        <div class="flow-line"></div>
-      </div>
-      <div class="flow-body">
-        <span class="role-tag" style="background:#e8fff0;color:#1b5e20;">ADMIN — Tab 3</span>
-        <h5>Nhập file .idw từ Inventor</h5>
-        <p>Chọn BOM Type (Panel/Detail) → Import .idw → Hệ thống trích xuất hình chiếu, tạo Block, lưu vào Master Library.</p>
-      </div>
-    </div>
-    <div class="flow-item">
-      <div class="flow-left">
-        <div class="flow-dot" style="background:#1b5e20;">2</div>
-        <div class="flow-line"></div>
-      </div>
-      <div class="flow-body">
-        <span class="role-tag" style="background:#e8fff0;color:#1b5e20;">ADMIN — Tab 3 (Master Library)</span>
-        <h5>Cấu hình dự án</h5>
-        <p>Mở Master Library → Chọn Fitting phù hợp → Add to Project → Cấu hình Sub-BOM/Accessories.</p>
-      </div>
-    </div>
-    <div class="flow-item">
-      <div class="flow-left">
-        <div class="flow-dot" style="background:#1565c0;">3</div>
-        <div class="flow-line"></div>
-      </div>
-      <div class="flow-body">
-        <span class="role-tag" style="background:#e0f0ff;color:#1565c0;">ENGINEER — Tab 2</span>
-        <h5>Chèn Fitting vào bản vẽ</h5>
-        <p>Mở Project Library → Tìm Fitting → Insert to CAD → Rải lên bản vẽ.</p>
-      </div>
-    </div>
-    <div class="flow-item">
-      <div class="flow-left">
-        <div class="flow-dot" style="background:#1565c0;">4</div>
-        <div class="flow-line"></div>
-      </div>
-      <div class="flow-body">
-        <span class="role-tag" style="background:#e0f0ff;color:#1565c0;">ENGINEER — Tab 1</span>
-        <h5>Xuất BOM &amp; cắm Balloon</h5>
-        <p>Scan &amp; Count → Auto-Assign Positions → Sync Pos to CAD → Mass Auto-Balloon → Export Excel.</p>
-      </div>
-    </div>
-    <div class="flow-item">
-      <div class="flow-left">
-        <div class="flow-dot" style="background:var(--muted);">5</div>
-      </div>
-      <div class="flow-body" style="padding-bottom:0;">
-        <span class="role-tag" style="background:#f5f5f5;color:#555;">KHI CẦN — Tab 4</span>
-        <h5>Chỉnh sửa Block (khi cần)</h5>
-        <p>Dùng Block Utilities để đổi tên, thêm đối tượng, thay thế hàng loạt mà không cần Explode.</p>
-      </div>
-    </div>
+    <div class="flow-item"><div class="flow-left"><div class="flow-dot" style="background:#1b5e20;">1</div><div class="flow-line"></div></div>
+      <div class="flow-body"><span class="role-tag" style="background:#e8fff0;color:#1b5e20;">ADMIN — Tab 3</span><h5>Import .idw từ Inventor</h5><p>Chọn BOM Type → Import .idw → Hệ thống tạo Block và lưu vào Master Library.</p></div></div>
+    <div class="flow-item"><div class="flow-left"><div class="flow-dot" style="background:#1b5e20;">2</div><div class="flow-line"></div></div>
+      <div class="flow-body"><span class="role-tag" style="background:#e8fff0;color:#1b5e20;">ADMIN — Master Library</span><h5>Cấu hình dự án</h5><p>Mở Master Library → Chọn Fitting → Add to Project → Cấu hình Sub-BOM/Accessories.</p></div></div>
+    <div class="flow-item"><div class="flow-left"><div class="flow-dot" style="background:#1565c0;">3</div><div class="flow-line"></div></div>
+      <div class="flow-body"><span class="role-tag" style="background:#e0f0ff;color:#1565c0;">ENGINEER — Tab 2</span><h5>Chèn Fitting vào bản vẽ</h5><p>Mở Project Library → Insert to CAD → Rải Fitting lên bản vẽ.</p></div></div>
+    <div class="flow-item"><div class="flow-left"><div class="flow-dot" style="background:#1565c0;">4</div><div class="flow-line"></div></div>
+      <div class="flow-body"><span class="role-tag" style="background:#e0f0ff;color:#1565c0;">ENGINEER — Tab 1</span><h5>Xuất BOM &amp; cắm Balloon</h5><p>Scan &amp; Count → Auto-Assign → Sync Pos to CAD → Mass Auto-Balloon → Export Excel.</p></div></div>
+    <div class="flow-item"><div class="flow-left"><div class="flow-dot" style="background:var(--muted);">5</div></div>
+      <div class="flow-body" style="padding-bottom:0;"><span class="role-tag" style="background:#f5f5f5;color:#555;">KHI CẦN — Tab 4</span><h5>Chỉnh sửa Block</h5><p>Dùng Block Utilities để sửa Block mà không cần Explode.</p></div></div>
   </div>
 
-  <!-- Quy tắc vàng -->
-  <div class="callout danger">
-    <strong>⚠️ QUY TẮC "SINGLE SOURCE OF TRUTH"</strong><br>
-    Bản vẽ CAD là chân lý duy nhất. Tuyệt đối <strong>KHÔNG</strong> chỉnh sửa số lượng hay số Pos thủ công trên Excel.
-    Nếu có thay đổi → thao tác trên CAD (chèn thêm Block, Scan lại, Sync Pos) → Export Excel lại từ đầu.
-  </div>
+  <div class="callout danger"><strong>⚠️ QUY TẮC VÀNG</strong><br>Bản vẽ CAD là chân lý duy nhất. <strong>KHÔNG</strong> sửa số lượng hay số Pos trực tiếp trên Excel. Mọi thay đổi → thao tác trên CAD → Scan lại → Sync → Export Excel mới.</div>
 
-  <!-- Khái niệm cốt lõi -->
   <h3 style="font-size:17px;font-weight:700;color:var(--navy);margin:26px 0 14px;">Khái niệm cốt lõi</h3>
   <div class="white-card">
-    <div class="concept-row">
-      <span class="concept-pill" style="background:#e0f0ff;color:#1565c0;">POS_NUM</span>
-      <p>Attribute ẩn (Invisible Attribute) cấy vào mỗi Block khi Insert. Liên kết Block CAD với số Position trong BOM. <strong style="color:var(--navy);">Không xóa thủ công.</strong></p>
-    </div>
-    <div class="concept-row">
-      <span class="concept-pill" style="background:#e8fff0;color:#1b5e20;">-tv / -fv / -sv</span>
-      <p>Hậu tố tên Block: <strong style="color:var(--navy);">-tv</strong> = Top View (hình chiếu bằng — dùng để đếm BOM và cắm Balloon), <strong style="color:var(--navy);">-fv</strong> = Front View, <strong style="color:var(--navy);">-sv</strong> = Side View. Hệ thống <em>chỉ đếm</em> block <code>-tv</code> khi Scan BOM.</p>
-    </div>
-    <div class="concept-row">
-      <span class="concept-pill" style="background:#f0e8ff;color:#6a1b9a;">Panel / Detail</span>
-      <p><strong style="color:var(--navy);">Panel (Structure)</strong>: Cụm kết cấu lớn, hàn dính nguyên khối. <strong style="color:var(--navy);">Detail (Hull)</strong>: Chi tiết rời, phụ kiện mua ngoài, chi tiết vỏ. Phân loại sai làm hỏng cấu trúc BOM.</p>
-    </div>
-    <div class="concept-row">
-      <span class="concept-pill" style="background:#fff4e8;color:#bf360c;">Sub-BOM</span>
-      <p>Phụ kiện ảo gắn vào Fitting chính (VD: 2 cùm, 4 ốc). Khi xuất BOM, phụ kiện tự động thụt lề sau Fitting chính và bám theo số Position của Mẹ.</p>
-    </div>
-    <div class="concept-row">
-      <span class="concept-pill" style="background:#eef2fa;color:var(--navy);">Stacked Balloon</span>
-      <p>Chùm bóng chú giải xếp chồng: khi 1 Fitting có nhiều Pos (chuỗi <code>"001,002,003"</code> do Sub-BOM), hệ thống tạo chuỗi balloon nối tiếp nhau trên bản vẽ.</p>
-    </div>
+    <div class="concept-row"><span class="concept-pill" style="background:#e0f0ff;color:#1565c0;">POS_NUM</span><p>Attribute ẩn cấy vào mỗi Block khi Insert. Liên kết Block CAD với số Position trong BOM. <strong style="color:var(--navy);">Không xóa thủ công.</strong></p></div>
+    <div class="concept-row"><span class="concept-pill" style="background:#e8fff0;color:#1b5e20;">-tv / -fv / -sv</span><p>Hậu tố tên Block: <strong>-tv</strong> = Top View (đếm BOM + cắm Balloon), <strong>-fv</strong> = Front View, <strong>-sv</strong> = Side View. Hệ thống <em>chỉ đếm</em> block <code>-tv</code>.</p></div>
+    <div class="concept-row"><span class="concept-pill" style="background:#f0e8ff;color:#6a1b9a;">Panel / Detail</span><p><strong>Panel (Structure)</strong>: Cụm kết cấu lớn, hàn nguyên khối. <strong>Detail (Hull)</strong>: Chi tiết rời, gắn lên Panel. Phân loại sai = hỏng BOM.</p></div>
+    <div class="concept-row"><span class="concept-pill" style="background:#fff4e8;color:#bf360c;">Sub-BOM</span><p>Phụ kiện ảo gắn vào Fitting chính (VD: 2 cùm + 4 ốc). Khi xuất BOM, phụ kiện thụt lề theo Pos của mẹ.</p></div>
+    <div class="concept-row"><span class="concept-pill" style="background:#eef2fa;color:var(--navy);">Stacked Balloon</span><p>Khi 1 Fitting có chuỗi Pos <code>"001,002,003"</code> (do Sub-BOM), hệ thống tạo chuỗi balloon xếp chồng trên bản vẽ.</p></div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════ CÀI ĐẶT ═══════════════════════════════════════ -->
+<!-- ═══ CÀI ĐẶT ═══ -->
 <div id="install" class="section">
   <h2 class="section-title">Cài đặt &amp; Kích hoạt</h2>
-  <div class="steps">
-
-    <div class="step-card">
-      <div class="step-num">01</div>
-      <div class="step-body">
-        <h3>Chuẩn bị file — Copy về ổ C trước</h3>
-        <p>Nhận gói phân phối từ Admin. Gói gồm:</p>
-        <ul>
-          <li><span class="cmd">MCG_FittingManagement.dll</span> — Plugin chính</li>
-          <li><span class="cmd">appsettings.txt</span> — Cấu hình kết nối (database, library path...)</li>
-          <li><span class="cmd">Install_AutoLoadCadAddin.bat</span> — Script cài đặt tự động</li>
-        </ul>
-        <div class="callout warning">
-          ⚠️ <strong>Không chạy trực tiếp từ Google Drive / OneDrive.</strong> Copy toàn bộ 3 file về local trước:
-          <div style="margin-top:8px;"><span class="path">C:\CustomTools\Autocad\</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="step-card">
-      <div class="step-num">02</div>
-      <div class="step-body">
-        <h3>Chạy Script cài đặt (Run as Administrator)</h3>
-        <p>Chuột phải vào <span class="cmd">Install_AutoLoadCadAddin.bat</span> → <strong>Run as administrator</strong>.</p>
-        <p style="margin-top:8px;">Script tự động thực hiện:</p>
-        <ol>
-          <li>Tạo thư mục bundle: <span class="path">%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\Contents\</span></li>
-          <li>Copy <code>MCG_*.dll</code> và <code>appsettings.txt</code> vào <code>Contents\</code></li>
-          <li>Tự sinh <code>PackageContents.xml</code> — AutoCAD đọc file này khi khởi động</li>
-        </ol>
-        <div class="callout success">✅ Script báo <strong>SUCCESSFULLY COMPLETED</strong> là cài đặt thành công.</div>
-      </div>
-    </div>
-
-    <div class="step-card">
-      <div class="step-num">03</div>
-      <div class="step-body">
-        <h3>Khởi động AutoCAD &amp; Kích hoạt</h3>
-        <p>Restart AutoCAD 2023. Plugin load tự động khi AutoCAD mở. Gõ lệnh để mở giao diện:</p>
-        <div style="margin:10px 0;"><span class="path">MCG_Fitting</span></div>
-        <p>Palette <strong>"Fitting Management"</strong> xuất hiện bên phải với 4 tab.</p>
-        <div class="callout info">
-          💡 <strong>Lệnh ẩn Palette:</strong> Gõ <span class="cmd">MCG_Fitting_Hide</span> để đóng mà không mất cài đặt.
-        </div>
-      </div>
-    </div>
-
-    <div class="step-card">
-      <div class="step-num warn">!</div>
-      <div class="step-body">
-        <h3>Lỗi thường gặp khi cài đặt</h3>
-        <table class="data-table">
-          <thead><tr><th>Triệu chứng</th><th>Nguyên nhân</th><th>Fix</th></tr></thead>
-          <tbody>
-            <tr>
-              <td>Script báo "Cannot create directory"</td>
-              <td>Thiếu quyền Admin</td>
-              <td>Chuột phải → Run as Administrator</td>
-            </tr>
-            <tr>
-              <td>Gõ MCG_Fitting không nhận lệnh</td>
-              <td>Plugin chưa load</td>
-              <td>Restart AutoCAD hoàn toàn; kiểm tra bundle folder có <code>PackageContents.xml</code> không</td>
-            </tr>
-            <tr>
-              <td>Script báo "No MCG_*.dll found"</td>
-              <td>Bat và DLL không cùng thư mục</td>
-              <td>Đặt bat và DLL vào cùng 1 thư mục trên ổ C</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-  </div>
+  <div class="step-card"><div class="step-num">01</div><div class="step-body">
+    <h3>Chuẩn bị file — Copy về ổ C trước</h3>
+    <p>Nhận gói từ Admin. Gói gồm: <span class="cmd">MCG_FittingManagement.dll</span>, <span class="cmd">appsettings.txt</span>, <span class="cmd">Install_AutoLoadCadAddin.bat</span>.</p>
+    <div class="warn-box">⚠️ <strong>Không chạy trực tiếp từ Google Drive / OneDrive.</strong> Copy về local: <span class="path">C:\CustomTools\Autocad\</span></div>
+  </div></div>
+  <div class="step-card"><div class="step-num">02</div><div class="step-body">
+    <h3>Chạy Script cài đặt (Run as Administrator)</h3>
+    <p>Chuột phải vào <span class="cmd">Install_AutoLoadCadAddin.bat</span> → <strong>Run as administrator</strong>. Script tự tạo bundle folder, copy DLL, sinh <code>PackageContents.xml</code>.</p>
+    <div class="result-box">✅ Script báo <strong>SUCCESSFULLY COMPLETED</strong> là xong.</div>
+  </div></div>
+  <div class="step-card"><div class="step-num">03</div><div class="step-body">
+    <h3>Khởi động AutoCAD &amp; Kích hoạt</h3>
+    <p>Restart AutoCAD 2023. Gõ lệnh <span class="path">MCG_Fitting</span> để mở Palette "Fitting Management" với 4 tab.</p>
+    <div class="info-box">💡 Lệnh <span class="cmd">MCG_Fitting_Hide</span> để ẩn Palette mà không mất cài đặt.</div>
+  </div></div>
+  <div class="step-card"><div class="step-num warn">!</div><div class="step-body">
+    <h3>Lỗi thường gặp khi cài đặt</h3>
+    <table class="data-table"><thead><tr><th>Triệu chứng</th><th>Nguyên nhân</th><th>Fix</th></tr></thead><tbody>
+      <tr><td>Cannot create directory</td><td>Thiếu quyền Admin</td><td>Chuột phải → Run as Administrator</td></tr>
+      <tr><td>MCG_Fitting không nhận</td><td>Plugin chưa load</td><td>Restart AutoCAD; kiểm tra bundle folder có <code>PackageContents.xml</code></td></tr>
+      <tr><td>No MCG_*.dll found</td><td>Bat và DLL khác thư mục</td><td>Đặt bat và DLL vào cùng 1 thư mục</td></tr>
+    </tbody></table>
+  </div></div>
 </div>
 
-<!-- ═══════════════════════════════════════ QUICK START ═══════════════════════════════════════ -->
+<!-- ═══ QUICK START ═══ -->
 <div id="quickstart" class="section">
   <h2 class="section-title">Quick Start — Luồng 5 bước</h2>
-
-  <div class="callout info" style="margin-bottom:22px;">
-    <strong>Điều kiện:</strong> Plugin đã cài đặt. Admin đã import Fitting vào Master Library và cấu hình dự án. Bạn đã mở bản vẽ AutoCAD cần thiết kế.
-  </div>
-
+  <div class="callout info" style="margin-bottom:20px;"><strong>Điều kiện:</strong> Plugin đã cài. Admin đã import Fitting vào Master Library và cấu hình dự án. Bạn đang mở bản vẽ AutoCAD cần thiết kế.</div>
   <div class="qs-steps">
-    <div class="qs-step">
-      <div class="qs-num">1</div>
-      <div class="qs-body">
-        <h4>Mở Palette</h4>
-        <p>Gõ <span class="cmd">MCG_Fitting</span> vào AutoCAD Command Line. Palette "Fitting Management" xuất hiện.</p>
-      </div>
-    </div>
-
-    <div class="qs-step">
-      <div class="qs-num">2</div>
-      <div class="qs-body">
-        <h4>Chèn Fitting vào bản vẽ</h4>
-        <p><span class="tag-badge t2">Tab 2</span> Bấm <kbd>Open Project Library</kbd> → Tìm Fitting → <kbd>Insert to CAD</kbd>. Lặp lại cho tất cả Fitting cần dùng (chèn đủ cả <code>-tv</code>, <code>-fv</code>, <code>-sv</code> nếu cần).</p>
-      </div>
-    </div>
-
-    <div class="qs-step">
-      <div class="qs-num">3</div>
-      <div class="qs-body">
-        <h4>Xuất BOM &amp; đánh số Position</h4>
-        <p><span class="tag-badge t1">Tab 1</span> Bấm <kbd>Open BOM Export</kbd>. Trong cửa sổ BOM thực hiện theo thứ tự:</p>
-        <ol>
-          <li>Bấm <kbd>Scan &amp; Count</kbd> — quét toàn bộ bản vẽ</li>
-          <li>Bấm <kbd>Auto-Assign Positions</kbd> — cấp số Pos tự động</li>
-          <li>Bấm <kbd>Sync Pos to CAD</kbd> — bơm số vào Attribute ẩn trên bản vẽ</li>
-        </ol>
-      </div>
-    </div>
-
-    <div class="qs-step">
-      <div class="qs-num">4</div>
-      <div class="qs-body">
-        <h4>Cắm Balloon hàng loạt</h4>
-        <p><span class="tag-badge t1">Tab 1</span> Bấm <kbd>Mass Auto-Balloon</kbd>. Vẽ khung chọn bao quanh vùng cần cắm. Balloon Stacked tự động xuất hiện trên tất cả Block <code>-tv</code>.</p>
-      </div>
-    </div>
-
-    <div class="qs-step">
-      <div class="qs-num">5</div>
-      <div class="qs-body">
-        <h4>Xuất Excel</h4>
-        <p>Trong cửa sổ BOM Export, bấm <kbd>Export to Excel</kbd>. File Excel tạo ra gồm 2 Sheet: <strong>Matrix</strong> (ma trận Panel×Detail) và <strong>Data</strong> (danh sách đầy đủ, phụ kiện thụt lề và in nghiêng).</p>
-      </div>
-    </div>
+    <div class="qs-step"><div class="qs-num">1</div><div class="qs-body"><h4>Mở Palette</h4><p>Gõ <span class="cmd">MCG_Fitting</span> trong AutoCAD Command Line.</p></div></div>
+    <div class="qs-step"><div class="qs-num">2</div><div class="qs-body"><h4>Chèn Fitting vào bản vẽ</h4><p><span class="tag-badge t2">Tab 2</span> Bấm <kbd>Open Project Library</kbd> → Tìm Fitting → <kbd>Insert to CAD</kbd>. Lặp lại cho tất cả Fitting (chèn đủ cả <code>-tv</code>, <code>-fv</code>, <code>-sv</code>).</p></div></div>
+    <div class="qs-step"><div class="qs-num">3</div><div class="qs-body"><h4>Xuất BOM &amp; đánh số Position</h4><p><span class="tag-badge t1">Tab 1</span> Bấm <kbd>Open BOM Export</kbd>. Trong cửa sổ BOM:</p><ol><li>Bấm <kbd>Scan &amp; Count from Drawing</kbd></li><li>Bấm <kbd>Auto-Assign Positions</kbd></li><li>Bấm <kbd>Sync Pos to CAD</kbd></li></ol></div></div>
+    <div class="qs-step"><div class="qs-num">4</div><div class="qs-body"><h4>Cắm Balloon hàng loạt</h4><p><span class="tag-badge t1">Tab 1</span> Bấm <kbd>Mass Auto-Balloon</kbd> → Vẽ khung chọn xung quanh vùng cần cắm.</p></div></div>
+    <div class="qs-step"><div class="qs-num">5</div><div class="qs-body"><h4>Xuất Excel</h4><p>Trong cửa sổ BOM, bấm <kbd>Export to Excel</kbd>. File Excel gồm 2 sheet: <strong>Matrix</strong> và <strong>Data</strong>.</p></div></div>
   </div>
-
-  <div class="callout success" style="margin-top:20px;">
-    ✅ <strong>Kết quả:</strong> Bản vẽ có đầy đủ Balloon + File Excel BOM sẵn sàng. Không chỉnh sửa số nào thủ công.
-  </div>
+  <div class="callout success" style="margin-top:18px;">✅ <strong>Kết quả:</strong> Bản vẽ có đầy đủ Balloon + File Excel BOM sẵn sàng. Không cần sửa số thủ công.</div>
 </div>
 
-<!-- ═══════════════════════════════════════ BOM & BALLOON ═══════════════════════════════════════ -->
-<div id="bom" class="section">
-  <h2 class="section-title">BOM Export &amp; Balloon (Tab 1)</h2>
-
-  <div class="feature-header">
-    <span class="fh-badge fh-tab1">TAB 1 — FITTING HANDLE</span>
-    <h3>Quét BOM, đánh số và cắm Balloon</h3>
-    <p>Tab dành cho Engineer/Drafter. Sau khi rải xong Fitting lên bản vẽ, đây là tab để hoàn thiện: đánh số, đồng bộ, balloon, xuất Excel.</p>
+<!-- ═══ TAB 1 ═══ -->
+<div id="tab1" class="section">
+  <h2 class="section-title">Tab 1 — Fitting Handle: BOM &amp; Balloon</h2>
+  <div class="tab-header t1">
+    <span class="tab-label lbl-t1">TAB 1 — FITTING HANDLE</span>
+    <h2>Quét BOM, đánh số Position, cắm Balloon, xuất Excel</h2>
+    <p>Dành cho Engineer/Drafter. Sau khi đã rải xong Fitting lên bản vẽ (từ Tab 2), dùng Tab 1 để hoàn thiện toàn bộ quy trình BOM.</p>
   </div>
 
-  <!-- 3 nút chính -->
-  <div class="white-card" style="margin-bottom:24px;">
-    <h4>Các nút chức năng chính</h4>
-    <table class="data-table">
-      <thead><tr><th>Nút</th><th>Chức năng</th><th>Ghi chú</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>Open BOM Export</td>
-          <td>Mở cửa sổ BomPreviewWindow — trung tâm quản lý toàn bộ quy trình BOM</td>
-          <td>Chạy trước các bước Scan, Assign, Sync</td>
-        </tr>
-        <tr>
-          <td>Place Balloon</td>
-          <td>Cắm Balloon đơn lẻ — click từng Block một trên bản vẽ</td>
-          <td>Dùng khi cần kiểm soát từng vị trí balloon</td>
-        </tr>
-        <tr>
-          <td>Mass Auto-Balloon</td>
-          <td>Cắm Balloon hàng loạt — vẽ khung chọn vùng cần cắm</td>
-          <td>Chỉ cắm vào Block <code>-tv</code>; nhanh nhất cho toàn bản vẽ</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <!-- GROUP: BOM EXPORT -->
+  <div class="btn-group">
+    <div class="group-title group-t1">📊 Nhóm BOM EXPORT</div>
+    <div class="group-body">
 
-  <!-- BOM steps -->
-  <h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:14px;">Cửa sổ BOM Export — Từng bước</h3>
-  <div class="steps" style="margin-bottom:28px;">
-
-    <div class="step-card">
-      <div class="step-num">1</div>
-      <div class="step-body">
-        <h3>Scan &amp; Count — Quét bản vẽ</h3>
-        <p>Bấm <kbd>Scan &amp; Count</kbd>. Thuật toán <strong>X-Ray</strong> quét xuyên suốt bản vẽ, đếm tất cả Block Fitting.</p>
-        <div class="callout info">
-          <strong>Cơ chế Chống Đếm Khống:</strong> Hệ thống <em>chỉ đếm</em> Block có tên kết thúc bằng <code>-tv</code> (Top View).
-          Các Block <code>-fv</code>, <code>-sv</code>, <code>-iso</code> bị bỏ qua hoàn toàn — đảm bảo mỗi Fitting chỉ được đếm 1 lần dù có nhiều hình chiếu.
-        </div>
-        <p style="font-size:13px;color:var(--muted);margin-top:8px;">Nếu thấy số lượng thiếu → kiểm tra đã Insert Block <code>-tv</code> chưa.</p>
-      </div>
-    </div>
-
-    <div class="step-card">
-      <div class="step-num">2</div>
-      <div class="step-body">
-        <h3>Auto-Assign Positions — Cấp số tự động</h3>
-        <p>Bấm <kbd>Auto-Assign Positions</kbd>. Hệ thống gán số Position liên tiếp (001, 002, 003...) cho tất cả Fitting đã Scan.</p>
-        <ul>
-          <li>Số Pos của <strong>Phụ kiện (Sub-BOM)</strong> tự động bám theo số Mẹ</li>
-          <li>Cụm Mẹ + 2 Phụ kiện → chuỗi <code>"001,002,003"</code> được gộp</li>
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill primary">Open BOM Export</span></div>
+        <p class="btn-desc">Mở cửa sổ <strong>BOM Matrix Export &amp; Sync</strong> — trung tâm quản lý toàn bộ quy trình: quét bản vẽ, đánh số Position, đồng bộ CAD, xuất Excel.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Bạn đã rải xong tất cả Fitting lên bản vẽ và cần tạo BOM để giao nộp. Đây là bước bắt buộc trước khi Scan, Assign hay Sync.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Bấm <kbd>Open BOM Export</kbd> trên Tab 1</li>
+          <li><span class="si-num">2</span>Cửa sổ <strong>BOM Matrix Export &amp; Sync</strong> xuất hiện</li>
+          <li><span class="si-num">3</span>Chọn <strong>Target BOM Type</strong>: <code>Structure (Panel)</code> hoặc <code>Detail (Hull)</code></li>
+          <li><span class="si-num">4</span>Thực hiện các bước Scan → Assign → Sync → Export theo thứ tự bên dưới</li>
         </ul>
-        <div class="callout warning">
-          ⚠️ Sau bước này, <strong>bắt buộc bấm Sync Pos to CAD</strong>. Bỏ qua bước này → Balloon sẽ báo lỗi "Không tìm thấy POS_NUM".
-        </div>
+        <div class="info-box">💡 Cửa sổ BOM ở chế độ <em>Topmost</em> — nó luôn nằm trên AutoCAD. Bạn vẫn có thể click vào bản vẽ phía sau.</div>
       </div>
-    </div>
 
-    <div class="step-card">
-      <div class="step-num">3</div>
-      <div class="step-body">
-        <h3>Sync Pos to CAD — Bơm số vào bản vẽ</h3>
-        <p>Bấm <kbd>Sync Pos to CAD</kbd>. Hệ thống viết chuỗi Position vào Attribute ẩn <code>POS_NUM</code> của từng Block trên bản vẽ.</p>
-        <div class="callout success">✅ Sau bước này, Block trên CAD đã mang số Position. Có thể cắm Balloon bất kỳ lúc nào.</div>
+      <hr class="divider"/>
+
+      <p style="font-size:13px;font-weight:700;color:var(--navy);margin:8px 0 4px;">Các nút bên trong cửa sổ BOM Matrix Export &amp; Sync:</p>
+
+      <div class="btn-card" style="margin-top:10px;">
+        <div class="btn-name"><span class="btn-pill primary">Scan &amp; Count from Drawing</span><span class="scenario-tag">Bước 1 bắt buộc</span></div>
+        <p class="btn-desc">Quét toàn bộ bản vẽ hiện tại, tìm tất cả Block Fitting và hiển thị kết quả thành bảng ma trận BOM (hàng = Detail, cột = Panel).</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Mỗi lần cần cập nhật BOM: sau khi thêm/xóa Fitting, hoặc bắt đầu quy trình lần đầu.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Chọn BOM Type: <code>Structure (Panel)</code> nếu bản vẽ chứa Panel; <code>Detail (Hull)</code> nếu chứa Detail</li>
+          <li><span class="si-num">2</span>Bấm <kbd>Scan &amp; Count from Drawing</kbd></li>
+          <li><span class="si-num">3</span>Hệ thống duyệt toàn bộ Model Space, đếm Block theo hậu tố <code>-tv</code></li>
+          <li><span class="si-num">4</span>Bảng ma trận xuất hiện: hàng = loại Detail, cột = Panel, ô = số lượng</li>
+        </ul>
+        <div class="info-box">💡 <strong>Chỉ đếm block <code>-tv</code>:</strong> Block <code>-fv</code>, <code>-sv</code>, <code>-iso</code> bị bỏ qua hoàn toàn — mỗi Fitting chỉ được đếm đúng 1 lần dù có nhiều hình chiếu trên bản vẽ.</div>
+        <div class="warn-box">⚠️ Nếu số lượng bị thiếu → kiểm tra lại: có thể bạn chỉ chèn <code>-fv</code> mà quên chèn <code>-tv</code>.</div>
       </div>
-    </div>
 
-    <div class="step-card">
-      <div class="step-num">4</div>
-      <div class="step-body">
-        <h3>Export to Excel — Xuất BOM</h3>
-        <p>Bấm <kbd>Export to Excel</kbd>. File Excel tạo tự động với 2 Sheet:</p>
-        <div class="two-col" style="margin-top:12px;">
-          <div style="background:#eef2fa;border-radius:10px;padding:14px 16px;">
-            <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">Sheet: MATRIX</div>
-            <div style="font-size:13px;color:#4a5a78;">Ma trận Panel × Detail. Cột = Panel, Hàng = Detail. Giao ô = số lượng Detail dùng trong Panel đó.</div>
-          </div>
-          <div style="background:#eef2fa;border-radius:10px;padding:14px 16px;">
-            <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">Sheet: DATA</div>
-            <div style="font-size:13px;color:#4a5a78;">Danh sách đầy đủ. Phụ kiện thụt lề, in nghiêng. Cột Pos ép định dạng Text (<code>@</code>) để giữ số 0 đứng đầu.</div>
-          </div>
-        </div>
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Auto-Assign Positions</span><span class="scenario-tag">Bước 2 bắt buộc</span></div>
+        <p class="btn-desc">Gán số Position tự động (001, 002, 003...) cho tất cả Fitting đã được Scan. Phụ kiện Sub-BOM tự động nhận số tiếp theo sau mẹ.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Sau khi Scan xong và xác nhận số lượng đúng, bấm để gán số trước khi Sync.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Đảm bảo bảng Scan đã có kết quả đúng</li>
+          <li><span class="si-num">2</span>Bấm <kbd>Auto-Assign Positions</kbd></li>
+          <li><span class="si-num">3</span>Hệ thống gán số liên tiếp từ 001</li>
+          <li><span class="si-num">4</span>Fitting có Sub-BOM: Mẹ nhận "001", phụ kiện nhận "002", "003" — gộp thành chuỗi <code>"001,002,003"</code></li>
+        </ul>
+        <div class="danger-box">⚠️ <strong>Chưa đồng bộ CAD!</strong> Số Position lúc này chỉ tồn tại trong cửa sổ BOM. Bắt buộc phải bấm <kbd>Sync Pos to CAD</kbd> tiếp theo.</div>
       </div>
-    </div>
 
-  </div>
-
-  <!-- Ballooning detail -->
-  <h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:14px;">Cắm Balloon — So sánh 2 chế độ</h3>
-  <div class="white-card">
-    <div class="two-col">
-      <div>
-        <h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Place Balloon (đơn lẻ)</h4>
-        <ol style="font-size:13.5px;color:#4a5a78;padding-left:18px;line-height:1.9;">
-          <li>Bấm <kbd>Place Balloon</kbd></li>
-          <li>Click vào từng Block <code>-tv</code></li>
-          <li>Balloon xuất hiện tại vị trí click</li>
-          <li>Nhấn <kbd>ESC</kbd> để kết thúc</li>
-        </ol>
-        <div class="callout warning" style="margin-top:10px;font-size:12.5px;">Chậm hơn Mass, dùng khi cần kiểm soát từng vị trí.</div>
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill primary">Sync Pos to CAD</span><span class="scenario-tag">Bước 3 bắt buộc</span></div>
+        <p class="btn-desc">Ghi chuỗi Position vào Attribute ẩn <code>POS_NUM</code> của từng Block trên bản vẽ CAD. Sau bước này, Block mới "biết" số Pos của mình.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Ngay sau Auto-Assign Positions, trước khi cắm Balloon. Cũng dùng khi số Pos thay đổi (thêm/bớt Fitting → Scan lại → Assign lại → Sync lại).</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Bấm <kbd>Sync Pos to CAD</kbd></li>
+          <li><span class="si-num">2</span>Hệ thống duyệt từng Block trên bản vẽ, tìm Attribute <code>POS_NUM</code> ẩn</li>
+          <li><span class="si-num">3</span>Ghi chuỗi Position vào Attribute đó</li>
+          <li><span class="si-num">4</span>Thanh status hiển thị: "Synced X blocks"</li>
+        </ul>
+        <div class="result-box">✅ Sau bước này, Block trên CAD đã mang số Position. Có thể cắm Balloon bất kỳ lúc nào.</div>
       </div>
-      <div>
-        <h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Mass Auto-Balloon (hàng loạt)</h4>
-        <ol style="font-size:13.5px;color:#4a5a78;padding-left:18px;line-height:1.9;">
-          <li>Bấm <kbd>Mass Auto-Balloon</kbd></li>
-          <li>Vẽ khung bao quanh khu vực</li>
-          <li>Hệ thống quét tất cả Block <code>-tv</code> trong khung</li>
-          <li>Stacked Balloon xuất hiện tự động</li>
-        </ol>
-        <div class="callout success" style="margin-top:10px;font-size:12.5px;">Nhanh nhất — bỏ qua tự động Block không phải <code>-tv</code>.</div>
-      </div>
-    </div>
-    <div class="callout info" style="margin-top:14px;">
-      <strong>Stacked Balloon:</strong> Khi 1 Block có chuỗi Pos <code>"001,002,003"</code> (do Sub-BOM), hệ thống tự tạo 3 balloon xếp chồng theo thứ tự số.
-    </div>
-  </div>
-</div>
 
-<!-- ═══════════════════════════════════════ THƯ VIỆN ═══════════════════════════════════════ -->
-<div id="library" class="section">
-  <h2 class="section-title">Quản lý Thư viện (Tab 2 &amp; 3)</h2>
-
-  <!-- TAB 3 — ADMIN -->
-  <div class="feature-header">
-    <span class="fh-badge fh-tab3">TAB 3 — TEMPLATE (ADMIN)</span>
-    <h3>Import từ Inventor &amp; Master Library</h3>
-    <p>Dành cho Admin/Key User. Đây là nguồn gốc tạo ra Fitting — nhập file từ Inventor và xây dựng thư viện chuẩn công ty.</p>
-  </div>
-
-  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px;">Nhập file .idw từ Inventor</h3>
-  <div class="steps" style="margin-bottom:26px;">
-
-    <div class="step-card">
-      <div class="step-num">1</div>
-      <div class="step-body">
-        <h3>Chọn BOM Type — BẮT BUỘC trước khi Import</h3>
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill primary">Export to Excel</span><span class="scenario-tag">Bước 4 — Xuất kết quả</span></div>
+        <p class="btn-desc">Tạo file Excel BOM tự động với 2 sheet chuẩn: <strong>MATRIX</strong> (ma trận Panel × Detail) và <strong>DATA</strong> (danh sách đầy đủ).</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Sau khi đã Scan, Assign, Sync xong. Dùng để giao nộp BOM hoặc kiểm tra.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Bấm <kbd>Export to Excel</kbd></li>
+          <li><span class="si-num">2</span>Hộp thoại chọn nơi lưu xuất hiện — chọn thư mục và đặt tên file</li>
+          <li><span class="si-num">3</span>File Excel tạo tự động với 2 sheet</li>
+        </ul>
         <div class="two-col" style="margin-top:10px;">
-          <div style="background:#e8fff0;border:2px solid #22c55e;border-radius:10px;padding:14px;">
-            <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:5px;">Panel (Structure)</div>
-            <div style="font-size:12.5px;color:#4a5a78;">Cụm kết cấu lớn, hàn nguyên khối. Thường chứa nhiều Detail. VD: Frame Assembly, Hatch Cover Panel.</div>
+          <div style="background:#eef2fa;border-radius:8px;padding:12px;">
+            <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:5px;">Sheet MATRIX</div>
+            <div style="font-size:13px;color:#4a5a78;">Ma trận Panel × Detail. Cột = Panel, Hàng = Detail. Ô giao = số lượng Detail dùng trong Panel đó.</div>
           </div>
-          <div style="background:#fff4e8;border:2px solid #f59e0b;border-radius:10px;padding:14px;">
-            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:5px;">Detail (Hull)</div>
-            <div style="font-size:12.5px;color:#4a5a78;">Chi tiết rời, vỏ, phụ kiện mua ngoài, gắn lên Panel. VD: Cleat, Sheave, Hook.</div>
+          <div style="background:#eef2fa;border-radius:8px;padding:12px;">
+            <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:5px;">Sheet DATA</div>
+            <div style="font-size:13px;color:#4a5a78;">Danh sách đầy đủ. Phụ kiện thụt lề &amp; in nghiêng. Cột Pos định dạng Text (<code>@</code>) để giữ số 0 đầu.</div>
           </div>
         </div>
-        <div class="callout danger" style="margin-top:10px;"><strong>Phân loại sai = Hỏng cấu trúc BOM.</strong> Không thể đổi BOM Type sau khi đã Import. Nếu nhập sai → xóa và Import lại.</div>
+        <div class="danger-box">🚫 <strong>KHÔNG sửa số trong Excel.</strong> Nếu cần thay đổi → sửa trên CAD → Scan lại → Assign → Sync → Export lại.</div>
       </div>
-    </div>
 
-    <div class="step-card">
-      <div class="step-num">2</div>
-      <div class="step-body">
-        <h3>Import .idw files</h3>
-        <p>Bấm <kbd>Import .idw files</kbd> → Chọn 1 hoặc nhiều file <code>.idw</code>. Quá trình chạy ngầm (async).</p>
-        <div class="callout info" style="margin-top:10px;">
-          <strong>Hệ thống làm trong background:</strong>
-          <ul>
-            <li>Giao tiếp với Autodesk Inventor để đọc dữ liệu</li>
-            <li>Đọc iProperties: Part Number, Description — ưu tiên trường <code>Designer</code> thay <code>Author</code></li>
-            <li>Làm tròn khối lượng (Mass) đúng chuẩn</li>
-            <li>Mở khóa layer tiêu chuẩn: <code>Mechanical-AM_3</code>, <code>_7</code>, <code>_9</code></li>
-            <li>Cắt riêng từng hình chiếu dựa vào Bounding Box</li>
-            <li>Ép Linetype và Color về <code>ByLayer</code></li>
-            <li>Cấy Attribute ẩn <code>POS_NUM</code> vào Block</li>
-            <li>Lưu vào Master Library</li>
-          </ul>
-        </div>
-        <div class="callout warning" style="margin-top:10px;">💡 Mở sẵn Inventor (để trống) trước khi Import — tránh timeout, tăng tốc độ.</div>
+    </div>
+  </div>
+
+  <!-- GROUP: BALLOONING -->
+  <div class="btn-group">
+    <div class="group-title group-t1">🎈 Nhóm BALLOONING</div>
+    <div class="group-body">
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Place Balloon</span><span class="scenario-tag">Cắm đơn lẻ</span></div>
+        <p class="btn-desc">Cắm Balloon từng cái một — bạn click vào từng Block <code>-tv</code> trên bản vẽ, Balloon xuất hiện ngay tại điểm click.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi cần kiểm soát chính xác vị trí từng Balloon, ví dụ bản vẽ có vài Fitting đặc biệt cần Balloon đặt ở vị trí cụ thể; hoặc khi chỉ cần cắm thêm 1-2 cái còn thiếu.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Đảm bảo đã Sync Pos to CAD trước</li>
+          <li><span class="si-num">2</span>Bấm <kbd>Place Balloon</kbd> — con trỏ chuyển sang chế độ pick</li>
+          <li><span class="si-num">3</span>Click vào Block <code>-tv</code> trên bản vẽ</li>
+          <li><span class="si-num">4</span>Balloon xuất hiện tại vị trí click — lặp lại cho Block khác</li>
+          <li><span class="si-num">5</span>Nhấn <kbd>ESC</kbd> để kết thúc lệnh</li>
+        </ul>
+        <div class="warn-box">⚠️ Nếu Balloon hiện ra trống hoặc báo lỗi "POS_NUM not found" → chưa Sync. Quay lại BOM Export → Sync Pos to CAD.</div>
       </div>
-    </div>
 
-  </div>
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill primary">Mass Auto-Balloon</span><span class="scenario-tag">Cắm hàng loạt — nhanh nhất</span></div>
+        <p class="btn-desc">Cắm Balloon hàng loạt bằng cách vẽ khung chọn bao quanh vùng. Hệ thống tự tìm tất cả Block <code>-tv</code> bên trong và cắm Balloon tự động.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Sử dụng sau khi đã đặt hết Fitting và đã Sync Pos to CAD. Đây là cách nhanh nhất để cắm Balloon cho toàn bộ bản vẽ chỉ trong 1 thao tác.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Đảm bảo đã Sync Pos to CAD trước</li>
+          <li><span class="si-num">2</span>Bấm <kbd>Mass Auto-Balloon</kbd></li>
+          <li><span class="si-num">3</span>Vẽ khung chọn (bấm 2 góc) bao quanh khu vực cần cắm</li>
+          <li><span class="si-num">4</span>Hệ thống quét, tìm tất cả Block <code>-tv</code> trong khung</li>
+          <li><span class="si-num">5</span>Stacked Balloon xuất hiện tự động — block <code>-fv</code>, <code>-sv</code> bị bỏ qua</li>
+        </ul>
+        <div class="result-box">✅ Nếu 1 Block có chuỗi Pos <code>"001,002,003"</code> (do Sub-BOM), hệ thống tự tạo 3 balloon xếp chồng theo thứ tự số.</div>
+        <div class="info-box">💡 Có thể chạy nhiều lần với các vùng khác nhau trên cùng bản vẽ (VD: cắm từng khu vực riêng để kiểm soát vị trí balloon).</div>
+      </div>
 
-  <!-- Master Library -->
-  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px;">Master Library — Quản lý thư viện chuẩn</h3>
-  <div class="white-card" style="margin-bottom:28px;">
-    <p style="font-size:14px;color:#4a5a78;margin-bottom:14px;">Bấm <kbd>Open Master Library</kbd>. Đây là "kho gốc" — chỉ Admin chỉnh sửa.</p>
-    <table class="data-table">
-      <thead><tr><th>Chức năng</th><th>Mô tả</th></tr></thead>
-      <tbody>
-        <tr><td>Search</td><td>Tìm đa từ khóa (VD: <code>sheave 22</code>). Tìm theo Part ID, Name, Description, Originator.</td></tr>
-        <tr><td>Categories tree</td><td>Lọc theo cây danh mục. Click để thu hẹp phạm vi.</td></tr>
-        <tr><td>Add from CAD</td><td>Quét nhiều hình chiếu (<code>-tv</code>, <code>-fv</code>, <code>-sv</code>) trên bản vẽ đang mở → Tool gom vào 1 Part ID.</td></tr>
-        <tr><td>Sub-BOM / Accessories</td><td>Gán phụ kiện ảo cho Fitting chính (VD: 2 cùm + 4 ốc). Khi xuất BOM, phụ kiện tự bám theo số Mẹ.</td></tr>
-        <tr><td>Push Update</td><td>Sửa Block trực tiếp trên bản vẽ → Chọn Block đã sửa → Bấm Push Update để ghi đè DWG trong Library.</td></tr>
-        <tr><td>Add to Project</td><td>Thêm Fitting từ Master Library vào danh sách dự án đang active → Engineer có thể Insert.</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- TAB 2 — ENGINEER -->
-  <div class="feature-header">
-    <span class="fh-badge fh-tab2">TAB 2 — PROJECT CONFIG (ENGINEER)</span>
-    <h3>Project Library — Thư viện dự án</h3>
-    <p>Sau khi Admin thêm Fitting vào dự án, Engineer dùng tab này để Insert Block vào bản vẽ.</p>
-  </div>
-
-  <div class="white-card">
-    <p style="font-size:14px;color:#4a5a78;margin-bottom:14px;">Bấm <kbd>Open Project Library</kbd>. Chỉ hiển thị Fitting đã được Admin cấu hình cho dự án hiện tại.</p>
-    <table class="data-table">
-      <thead><tr><th>Chức năng</th><th>Mô tả</th></tr></thead>
-      <tbody>
-        <tr><td>Search</td><td>Tìm kiếm nhanh trong danh sách Fitting của dự án.</td></tr>
-        <tr><td>Preview pane</td><td>Xem trước hình dạng Block trước khi Insert.</td></tr>
-        <tr><td>Insert to CAD</td><td>Chèn Block vào bản vẽ. Hệ thống tự cấy Attribute <code>POS_NUM</code> ẩn nếu chưa có.</td></tr>
-        <tr><td>Auto-Assign Pos</td><td>Gán số Position sơ bộ trong Project Library.</td></tr>
-        <tr><td>Remove Selected</td><td>Xóa Fitting khỏi danh sách dự án (không xóa khỏi Master Library).</td></tr>
-      </tbody>
-    </table>
-    <div class="callout info" style="margin-top:14px;">
-      💡 <strong>Thứ tự Insert tốt nhất:</strong> Chèn đủ tất cả hình chiếu của 1 Fitting (<code>-tv</code>, <code>-fv</code>, <code>-sv</code>) trước khi chuyển sang Fitting khác. Giúp BOM Scan chính xác hơn.
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════ BLOCK UTILITIES ═══════════════════════════════════════ -->
-<div id="utilities" class="section">
-  <h2 class="section-title">Block Utilities (Tab 4)</h2>
-
-  <div class="feature-header">
-    <span class="fh-badge fh-tab4">TAB 4 — BLOCK UTILITIES</span>
-    <h3>Thao tác Block nâng cao — không cần Explode</h3>
-    <p>Toàn bộ Attribute ẩn (<code>POS_NUM</code>) được bảo toàn suốt quá trình. Gồm 2 nhóm: <strong>Block Utilities</strong> và <strong>Drawing Collection</strong>.</p>
+<!-- ═══ TAB 2 ═══ -->
+<div id="tab2" class="section">
+  <h2 class="section-title">Tab 2 — Project Config: Project Library</h2>
+  <div class="tab-header t2">
+    <span class="tab-label lbl-t2">TAB 2 — PROJECT CONFIG</span>
+    <h2>Duyệt &amp; chèn Fitting từ thư viện dự án</h2>
+    <p>Dành cho Engineer/Drafter. Chỉ hiển thị Fitting đã được Admin cấu hình cho dự án hiện tại.</p>
   </div>
 
-  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:14px;">Nhóm 1 — Block Utilities</h3>
-  <div class="feature-grid" style="margin-bottom:28px;">
-    <div class="feature-card">
-      <h4>Rename Block</h4>
-      <p>Đổi tên hoặc nhân bản (Clone) Block.</p>
-      <ul>
-        <li>Tự sửa nội dung MText bên trong khi đổi tên</li>
-        <li>Dùng trước khi Add to Library để đặt đúng Part ID</li>
-      </ul>
-    </div>
-    <div class="feature-card">
-      <h4>Add Objects to Block</h4>
-      <p>Thêm đối tượng rời vào Block mà không làm vỡ Block.</p>
-      <ul>
-        <li>Bấm lệnh → Chọn Block đích → Quét các nét vẽ cần gộp</li>
-        <li>Tọa độ bù trừ tự động — không bị lệch sau khi gộp</li>
-      </ul>
-    </div>
-    <div class="feature-card">
-      <h4>Extract Objects from Block</h4>
-      <p>Kéo đối tượng từ bên trong Block ra Model Space.</p>
-      <ul>
-        <li>Bấm lệnh → Click vào các nét vẽ bên trong Block</li>
-        <li>Block không bị Explode — Attribute vẫn nguyên vẹn</li>
-      </ul>
-    </div>
-    <div class="feature-card">
-      <h4>Change Insertion Point</h4>
-      <p>Thay đổi Base Point của Block.</p>
-      <ul>
-        <li>Tự bù trừ tọa độ cho <strong>tất cả</strong> Block cùng tên trên bản vẽ</li>
-        <li>Không cần chỉnh từng Block một sau khi đổi</li>
-      </ul>
-    </div>
-    <div class="feature-card">
-      <h4>Smart Replace (Spatial)</h4>
-      <p>Thay thế Block hàng loạt theo vị trí không gian.</p>
-      <ul>
-        <li>Chọn Block Nguồn và Block Đích</li>
-        <li>Dùng Bounding Box để sắp xếp và thay thế tự động</li>
-        <li>Giữ nguyên Scale và Rotation của Block gốc</li>
-      </ul>
-    </div>
-    <div class="feature-card">
-      <h4>Redefine Blocks</h4>
-      <p>Đồng bộ định nghĩa Block từ bản vẽ đang mở khác.</p>
-      <ul>
-        <li>Chọn bản vẽ nguồn (đang mở trong AutoCAD)</li>
-        <li>Cập nhật Block definition an toàn</li>
-      </ul>
-    </div>
-  </div>
+  <div class="btn-group">
+    <div class="group-title group-t2">📚 Nhóm FITTING LIBRARY</div>
+    <div class="group-body">
 
-  <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:14px;">Nhóm 2 — Drawing Collection</h3>
-  <div class="white-card">
-    <p style="font-size:14px;color:#4a5a78;margin-bottom:16px;">Gom nội dung từ nhiều bản vẽ thành 1 file tổng hợp. Dùng để tổng hợp nhiều panel vào 1 bản vẽ MTO.</p>
-    <div class="two-col">
-      <div style="background:#f8faff;border:1px solid var(--border);border-radius:10px;padding:16px;">
-        <h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Collect Drawings (.dwg)</h4>
-        <ul style="font-size:13.5px;color:#4a5a78;padding-left:16px;line-height:1.9;">
-          <li>Chọn nhiều file <code>.dwg</code></li>
-          <li>Block đổi tên: <code>[FileName]_[BlockName]</code></li>
-          <li>Block đặc biệt <code>A1</code> và <code>CAS_HEAD</code> giữ nguyên</li>
-          <li>Block definition không dùng bị Purge</li>
-          <li>Bố cục ngang, khoảng cách 100mm giữa các frame</li>
-          <li>Cảnh báo nếu vượt giới hạn</li>
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill primary">Open Project Library</span></div>
+        <p class="btn-desc">Mở cửa sổ <strong>Project Library</strong> — danh sách Fitting đã được Admin chọn cho dự án. Từ đây bạn duyệt, tìm kiếm và chèn Fitting vào bản vẽ đang mở.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Mỗi lần cần chèn Fitting vào bản vẽ. Admin phải cấu hình dự án trước (thêm Fitting từ Master Library vào Project).</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Bấm <kbd>Open Project Library</kbd> trên Tab 2</li>
+          <li><span class="si-num">2</span>Cửa sổ Project Library mở ra với 3 panel: Categories (trái), DataGrid (giữa), Preview (phải)</li>
+          <li><span class="si-num">3</span>Tìm Fitting cần dùng (xem các nút bên dưới)</li>
+          <li><span class="si-num">4</span>Bấm <kbd>Insert to CAD</kbd> để chèn vào bản vẽ</li>
         </ul>
       </div>
-      <div style="background:#f8faff;border:1px solid var(--border);border-radius:10px;padding:16px;">
-        <h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Collect Drawings (.idw)</h4>
-        <ul style="font-size:13.5px;color:#4a5a78;padding-left:16px;line-height:1.9;">
-          <li>Tương tự Collect .dwg</li>
-          <li>Đọc trực tiếp file Inventor <code>.idw</code></li>
-          <li>Tự động convert sang AutoCAD entities</li>
-          <li>Cùng logic đổi tên và Purge</li>
+
+    </div>
+  </div>
+
+  <p class="sub-section">Các nút trong cửa sổ Project Library</p>
+
+  <div class="btn-group">
+    <div class="group-title group-t2">🔧 Quản lý Project</div>
+    <div class="group-body">
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Load Project</span></div>
+        <p class="btn-desc">Tải danh sách Fitting của một project có sẵn vào cửa sổ để làm việc.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi mở Project Library lần đầu trong phiên làm việc, hoặc khi cần chuyển sang project khác.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Bấm <kbd>Load Project</kbd></li>
+          <li><span class="si-num">2</span>Chọn project từ danh sách hoặc hộp thoại</li>
+          <li><span class="si-num">3</span>DataGrid cập nhật hiển thị Fitting của project đó</li>
         </ul>
+      </div>
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Create Project</span></div>
+        <p class="btn-desc">Tạo project mới trong hệ thống (thông thường do Admin thực hiện).</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi bắt đầu một dự án mới chưa có trong hệ thống.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <div class="group-title group-t2">🔍 Tìm kiếm &amp; Xem trước</div>
+    <div class="group-body">
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Global Search (ô tìm kiếm)</span></div>
+        <p class="btn-desc">Tìm kiếm đa từ khóa. Hỗ trợ tìm theo: Part ID, Name, Description, Originator, tên Block/View.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi danh sách Fitting nhiều và cần tìm nhanh theo từ khóa.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Gõ từ khóa vào ô Search — VD: <code>sheave 22</code> hoặc <code>cleat port</code></li>
+          <li><span class="si-num">2</span>DataGrid tự lọc ngay khi gõ (real-time)</li>
+          <li><span class="si-num">3</span>Tìm với nhiều từ cách nhau bằng dấu cách: tìm đồng thời theo AND</li>
+        </ul>
+      </div>
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Categories Tree (cây bên trái)</span></div>
+        <p class="btn-desc">Lọc Fitting theo nhóm/danh mục. Click vào một nhánh để thu hẹp danh sách hiển thị.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi muốn xem tất cả Fitting thuộc một nhóm cụ thể (VD: tất cả Sheave, hoặc tất cả Cleat).</div>
+      </div>
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Preview Pane (panel phải)</span></div>
+        <p class="btn-desc">Xem trước hình dạng Block của Fitting đang chọn trước khi Insert.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi không chắc chắn đây có phải Fitting mình cần không — preview để xác nhận hình dạng trước.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Click chọn 1 dòng trong DataGrid</li>
+          <li><span class="si-num">2</span>Panel Preview bên phải cập nhật hình Block ngay lập tức</li>
+          <li><span class="si-num">3</span>Có thể zoom/pan trong Preview để xem chi tiết</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <div class="group-title group-t2">✏️ Cột Project Pos. — Chỉnh số Position sơ bộ</div>
+    <div class="group-body">
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Project Pos. (cột có nền vàng)</span></div>
+        <p class="btn-desc">Cột số Position sơ bộ trong Project Library. Có thể nhập tay hoặc dùng Auto-Assign Pos để điền tự động. Đây là số dự phóng, chưa phải số chính thức trên bản vẽ.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi muốn lên kế hoạch số Pos trước khi Insert vào CAD, hoặc theo dõi danh sách Fitting theo thứ tự.</div>
+      </div>
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Auto-Assign Pos</span></div>
+        <p class="btn-desc">Tự động điền số Position vào cột Project Pos. theo thứ tự từ 001 cho tất cả Fitting trong danh sách.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi cần lên danh sách số Pos sơ bộ cho toàn bộ project trước khi bắt đầu thiết kế.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <div class="group-title group-t2">⚡ Thao tác chính</div>
+    <div class="group-body">
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill primary">Insert to CAD</span><span class="scenario-tag">Thao tác chính</span></div>
+        <p class="btn-desc">Chèn Block Fitting đang chọn vào bản vẽ AutoCAD đang mở. Hệ thống tự động cấy Attribute ẩn <code>POS_NUM</code> vào Block khi chèn.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Mỗi lần cần đặt một Fitting lên bản vẽ.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Chọn Fitting trong DataGrid (click 1 dòng)</li>
+          <li><span class="si-num">2</span>Bấm <kbd>Insert to CAD</kbd> — con trỏ chuyển sang bản vẽ AutoCAD</li>
+          <li><span class="si-num">3</span>Click vào vị trí muốn đặt Block trên bản vẽ</li>
+          <li><span class="si-num">4</span>Block xuất hiện tại vị trí đó kèm Attribute <code>POS_NUM</code> ẩn</li>
+          <li><span class="si-num">5</span>Có thể Insert nhiều lần cùng 1 Fitting vào nhiều vị trí</li>
+        </ul>
+        <div class="info-box">💡 <strong>Thứ tự Insert tốt nhất:</strong> Chèn đủ cả <code>-tv</code>, <code>-fv</code>, <code>-sv</code> của cùng 1 Fitting trước khi chuyển sang Fitting khác — giúp bản vẽ gọn và BOM Scan chính xác hơn.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Refresh</span></div>
+        <p class="btn-desc">Tải lại danh sách Fitting từ database mà không cần đóng/mở lại cửa sổ.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi Admin vừa thêm Fitting mới vào Project và bạn cần thấy kết quả cập nhật ngay.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill danger">Remove Selected</span></div>
+        <p class="btn-desc">Xóa Fitting đang chọn khỏi danh sách của Project hiện tại. <strong>Không xóa khỏi Master Library.</strong></p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi một Fitting đã thêm nhầm vào project, hoặc không còn cần dùng trong project này nữa.</div>
+        <div class="warn-box">⚠️ Chỉ xóa khỏi project list — Fitting vẫn còn trong Master Library và có thể Add to Project lại bất kỳ lúc nào.</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════ FAQ ═══════════════════════════════════════ -->
+<!-- ═══ TAB 3 ═══ -->
+<div id="tab3" class="section">
+  <h2 class="section-title">Tab 3 — Template: Import &amp; Master Library (Admin)</h2>
+  <div class="tab-header t3">
+    <span class="tab-label lbl-t3">TAB 3 — TEMPLATE (ADMIN)</span>
+    <h2>Import .idw từ Inventor &amp; Quản lý Master Library</h2>
+    <p>Dành cho Admin / Key User. Đây là nguồn gốc tạo ra mọi Fitting — nhập từ Inventor và xây dựng thư viện chuẩn công ty.</p>
+  </div>
+
+  <div class="btn-group">
+    <div class="group-title group-t3">📥 Nhóm IMPORT TEMPLATE FROM IDW</div>
+    <div class="group-body">
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Target BOM Type (Radio Button)</span><span class="scenario-tag">Bắt buộc chọn trước</span></div>
+        <p class="btn-desc">Chọn loại BOM cho Fitting sắp import: <strong>Panel (Structure)</strong> — cụm kết cấu lớn, hàn nguyên khối; hoặc <strong>Detail (Hull)</strong> — chi tiết rời, gắn lên Panel.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Mỗi lần trước khi bấm Import .idw — phải chọn đúng loại tương ứng với file .idw chuẩn bị nhập.</div>
+        <div class="two-col" style="margin-top:10px;">
+          <div style="background:#e8fff0;border:2px solid #22c55e;border-radius:8px;padding:12px;">
+            <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:4px;">Panel (Structure)</div>
+            <div style="font-size:12.5px;color:#4a5a78;">Cụm kết cấu, hàn dính. VD: Frame Assembly, Hatch Cover Panel, Mooring Winch Base.</div>
+          </div>
+          <div style="background:#fff4e8;border:2px solid #f59e0b;border-radius:8px;padding:12px;">
+            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px;">Detail (Hull)</div>
+            <div style="font-size:12.5px;color:#4a5a78;">Chi tiết rời, mua ngoài, gắn lên Panel. VD: Cleat, Sheave, Hook, Eye Plate.</div>
+          </div>
+        </div>
+        <div class="danger-box">🚫 <strong>KHÔNG thể đổi BOM Type sau khi Import.</strong> Nếu nhập sai → phải xóa và Import lại từ đầu.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill primary">Import .idw</span><span class="scenario-tag">Thao tác chính của Admin</span></div>
+        <p class="btn-desc">Import một hoặc nhiều file <code>.idw</code> từ Inventor. Hệ thống giao tiếp với Inventor đang chạy, trích xuất dữ liệu, tạo Block, lưu vào Master Library.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi nhận được file <code>.idw</code> mới từ bộ phận Inventor và cần thêm vào thư viện để Engineer dùng. Thường thực hiện theo batch khi có nhiều Fitting mới.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Mở sẵn Autodesk Inventor (để trống, không mở file nào)</li>
+          <li><span class="si-num">2</span>Chọn BOM Type phù hợp (Panel/Detail)</li>
+          <li><span class="si-num">3</span>Bấm <kbd>Import .idw</kbd></li>
+          <li><span class="si-num">4</span>Chọn 1 hoặc nhiều file <code>.idw</code> trong hộp thoại</li>
+          <li><span class="si-num">5</span>Quá trình chạy ngầm — thanh TxtImportStatus cập nhật tiến độ</li>
+          <li><span class="si-num">6</span>Khi hoàn tất, Fitting mới xuất hiện trong Master Library</li>
+        </ul>
+        <div class="info-box">💡 <strong>Hệ thống tự động làm trong background:</strong> Đọc iProperties (Part Number, Description), làm tròn Mass, mở khóa layer chuẩn (<code>Mechanical-AM_3</code>, <code>_7</code>, <code>_9</code>), cắt hình chiếu theo Bounding Box, ép Linetype/Color về ByLayer, cấy Attribute ẩn <code>POS_NUM</code>, lưu vào Master Library.</div>
+        <div class="warn-box">⚠️ Phải có Autodesk Inventor đã cài trên máy và đang chạy. Nếu Inventor chưa mở → import sẽ timeout hoặc fail.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <div class="group-title group-t3">📖 Nhóm MASTER LIBRARY</div>
+    <div class="group-body">
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill primary">Open Master Library</span></div>
+        <p class="btn-desc">Mở cửa sổ <strong>Master Library</strong> — kho tổng chứa tất cả Fitting chuẩn của công ty. Chỉ Admin mới được chỉnh sửa.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Sau khi Import xong để kiểm tra kết quả; hoặc để quản lý thư viện (thêm từ CAD, cấu hình Sub-BOM, thêm vào Project, cập nhật Block).</div>
+      </div>
+
+    </div>
+  </div>
+
+  <p class="sub-section">Các nút trong cửa sổ Master Library</p>
+
+  <div class="btn-group">
+    <div class="group-title group-t3">🔍 Tìm kiếm &amp; Duyệt</div>
+    <div class="group-body">
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Global Search</span></div>
+        <p class="btn-desc">Tìm đa từ khóa trên toàn Master Library: theo Part ID, Name, Description, Originator, tên View.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi cần tìm một Fitting cụ thể trong kho lớn. Gõ <code>sheave 22</code> để tìm Sheave đường kính 22mm.</div>
+      </div>
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Categories Tree</span></div>
+        <p class="btn-desc">Cây danh mục bên trái — click để lọc theo nhóm. Hiển thị số lượng Fitting trong mỗi nhóm.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <div class="group-title group-t3">➕ Thêm &amp; Cấu hình Fitting</div>
+    <div class="group-body">
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill success">➕ Add from CAD</span><span class="scenario-tag">Thêm Block thủ công</span></div>
+        <p class="btn-desc">Quét nhiều hình chiếu (<code>-tv</code>, <code>-fv</code>, <code>-sv</code>) của 1 Fitting đang vẽ trực tiếp trên bản vẽ → gom chúng lại thành 1 Part ID trong Master Library.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi bạn vẽ tay một Fitting trực tiếp trong AutoCAD (không có file <code>.idw</code>) và muốn lưu vào thư viện để tái sử dụng.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Vẽ Block Fitting trên bản vẽ (với hậu tố <code>-tv</code>, <code>-fv</code>, <code>-sv</code> đúng chuẩn)</li>
+          <li><span class="si-num">2</span>Bấm <kbd>➕ Add from CAD</kbd></li>
+          <li><span class="si-num">3</span>Nhập Part ID (phải độc nhất, không trùng)</li>
+          <li><span class="si-num">4</span>Hệ thống gom tất cả Block cùng Part ID (các hình chiếu) thành 1 Fitting</li>
+          <li><span class="si-num">5</span>Fitting xuất hiện trong Master Library</li>
+        </ul>
+        <div class="warn-box">⚠️ Part ID phải độc nhất. Không dùng ký tự: <code>\ / : * ? " &lt; &gt; |</code>. Nếu báo "Duplicate name" → đổi tên Block (Tab 4 → Rename Block) trước khi Add.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">🔗 Sub-BOM / Accessories</span><span class="scenario-tag">Cấu hình phụ kiện</span></div>
+        <p class="btn-desc">Gán phụ kiện ảo (accessories) cho Fitting cha. Phụ kiện không có Block trên bản vẽ nhưng sẽ xuất hiện trong BOM với số lượng và đơn vị riêng.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi 1 Fitting khi lắp đặt cần thêm phụ kiện đi kèm — VD: 1 Sheave cần 2 cùm + 4 bulong. Admin cần khai báo để BOM tự tính.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Chọn Fitting cha trong danh sách</li>
+          <li><span class="si-num">2</span>Bấm <kbd>🔗 Sub-BOM / Accessories</kbd></li>
+          <li><span class="si-num">3</span>Cửa sổ Accessory Manager mở ra</li>
+          <li><span class="si-num">4</span>Thêm từng phụ kiện: chọn từ Library hoặc tạo mới (VirtualItem)</li>
+          <li><span class="si-num">5</span>Nhập số lượng (Qty) cho mỗi phụ kiện</li>
+          <li><span class="si-num">6</span>Lưu lại — phụ kiện sẽ tự xuất hiện trong BOM với Pos kế tiếp của cha</li>
+        </ul>
+        <div class="result-box">✅ Sau khi xuất BOM: Fitting cha ở dòng chính, phụ kiện thụt lề bên dưới, cột Pos hiển thị chuỗi "001,002,003".</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <div class="group-title group-t3">🔄 Cập nhật &amp; Quản lý</div>
+    <div class="group-body">
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Push Update</span></div>
+        <p class="btn-desc">Sau khi sửa trực tiếp Block trên bản vẽ, dùng Push Update để ghi đè file DWG trong Library bằng phiên bản mới.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi phát hiện Block trong Library cần chỉnh sửa (VD: thiếu nét, sai tỉ lệ) — sửa trực tiếp trên bản vẽ CAD rồi Push Update vào Library.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Insert Block cần sửa ra bản vẽ (từ Library)</li>
+          <li><span class="si-num">2</span>Chỉnh sửa Block (dùng Tab 4 — Add Objects, Extract Objects, v.v.)</li>
+          <li><span class="si-num">3</span>Chọn Block đã sửa trên bản vẽ</li>
+          <li><span class="si-num">4</span>Trong Master Library, chọn Fitting tương ứng</li>
+          <li><span class="si-num">5</span>Bấm <kbd>Push Update</kbd></li>
+          <li><span class="si-num">6</span>Hệ thống ghi đè DWG trong Library bằng Block đã sửa</li>
+        </ul>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Add to Active Project</span></div>
+        <p class="btn-desc">Thêm Fitting đang chọn từ Master Library vào danh sách của project đang active — Engineer sẽ thấy Fitting này trong Tab 2.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi Admin cần bổ sung thêm Fitting vào project đang chạy. Project phải đã được Load trong cửa sổ Project Library (Active Project hiển thị ở góc trên phải Master Library).</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Đảm bảo Active Project đã hiển thị đúng (góc trên phải)</li>
+          <li><span class="si-num">2</span>Chọn 1 hoặc nhiều Fitting trong DataGrid (Ctrl+Click để chọn nhiều)</li>
+          <li><span class="si-num">3</span>Bấm <kbd>Add to Active Project</kbd></li>
+          <li><span class="si-num">4</span>Fitting xuất hiện ngay trong Tab 2 → Project Library</li>
+        </ul>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill primary">Insert to CAD</span></div>
+        <p class="btn-desc">Chèn Block Fitting từ Master Library trực tiếp vào bản vẽ đang mở (không cần qua Project Library).</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi Admin muốn test một Fitting mới nhập vào bản vẽ để kiểm tra hình dạng, hoặc cần chèn nhanh mà không qua luồng Project.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Refresh</span></div>
+        <p class="btn-desc">Tải lại toàn bộ danh sách Master Library từ database.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Sau khi Import .idw hoàn tất hoặc sau khi Push Update để thấy kết quả mới nhất.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill danger">Remove Selected</span></div>
+        <p class="btn-desc">Xóa vĩnh viễn Fitting đang chọn khỏi Master Library.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi một Fitting nhập sai (sai BOM Type, sai Part ID, hình chiếu lỗi) và cần xóa để Import lại đúng.</div>
+        <div class="danger-box">🚫 <strong>Thao tác không thể hoàn tác.</strong> Xóa khỏi Master Library đồng nghĩa xóa cả khỏi tất cả Project đang dùng Fitting này. Cân nhắc kỹ trước khi xóa.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 4 ═══ -->
+<div id="tab4" class="section">
+  <h2 class="section-title">Tab 4 — Block Utilities</h2>
+  <div class="tab-header t4">
+    <span class="tab-label lbl-t4">TAB 4 — BLOCK UTILITIES</span>
+    <h2>Thao tác Block nâng cao — không cần Explode</h2>
+    <p>Toàn bộ Attribute ẩn <code>POS_NUM</code> được bảo toàn qua mọi thao tác. Dành cho cả Admin lẫn Engineer.</p>
+  </div>
+
+  <div class="btn-group">
+    <div class="group-title group-t4">🔧 Nhóm BLOCK UTILITIES</div>
+    <div class="group-body">
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Rename Block</span></div>
+        <p class="btn-desc">Đổi tên hoặc nhân bản (Clone) một Block. Tự động cập nhật nội dung MText bên trong Block nếu có tên trùng với tên Block cũ.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong><br>
+          • Trước khi Add from CAD vào Library: đặt đúng Part ID theo chuẩn.<br>
+          • Khi Block có hậu tố sai (VD: đặt nhầm <code>-fv</code> thay vì <code>-tv</code>) — đổi hậu tố để BOM Scan và Balloon hoạt động đúng.<br>
+          • Khi cần nhân bản một Block để tạo biến thể mới.
+        </div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Bấm <kbd>Rename Block</kbd></li>
+          <li><span class="si-num">2</span>Click chọn Block cần đổi tên trên bản vẽ</li>
+          <li><span class="si-num">3</span>Hộp thoại xuất hiện — nhập tên mới</li>
+          <li><span class="si-num">4</span>Chọn: Rename (đổi tên thật) hoặc Clone (tạo bản sao tên mới)</li>
+          <li><span class="si-num">5</span>Hệ thống cập nhật tất cả instance cùng tên trên bản vẽ</li>
+        </ul>
+        <div class="info-box">💡 Clone tạo ra Block mới với definition riêng — sửa Block clone không ảnh hưởng Block gốc.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Redefine Blocks</span></div>
+        <p class="btn-desc">Đồng bộ (overwrite) định nghĩa Block từ một bản vẽ đang mở khác. Tất cả instance trên bản vẽ hiện tại cập nhật theo định nghĩa mới.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi Library đã cập nhật Block mới (Push Update) và bạn cần cập nhật các instance trên bản vẽ đang làm mà không cần xóa và Insert lại thủ công.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Mở bản vẽ nguồn (bản vẽ có Block definition mới) song song với bản vẽ đang làm</li>
+          <li><span class="si-num">2</span>Bấm <kbd>Redefine Blocks</kbd></li>
+          <li><span class="si-num">3</span>Chọn bản vẽ nguồn từ danh sách</li>
+          <li><span class="si-num">4</span>Tất cả Block cùng tên trên bản vẽ hiện tại được cập nhật định nghĩa mới</li>
+        </ul>
+        <div class="warn-box">⚠️ Bản vẽ nguồn phải đang mở trong AutoCAD — không thể chọn file đang đóng.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Replace Block</span><span class="scenario-tag">Smart Replace theo vị trí</span></div>
+        <p class="btn-desc">Thay thế Block nguồn bằng Block đích theo vị trí không gian (Spatial Matching). Giữ nguyên Scale và Rotation của Block bị thay.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi toàn bộ bản vẽ dùng một loại Fitting cũ cần đổi sang phiên bản mới. VD: đã đặt 15 cái Sheave-A trên bản vẽ, nay cần thay tất cả bằng Sheave-B mà không phải xóa và đặt lại từng cái.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Bấm <kbd>Replace Block</kbd></li>
+          <li><span class="si-num">2</span>Click chọn Block nguồn (cái cần thay)</li>
+          <li><span class="si-num">3</span>Click chọn Block đích (cái sẽ thay vào)</li>
+          <li><span class="si-num">4</span>Hệ thống dùng Bounding Box để khớp vị trí và thực hiện thay thế hàng loạt</li>
+          <li><span class="si-num">5</span>Scale và Rotation của Block cũ được giữ nguyên</li>
+        </ul>
+        <div class="info-box">💡 Attribute ẩn <code>POS_NUM</code> được bảo toàn từ Block cũ sang Block mới sau khi Replace.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Change Insertion Point</span></div>
+        <p class="btn-desc">Thay đổi điểm gốc (Base Point) của Block. Hệ thống tự bù trừ tọa độ cho <strong>tất cả</strong> instance cùng tên trên bản vẽ để chúng không bị dịch chuyển.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi Block có điểm gốc đặt sai (VD: ở góc thay vì ở tâm) dẫn đến khó căn chỉnh khi Insert. Sửa một lần áp dụng cho tất cả instance.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Bấm <kbd>Change Insertion Point</kbd></li>
+          <li><span class="si-num">2</span>Click chọn Block cần đổi điểm gốc</li>
+          <li><span class="si-num">3</span>Click vào điểm mới muốn làm điểm gốc (snap để chính xác)</li>
+          <li><span class="si-num">4</span>Hệ thống cập nhật definition và bù trừ tọa độ tất cả instance</li>
+        </ul>
+        <div class="warn-box">⚠️ Tất cả Block cùng tên bị ảnh hưởng — đây là hành vi đúng. Nếu nhìn thấy "lệch", Zoom to All để xem toàn cảnh. Dùng <kbd>Ctrl+Z</kbd> để Undo nếu cần.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Add Objects to Block</span></div>
+        <p class="btn-desc">Gộp các đối tượng rời (Line, Arc, Hatch...) vào bên trong một Block hiện có mà không phá vỡ Block hoặc mất Attribute.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi Block thiếu nét vẽ — VD: quên vẽ 1 đường hay 1 vòng tròn khi tạo Block ban đầu. Thay vì Explode rồi tạo lại Block, dùng Add Objects để thêm vào nhanh hơn.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Vẽ đối tượng cần thêm (Line, Arc...) ở đúng vị trí trên bản vẽ</li>
+          <li><span class="si-num">2</span>Bấm <kbd>Add Objects to Block</kbd></li>
+          <li><span class="si-num">3</span>Click chọn Block đích</li>
+          <li><span class="si-num">4</span>Click chọn các đối tượng rời cần gộp vào</li>
+          <li><span class="si-num">5</span>Nhấn Enter xác nhận — tọa độ bù trừ tự động</li>
+        </ul>
+        <div class="result-box">✅ Đối tượng được gộp vào Block — Attribute ẩn và tất cả instance cùng tên cũng được cập nhật.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill">Extract Objects from Block</span></div>
+        <p class="btn-desc">Kéo các đối tượng từ bên trong Block ra Model Space mà không Explode Block. Attribute và cấu trúc Block được giữ nguyên.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi cần lấy một nét vẽ từ trong Block ra để tham chiếu, đo đạc, hoặc dùng lại ở nơi khác. Cũng dùng khi Block chứa đối tượng thừa cần xóa bỏ.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Bấm <kbd>Extract Objects from Block</kbd></li>
+          <li><span class="si-num">2</span>Click vào các đối tượng bên trong Block cần extract</li>
+          <li><span class="si-num">3</span>Nhấn Enter xác nhận</li>
+          <li><span class="si-num">4</span>Đối tượng xuất hiện trong Model Space tại đúng vị trí — Block vẫn nguyên vẹn</li>
+        </ul>
+        <div class="info-box">💡 Block không bị Explode — các instance khác trên bản vẽ không bị ảnh hưởng.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <div class="group-title group-t4">🗂️ Nhóm DRAWING COLLECTION</div>
+    <div class="group-body">
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill primary">Collect Drawings (.dwg)</span><span class="scenario-tag">Gom nhiều bản vẽ thành 1</span></div>
+        <p class="btn-desc">Gom Model Space từ nhiều file <code>.dwg</code> vào bản vẽ hiện tại, bố cục ngang, Block tự đổi tên để tránh trùng.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi cần tổng hợp nhiều bản vẽ Panel riêng lẻ thành 1 bản vẽ MTO (Material Take-Off) tổng hợp để xuất BOM toàn tàu.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Mở bản vẽ đích (file sẽ chứa tất cả nội dung)</li>
+          <li><span class="si-num">2</span>Bấm <kbd>Collect Drawings (.dwg)</kbd></li>
+          <li><span class="si-num">3</span>Chọn nhiều file <code>.dwg</code> nguồn trong hộp thoại</li>
+          <li><span class="si-num">4</span>Hệ thống nhập từng file: Block đổi tên <code>[FileName]_[BlockName]</code>, Block đặc biệt <code>A1</code> và <code>CAS_HEAD</code> giữ nguyên</li>
+          <li><span class="si-num">5</span>Bố cục ngang — mỗi bản vẽ cách nhau 100mm tính từ frame A1</li>
+          <li><span class="si-num">6</span>Block definition không dùng bị Purge tự động</li>
+        </ul>
+        <div class="warn-box">⚠️ Nếu có entity nằm ngoài frame A1 (overflow) → hệ thống cảnh báo trong log. Kiểm tra và dọn dẹp bản vẽ nguồn trước khi Collect.</div>
+      </div>
+
+      <div class="btn-card">
+        <div class="btn-name"><span class="btn-pill primary">Collect Drawings (.idw)</span><span class="scenario-tag">Gom từ Inventor</span></div>
+        <p class="btn-desc">Tương tự Collect .dwg nhưng đọc trực tiếp file Inventor <code>.idw</code> — tự convert sang AutoCAD entities rồi gom vào bản vẽ hiện tại.</p>
+        <div class="when-box"><strong>Khi nào dùng?</strong>Khi muốn gom bản vẽ trực tiếp từ Inventor mà không cần export từng file thành <code>.dwg</code> riêng lẻ trước.</div>
+        <ul class="steps-inline">
+          <li><span class="si-num">1</span>Mở sẵn Autodesk Inventor</li>
+          <li><span class="si-num">2</span>Bấm <kbd>Collect Drawings (.idw)</kbd></li>
+          <li><span class="si-num">3</span>Chọn nhiều file <code>.idw</code></li>
+          <li><span class="si-num">4</span>Hệ thống convert và gom — cùng logic đổi tên và Purge như Collect .dwg</li>
+        </ul>
+        <div class="info-box">💡 Cần Inventor đang chạy trên máy. Nếu Inventor chưa mở, quá trình có thể bị timeout.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FAQ ═══ -->
 <div id="faq" class="section">
   <h2 class="section-title">FAQ &amp; Khắc phục sự cố</h2>
 
   <div class="faq-item">
-    <div class="faq-q">Bấm Import .idw files nhưng không thấy gì xảy ra hoặc báo timeout?</div>
-    <div class="faq-a">Plugin cần giao tiếp với Autodesk Inventor — đảm bảo Inventor đã cài trên máy. <strong>Mẹo:</strong> Mở sẵn Inventor (để trống, không mở file nào) trước khi bấm Import. Quá trình sẽ mượt hơn và ít bị timeout.</div>
+    <div class="faq-q">Bấm Import .idw nhưng không có gì xảy ra hoặc báo timeout?</div>
+    <div class="faq-a">Plugin phải giao tiếp với Autodesk Inventor. Kiểm tra: Inventor đã cài trên máy chưa? Inventor có đang chạy không? <strong>Mẹo:</strong> Mở Inventor trước (để trống, không mở file), sau đó mới Import — tránh được timeout và tăng tốc đáng kể.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Quét BOM (Scan &amp; Count) nhưng số lượng bị thiếu so với thực tế trên bản vẽ?</div>
-    <div class="faq-a">Hệ thống chỉ đếm Block có đuôi <code>-tv</code>. Kiểm tra lại: bạn có thể chỉ chèn hình chiếu <code>-fv</code> hoặc <code>-sv</code> mà quên chèn <code>-tv</code>. Mỗi Fitting cần ít nhất 1 Block <code>-tv</code> trên bản vẽ để được đếm.</div>
+    <div class="faq-q">Scan &amp; Count cho số lượng thiếu hơn thực tế trên bản vẽ?</div>
+    <div class="faq-a">Hệ thống chỉ đếm Block có hậu tố <code>-tv</code>. Kiểm tra: bạn có thể chỉ chèn <code>-fv</code> hoặc <code>-sv</code> mà quên <code>-tv</code>. Mỗi Fitting cần ít nhất 1 Block <code>-tv</code> để được tính.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Cắm Balloon báo lỗi "Không tìm thấy POS_NUM" hoặc cắm ra balloon trống?</div>
-    <div class="faq-a">Chưa đồng bộ dữ liệu. Sau khi Scan và Auto-Assign trong cửa sổ BOM, <strong>bắt buộc phải bấm Sync Pos to CAD</strong> để bơm số vào Attribute ẩn. Thứ tự đúng: Scan → Auto-Assign → <strong>Sync Pos to CAD</strong> → Balloon.</div>
+    <div class="faq-q">Balloon báo lỗi "POS_NUM not found" hoặc cắm ra balloon trống?</div>
+    <div class="faq-a">Chưa Sync dữ liệu. Sau Scan và Auto-Assign, bắt buộc phải bấm <kbd>Sync Pos to CAD</kbd>. Thứ tự đúng: Scan → Auto-Assign → <strong>Sync Pos to CAD</strong> → Balloon.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Khi Add from CAD vào Library, báo lỗi "Trùng tên"?</div>
-    <div class="faq-a">Part ID đã tồn tại trong Library. Đảm bảo ô "Part ID" là duy nhất và không chứa ký tự cấm AutoCAD (<code>\ / : * ? " &lt; &gt; |</code>). Dùng lệnh <strong>Rename Block</strong> (Tab 4) để đặt lại tên trước khi Add.</div>
+    <div class="faq-q">Add from CAD vào Library báo lỗi "Duplicate name" hay "Trùng tên"?</div>
+    <div class="faq-a">Part ID đã tồn tại. Dùng <strong>Rename Block</strong> (Tab 4) đặt tên mới duy nhất, không dùng ký tự cấm <code>\ / : * ? " &lt; &gt; |</code>.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Balloon bị cắm sai vị trí hoặc cắm vào Block -fv thay vì -tv?</div>
-    <div class="faq-a">Mass Auto-Balloon chỉ cắm vào Block <code>-tv</code>. Kiểm tra tên Block: phải kết thúc đúng bằng <code>-tv</code>. Dùng <strong>Rename Block</strong> (Tab 4) để sửa tên nếu cần.</div>
+    <div class="faq-q">Mass Auto-Balloon cắm vào -fv thay vì -tv?</div>
+    <div class="faq-a">Kiểm tra tên Block: phải kết thúc đúng bằng <code>-tv</code> (phân biệt hoa thường). Dùng <strong>Rename Block</strong> (Tab 4) để sửa hậu tố nếu cần.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Tôi sửa số lượng trên Excel, giờ số trên CAD bị lệch với Excel?</div>
-    <div class="faq-a"><strong>KHÔNG sửa số trên Excel.</strong> Bản vẽ CAD là chân lý duy nhất. Mọi thay đổi thực hiện trên CAD (thêm/bớt Block), sau đó: Scan → Auto-Assign → Sync → Export Excel lại từ đầu.</div>
+    <div class="faq-q">Tôi sửa số trong Excel, giờ số bị lệch với CAD?</div>
+    <div class="faq-a"><strong>Không sửa số trong Excel.</strong> Thay đổi phải thực hiện trên CAD: thêm/bớt Block → Scan lại → Auto-Assign → Sync Pos to CAD → Export Excel mới.</div>
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Plugin không load sau cài đặt — lệnh MCG_Fitting không nhận?</div>
-    <div class="faq-a">Kiểm tra theo thứ tự:
+    <div class="faq-q">Plugin không load sau cài đặt — MCG_Fitting không nhận lệnh?</div>
+    <div class="faq-a">Kiểm tra lần lượt:
       <ol>
-        <li>Thư mục <code>%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\</code> có tồn tại không?</li>
-        <li>Trong đó có file <code>PackageContents.xml</code> không?</li>
-        <li>Thư mục <code>Contents\</code> có file <code>MCG_FittingManagement.dll</code> không?</li>
+        <li>Thư mục <code>%PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\</code> có tồn tại?</li>
+        <li>Có file <code>PackageContents.xml</code> trong đó không?</li>
+        <li>Thư mục <code>Contents\</code> có <code>MCG_FittingManagement.dll</code> không?</li>
         <li>Chạy lại <code>Install_AutoLoadCadAddin.bat</code> với quyền Administrator.</li>
         <li>Restart AutoCAD hoàn toàn (không chỉ đóng bản vẽ).</li>
       </ol>
@@ -908,10 +895,19 @@
   </div>
 
   <div class="faq-item">
-    <div class="faq-q">Dùng Change Insertion Point nhưng các Block cùng tên bị lệch vị trí?</div>
-    <div class="faq-a">Đây là hành vi đúng — hệ thống tự bù trừ tọa độ cho TẤT CẢ Block cùng tên. Nếu nhìn thấy "lệch", Zoom to All để xem toàn cảnh. Nếu thực sự sai, dùng <kbd>Ctrl+Z</kbd> ngay để Undo.</div>
+    <div class="faq-q">Sau Change Insertion Point, Block bị lệch vị trí?</div>
+    <div class="faq-a">Đây là hành vi đúng — hệ thống tự bù trừ tọa độ cho TẤT CẢ Block cùng tên. Dùng Zoom to All để xem toàn cảnh. Nếu thực sự sai → <kbd>Ctrl+Z</kbd> Undo ngay.</div>
   </div>
 
+  <div class="faq-item">
+    <div class="faq-q">Collect Drawings xong thấy Block bị đè lên nhau?</div>
+    <div class="faq-a">File nguồn không có Block <code>A1</code> (frame chuẩn) — hệ thống fallback về bounding box layout và có thể tính toán vị trí không chính xác. Đảm bảo mỗi bản vẽ nguồn có Block <code>A1</code> đúng khuôn khổ bản vẽ.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">Add Objects to Block xong nhưng object bị lệch vị trí so với dự kiến?</div>
+    <div class="faq-a">Kiểm tra điểm gốc (Insertion Point) của Block — hệ thống tính tọa độ dựa trên điểm gốc. Nếu điểm gốc không đúng, dùng <strong>Change Insertion Point</strong> (Tab 4) để hiệu chỉnh trước khi Add Objects.</div>
+  </div>
 </div>
 
 </main>
