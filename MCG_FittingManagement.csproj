@@ -26,33 +26,34 @@
     và sync ModuleName trong PackageContents.xml nếu file tồn tại. Dùng XmlPoke (built-in)
     thay cho PowerShell vì PS có thể bị Group Policy chặn (exit 9009) trên một số máy.
   -->
-  <Target Name="UpdatePackageContents" AfterTargets="Build">
+  <Target Name="DeployToBundle" AfterTargets="Build">
     <PropertyGroup>
-      <PackageContentsPath>$(MSBuildProjectDirectory)\PackageContents.xml</PackageContentsPath>
-      <BundlePackageContentsPath>$(PROGRAMDATA)\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\PackageContents.xml</BundlePackageContentsPath>
+      <BundleRoot>$(PROGRAMDATA)\Autodesk\ApplicationPlugins\MCG_Plugin.bundle</BundleRoot>
+      <BundleContents>$(BundleRoot)\Contents</BundleContents>
     </PropertyGroup>
 
-    <WriteLinesToFile
-      File="$(OutputPath)_current_dll_name.txt"
-      Lines="$(AssemblyName)"
-      Overwrite="true" />
+    <!-- Ghi tên DLL ra file để build-and-launch.bat đọc -->
+    <WriteLinesToFile File="$(OutputPath)_current_dll_name.txt" Lines="$(AssemblyName)" Overwrite="true" />
 
-    <!-- Cập nhật ModuleName trong PackageContents.xml ở thư mục project (source of truth) -->
-    <XmlPoke
-      Condition="Exists('$(PackageContentsPath)')"
-      XmlInputPath="$(PackageContentsPath)"
-      Query="//ComponentEntry[contains(@ModuleName,'.dll')]/@ModuleName"
-      Value="./Contents/$(AssemblyName).dll" />
+    <!-- Tạo thư mục bundle nếu chưa có -->
+    <MakeDir Directories="$(BundleContents)" />
 
-    <!-- Cập nhật ModuleName trong PackageContents.xml đã deploy vào bundle (nếu đã có) -->
-    <XmlPoke
-      Condition="Exists('$(BundlePackageContentsPath)')"
-      XmlInputPath="$(BundlePackageContentsPath)"
-      Query="//ComponentEntry[contains(@ModuleName,'.dll')]/@ModuleName"
-      Value="./Contents/$(AssemblyName).dll" />
+    <!-- Copy DLL với tên CỐ ĐỊNH (MCG_FittingManagement.dll) — không dùng timestamp trong bundle.
+         Đảm bảo PackageContents.xml luôn valid mà không cần update sau mỗi Debug build. -->
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+          DestinationFiles="$(BundleContents)\$(PluginName).dll"
+          ContinueOnError="true" />
 
-    <Message Text="[MCG_FittingManagement Build] DLL: $(AssemblyName).dll" Importance="High" />
-    <Message Condition="!Exists('$(PackageContentsPath)')" Text="[MCG_FittingManagement Build] PackageContents.xml chua ton tai — can chay build-and-launch.bat de tao lan dau." Importance="High" />
+    <Message Text="[Deploy] $(AssemblyName).dll → $(BundleContents)\$(PluginName).dll" Importance="High" />
+  </Target>
+
+  <!-- Release: copy thêm vào C:\CustomTools\Autocad cho Install_AutoLoadCadAddin.bat -->
+  <Target Name="DeployToMCGVNSource" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <MakeDir Directories="C:\CustomTools\Autocad" />
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+          DestinationFiles="C:\CustomTools\Autocad\$(PluginName).dll"
+          ContinueOnError="true" />
+    <Message Text="[MCGVN] $(PluginName).dll → C:\CustomTools\Autocad" Importance="High" />
   </Target>
   <ItemGroup>
     <Reference Include="System.Windows.Forms" />

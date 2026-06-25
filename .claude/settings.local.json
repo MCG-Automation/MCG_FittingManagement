@@ -46,10 +46,26 @@
       "Bash(ls -la \"/c/Users/truonph/Desktop/71-39261\"*.dwg 2>&1)",
       "Read(//c/Users/truonph/Desktop/**)",
       "Bash(find /c/Users/truonph -name \"71-39261.dwg\" 2>/dev/null | head -5)",
-      "Read(//c/Users/truonph/**)"
+      "Read(//c/Users/truonph/**)",
+      "Bash(reg query *)",
+      "Bash(dir \"%APPDATA%\\\\Autodesk\\\\ApplicationPlugins\\\\MCG_FittingManagement.bundle\\\\Contents\\\\*.dll\" /T:W)",
+      "Bash(dir \"%PROGRAMDATA%\\\\Autodesk\\\\ApplicationPlugins\\\\MCG_FittingManagement.bundle\\\\Contents\\\\*.dll\" /T:W)",
+      "Bash(ls -la \"/c/Users/truonph/AppData/Roaming/Autodesk/ApplicationPlugins/MCG_FittingManagement.bundle/Contents/\" 2>/dev/null; ls -la \"/c/ProgramData/Autodesk/ApplicationPlugins/MCG_FittingManagement.bundle/Contents/\" 2>/dev/null)",
+      "Read(//c/ProgramData/Autodesk/ApplicationPlugins/MCG_FittingManagement.bundle/**)",
+      "Bash(find \"/c/ProgramData/Autodesk/ApplicationPlugins\" -name \"*.dll\" 2>/dev/null | head -10)",
+      "Read(//c/ProgramData/Autodesk/ApplicationPlugins/**)",
+      "Bash(xargs grep -l \"MCG_Fitting\")",
+      "Bash(cp \"c:/Users/truonph/Desktop/MCG/AutoCAD/MCG_FittingManagement/PackageContents.xml\" \"c:/ProgramData/Autodesk/ApplicationPlugins/MCG_FittingManagement.bundle/PackageContents.xml\" && echo \"OK\" && cat \"c:/ProgramData/Autodesk/ApplicationPlugins/MCG_FittingManagement.bundle/PackageContents.xml\")",
+      "Bash(find \"/c/CustomTools/Autocad\" -type f 2>/dev/null)",
+      "Read(//c/CustomTools/Autocad/**)",
+      "Bash(rm -rf \"/c/ProgramData/Autodesk/ApplicationPlugins/MCG_FittingManagement.bundle\" 2>/dev/null && echo \"Deleted MCG_FittingManagement.bundle\" || echo \"Bundle not found \\(already removed\\)\")"
     ],
     "additionalDirectories": [
-      "C:\\Users\\TRANTH\\AppData\\Local\\Temp\\probe4"
+      "C:\\Users\\TRANTH\\AppData\\Local\\Temp\\probe4",
+      "c:\\ProgramData\\Autodesk\\ApplicationPlugins\\MCG_FittingManagement.bundle",
+      "C:\\Users\\truonph\\Desktop\\MCG\\AutoCAD\\MCG_CheckListAutoCAD\\Commands",
+      "C:\\Users\\truonph\\Desktop\\MCG\\AutoCAD\\MCG_CheckListAutoCAD",
+      "C:\\ProgramData\\Autodesk\\ApplicationPlugins"
     ]
   }
 }

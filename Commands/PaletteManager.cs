@@ -70,6 +70,15 @@ namespace MCG_FittingManagement.Commands
 
                 // Visible phải set TRƯỚC Dock — AutoCAD chỉ cho phép dock sau khi palette đã visible.
                 _paletteSet.Visible = true;
+
+                // Style phải set SAU Visible=true — AutoCAD có thể restore style cũ từ GUID cache
+                // ngay khi palette trở thành visible, override những gì đã set trong Initialize().
+                // Set lại mỗi lần Show() để đảm bảo không bị override.
+                _paletteSet.Style = PaletteSetStyles.ShowAutoHideButton
+                                  | PaletteSetStyles.ShowCloseButton
+                                  | PaletteSetStyles.ShowTabForSingle
+                                  | PaletteSetStyles.Snappable;
+
                 _paletteSet.Dock = DockSides.Right;
                 Debug.WriteLine($"{LOG_PREFIX} PaletteSet hiển thị THÀNH CÔNG — docked Right.");
             }
@@ -106,13 +115,6 @@ namespace MCG_FittingManagement.Commands
         // để tạo instance của class chứa [CommandMethod]. Singleton ctor private → crash
         // MissingMethodException nếu method là instance. Static method không cần instance.
 
-        // Lệnh hiển thị Palette: dùng MCG_Fitting (xem Commands/FittingManagement/FittingManagementCommand.cs).
-        // KHÔNG đăng ký MCG_Fitting_Show ở đây (tránh duplicate command).
-
-        /// <summary>Lệnh ẩn Palette (gõ MCG_Fitting_Hide trong CAD)</summary>
-        [CommandMethod("MCG_Fitting_Hide", CommandFlags.Modal)]
-        public static void McgHide() => Instance.Hide();
-
         #endregion
 
         #region Private Methods
@@ -137,10 +139,9 @@ namespace MCG_FittingManagement.Commands
             _paletteSet.AddVisual("Block Utilities", new BlockUtilitiesView());
 
             // 3. Thiết lập thuộc tính — SAU AddVisual
-            _paletteSet.DockEnabled = DockSides.Right;  // Chỉ cho phép dock phải
+            // Style được set trong Show() sau Visible=true, không set ở đây.
+            _paletteSet.DockEnabled = DockSides.Left | DockSides.Right;
             _paletteSet.Size = new Size(400, 600);
-            _paletteSet.Style = PaletteSetStyles.ShowTabForSingle
-                              | PaletteSetStyles.Snappable;
             _paletteSet.KeepFocus = true;
 
             Debug.WriteLine($"{LOG_PREFIX} PaletteSet khởi tạo THÀNH CÔNG — 4 tab đã đăng ký.");

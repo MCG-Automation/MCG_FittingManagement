@@ -1,9 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
-  AutoCAD bundle manifest — đọc bởi AutoCAD khi khởi động.
-  File này là source of truth, được MSBuild XmlPoke cập nhật ModuleName sau mỗi build.
-  Được copy vào bundle lần đầu bởi build-and-launch.bat.
-  Bundle path: %PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_FittingManagement.bundle\
+  Reference manifest — không deploy trực tiếp.
+  Bundle thực tế: %PROGRAMDATA%\Autodesk\ApplicationPlugins\MCG_Plugin.bundle\
+  PackageContents.xml của bundle được MCG_CheckList.csproj sinh tự động sau mỗi build.
 -->
 <ApplicationPackage SchemaVersion="1.0" AppVersion="1.0.0" Author="MCG Team" Name="MCG_FittingManagement">
   <Components>

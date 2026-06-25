@@ -4,6 +4,30 @@
 
 ---
 
+## Session 2026-06-25 — Fix PaletteSet title bar buttons (pin + close)
+
+### Đã làm
+- Xác định root cause: `Style` phải set SAU `Visible = true` — AutoCAD restore GUID cache khi palette trở thành visible, override Style đã set trong `Initialize()`
+- Fix `MCG_FittingManagement`: `PaletteManager.cs` — chuyển Style sang `Show()` sau `Visible=true`, đổi `DockEnabled = Right` → `Left | Right`
+- Fix `MCG_CheckListAutoCAD`: `PaletteManager.cs` — cùng pattern, cùng 2 fix
+- Debug deployment: phát hiện `MCG_FittingManagement.bundle` chưa tồn tại trong ProgramData, `PackageContents.xml` thiếu → copy thủ công để AutoCAD load được DLL
+- Xóa registry cache entries cũ từ namespace `MCGCadPlugin.*`
+
+### Trạng thái
+- Phase: Maintenance / Bug Fix
+- MCG_FittingManagement: **DONE** — pin + close button hiển thị đúng
+- MCG_CheckListAutoCAD: **DONE** — code fix xong, cần build + deploy
+
+### Bước tiếp theo
+- File: `MCG_CheckListAutoCAD` | Hành động: build + copy DLL vào bundle → test
+- Nếu `MCG_CheckList.bundle` chưa tồn tại: tạo cấu trúc bundle giống MCG_FittingManagement
+
+### Ghi chú API
+- `PaletteSetStyles` (ShowAutoHideButton, ShowCloseButton) phải set SAU `Visible = true` trong `Show()`, KHÔNG set trong `Initialize()`. AutoCAD 2023 restore GUID state ngay khi Visible→true, overriding Style set trước đó.
+- `DockEnabled = DockSides.Right` only → AutoCAD ẩn nút pin. Phải dùng `Left | Right` để pin button hiện ra.
+
+---
+
 ## Session 2026-06-22 — Viết lại User Guide chi tiết từng Button
 
 ### Đã làm
