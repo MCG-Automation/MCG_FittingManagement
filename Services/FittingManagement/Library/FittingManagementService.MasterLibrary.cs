@@ -6,6 +6,7 @@ using System.Linq;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
+using Autodesk.AutoCAD.Geometry;
 using Newtonsoft.Json;
 using MCG_FittingManagement.Models.FittingManagement;
 using MCG_FittingManagement.Utilities.FittingManagement;
@@ -217,6 +218,161 @@ namespace MCG_FittingManagement.Services.FittingManagement
                 Debug.WriteLine($"{LOG_PREFIX} LỖI PushBlocksFromCurrentDrawing: {ex.Message}");
                 throw;
             }
+        }
+
+        public void InsertMultipleBlocksFromLibrary(IList<CatalogItem> items)
+        {
+            Debug.WriteLine($"{LOG_PREFIX} InsertMultipleBlocksFromLibrary ({items?.Count ?? 0} items)...");
+            if (items == null || items.Count == 0) return;
+
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) throw new InvalidOperationException("Không có drawing nào đang mở.");
+            Database db = doc.Database;
+            Editor   ed = doc.Editor;
+
+            using (DocumentLock loc = doc.LockDocument())
+            {
+                // Phase 1: Load tất cả definitions + tính width
+                var plan = new List<(ObjectId btrId, double width)>();
+
+                using (var tr = db.TransactionManager.StartTransaction())
+                {
+                    try
+                    {
+                        BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+
+                        foreach (var item in items)
+                        {
+                            if (string.IsNullOrEmpty(item?.BlockName)) continue;
+
+                            ObjectId btrId = ObjectId.Null;
+
+                            if (string.IsNullOrEmpty(item.FilePath))
+                            {
+                                // Tier 1 fallback: tìm trong drawing hiện tại
+                                if (!bt.Has(item.BlockName))
+                                {
+                                    Debug.WriteLine($"{LOG_PREFIX} Multi-insert skip (không có trong drawing): {item.BlockName}");
+                                    continue;
+                                }
+                                btrId = bt[item.BlockName];
+                            }
+                            else
+                            {
+                                if (!File.Exists(item.FilePath))
+                                {
+                                    Debug.WriteLine($"{LOG_PREFIX} Multi-insert skip (file không tồn tại): {item.FilePath}");
+                                    continue;
+                                }
+                                if (!bt.Has(item.BlockName))
+                                {
+                                    using (Database sideDb = new Database(false, true))
+                                    {
+                                        sideDb.ReadDwgFile(item.FilePath, FileShare.Read, true, "");
+                                        sideDb.Insunits = db.Insunits;
+                                        btrId = db.Insert(item.BlockName, sideDb, true);
+                                    }
+                                }
+                                else
+                                {
+                                    btrId = bt[item.BlockName];
+                                }
+                            }
+
+                            if (btrId.IsNull) continue;
+
+                            BlockTableRecord btr = (BlockTableRecord)tr.GetObject(btrId, OpenMode.ForWrite);
+                            btr.Units = db.Insunits;
+
+                            bool hasPosNum = false;
+                            foreach (ObjectId childId in btr)
+                            {
+                                if (tr.GetObject(childId, OpenMode.ForRead) is AttributeDefinition ad &&
+                                    ad.Tag.Equals("POS_NUM", StringComparison.OrdinalIgnoreCase))
+                                { hasPosNum = true; break; }
+                            }
+                            if (!hasPosNum)
+                                FittingBlockUtility.AddAttributeDef(btr, tr, "POS_NUM", "", "Position Number", true);
+
+                            double width = ComputeBlockWidth(tr, btr);
+                            plan.Add((btrId, width));
+                            Debug.WriteLine($"{LOG_PREFIX} Loaded '{item.BlockName}', width={width:F1}");
+                        }
+
+                        tr.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"{LOG_PREFIX} Transaction ABORT (Multi-insert Phase1): {ex.Message}");
+                        throw;
+                    }
+                }
+
+                if (plan.Count == 0) return;
+
+                // Phase 2: 1 lần hỏi điểm chèn
+                double defaultWidth = plan.Max(p => p.width > 0 ? p.width : 0);
+                if (defaultWidth <= 0) defaultWidth = 200.0;
+                const double GAP_RATIO = 0.3;
+                double gap = defaultWidth * GAP_RATIO;
+
+                PromptPointOptions ppo = new PromptPointOptions(
+                    $"\nSelect base insertion point for {plan.Count} block(s) (or press ESC to cancel): ");
+                PromptPointResult ppr = ed.GetPoint(ppo);
+                if (ppr.Status != PromptStatus.OK)
+                {
+                    Debug.WriteLine($"{LOG_PREFIX} Multi-insert bị hủy.");
+                    return;
+                }
+
+                // Phase 3: Chèn tất cả, trải theo trục X
+                double currentX = ppr.Value.X;
+                using (var tr = db.TransactionManager.StartTransaction())
+                {
+                    try
+                    {
+                        foreach (var (btrId, width) in plan)
+                        {
+                            double blockW = width > 0 ? width : defaultWidth;
+                            Point3d pt = new Point3d(currentX, ppr.Value.Y, ppr.Value.Z);
+                            FittingBlockUtility.InsertBlockReference(db, tr, btrId, pt);
+                            currentX += blockW + gap;
+                        }
+                        tr.Commit();
+                        Debug.WriteLine($"{LOG_PREFIX} InsertMultipleBlocksFromLibrary THÀNH CÔNG ({plan.Count} blocks).");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"{LOG_PREFIX} Transaction ABORT (Multi-insert Phase3): {ex.Message}");
+                        throw;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Tính chiều rộng (trục X) của block dựa trên GeometricExtents các entity con.
+        /// Trả về 0 nếu không tính được (block rỗng hoặc toàn bộ entity ném exception).
+        /// </summary>
+        private static double ComputeBlockWidth(Transaction tr, BlockTableRecord btr)
+        {
+            double minX = double.MaxValue;
+            double maxX = double.MinValue;
+
+            foreach (ObjectId id in btr)
+            {
+                try
+                {
+                    if (!(tr.GetObject(id, OpenMode.ForRead) is Entity ent)) continue;
+                    if (ent is AttributeDefinition) continue;
+                    Extents3d ext = ent.GeometricExtents;
+                    if (ext.MinPoint.X < minX) minX = ext.MinPoint.X;
+                    if (ext.MaxPoint.X > maxX) maxX = ext.MaxPoint.X;
+                }
+                catch { }
+            }
+
+            return (minX < double.MaxValue && maxX > double.MinValue) ? maxX - minX : 0.0;
         }
 
         public void InsertBlockFromLibrary(string dwgPath, string blockName)

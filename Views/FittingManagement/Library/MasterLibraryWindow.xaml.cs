@@ -175,18 +175,29 @@ namespace MCG_FittingManagement.Views.FittingManagement
             var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().ToList();
             if (selected.Count == 0) return;
 
+            var blockItems    = selected.Where(i => i.EntityType == "Block").ToList();
+            var nonBlockItems = selected.Where(i => i.EntityType != "Block").ToList();
+
+            foreach (var item in nonBlockItems)
+                MessageBox.Show($"Cannot insert '{item.BlockName}' — entity type '{item.EntityType}' is not a Block.",
+                    "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            if (blockItems.Count == 0) return;
+
             Autodesk.AutoCAD.Internal.Utils.SetFocusToDwgView();
             try
             {
-                foreach (var item in selected)
+                if (blockItems.Count == 1)
                 {
-                    if (item.EntityType != "Block")
-                    {
-                        MessageBox.Show($"Cannot insert {item.EntityType} as Block.");
-                        continue;
-                    }
-                    _fittingService.InsertBlockFromLibrary(item.FilePath, item.BlockName);
-                    _recentTracker?.Track(item.BlockName);
+                    // Single insert: giữ nguyên behavior (prompt riêng từng block)
+                    _fittingService.InsertBlockFromLibrary(blockItems[0].FilePath, blockItems[0].BlockName);
+                    _recentTracker?.Track(blockItems[0].BlockName);
+                }
+                else
+                {
+                    // Multi-insert: 1 prompt duy nhất, trải theo extents
+                    _fittingService.InsertMultipleBlocksFromLibrary(blockItems);
+                    foreach (var item in blockItems) _recentTracker?.Track(item.BlockName);
                 }
             }
             catch (Exception ex) { MessageBox.Show(ex.Message); }

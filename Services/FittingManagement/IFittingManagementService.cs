@@ -18,6 +18,13 @@ namespace MCG_FittingManagement.Services.FittingManagement
         // --- Giai đoạn 3.1: Library — operations chéo (Insert vào CAD, Pick từ CAD) ---
         // Đọc/ghi catalog đã chuyển sang IMasterLibraryService / IProjectLibraryService.
         void InsertBlockFromLibrary(string dwgPath, string blockName);
+
+        /// <summary>
+        /// Chèn nhiều block cùng lúc: load tất cả definitions, hỏi 1 điểm duy nhất,
+        /// trải các block theo trục X với khoảng cách tự động theo extents từng block.
+        /// </summary>
+        void InsertMultipleBlocksFromLibrary(IList<CatalogItem> items);
+
         CatalogItem PickGeometricFeatureFromCad();
 
         // --- Giai đoạn 3.2: BOM Harvester & Ballooning ---
