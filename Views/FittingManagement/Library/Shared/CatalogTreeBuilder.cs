@@ -59,7 +59,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
             {
                 if (string.IsNullOrWhiteSpace(x.BomType)) return "Uncategorized (Legacy)";
                 string type = x.BomType.ToUpperInvariant();
-                if (type == "PANEL") return "Fitting In Equipment";
+                if (type == "PANEL" || type == "EQUIPMENT") return "Fitting In Equipment";
                 if (type == "DETAIL" || type == "HULL") return "Fitting In Hull";
                 return "Uncategorized (Legacy)";
             }).OrderBy(g => g.Key);

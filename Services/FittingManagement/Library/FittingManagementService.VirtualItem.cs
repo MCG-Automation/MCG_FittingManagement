@@ -107,7 +107,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
                             else { draftItem.UoM = "pcs"; }
 
                             if (width > 0) draftItem.Description = $"[Width: {width}] ";
-                            draftItem.BomType = "DETAIL";
+                            draftItem.BomType = "HULL";
                             if (string.IsNullOrEmpty(draftItem.PartNumber)) draftItem.PartNumber = "";
                             draftItem.Title = "";
                             draftItem.Mass = "0";

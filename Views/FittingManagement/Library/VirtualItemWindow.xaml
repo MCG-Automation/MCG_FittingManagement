@@ -91,8 +91,8 @@
                 
                 <TextBlock Grid.Row="4" Grid.Column="0" Text="BOM Type:"/>
                 <ComboBox x:Name="CboBomType" Grid.Row="4" Grid.Column="1" Height="26">
-                    <ComboBoxItem Content="DETAIL" IsSelected="True"/>
-                    <ComboBoxItem Content="PANEL"/>
+                    <ComboBoxItem Content="HULL" IsSelected="True"/>
+                    <ComboBoxItem Content="EQUIPMENT"/>
                 </ComboBox>
             </Grid>
         </GroupBox>

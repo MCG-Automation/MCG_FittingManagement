@@ -45,7 +45,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
 
             if (ofd.ShowDialog() != true || ofd.FileNames.Length == 0) return;
 
-            string bomType = (RadioPanelFitting.IsChecked == true) ? "PANEL" : "DETAIL";
+            string bomType = (RadioPanelFitting.IsChecked == true) ? "EQUIPMENT" : "HULL";
             bool pullFromVault = true;
 
             BtnBatchImportInventor.IsEnabled = false;

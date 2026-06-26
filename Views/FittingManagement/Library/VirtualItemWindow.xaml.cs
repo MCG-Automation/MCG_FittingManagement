@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using MCG_FittingManagement.Models.FittingManagement;
@@ -54,13 +56,38 @@ namespace MCG_FittingManagement.Views.FittingManagement
             }
 
             _draftItem.PartNumber = TxtPartID.Text.Trim();
-            _draftItem.Title = TxtTitle.Text.Trim();
+            _draftItem.Title      = TxtTitle.Text.Trim();
             _draftItem.Description = TxtDesc.Text.Trim();
-            _draftItem.Mass = TxtMass.Text.Trim();
-            _draftItem.BomType = (CboBomType.SelectedItem is ComboBoxItem cb) ? cb.Content.ToString() : "DETAIL";
-            
-            if (_draftItem.EntityType != "Block") _draftItem.BlockName = ""; 
-            _draftItem.FilePath = ""; 
+            _draftItem.Mass       = TxtMass.Text.Trim();
+            _draftItem.BomType    = (CboBomType.SelectedItem is ComboBoxItem cb) ? cb.Content.ToString() : "HULL";
+
+            if (_draftItem.EntityType == "Block" && !string.IsNullOrEmpty(_draftItem.BlockName))
+            {
+                // Tier 2: export block ra .dwg để Insert hoạt động kể cả khi đổi drawing
+                string filePath = Path.Combine(_masterService.MasterLibraryFolder, _draftItem.BlockName + ".dwg");
+                _draftItem.FilePath = filePath;
+                try
+                {
+                    var pushResult = _masterService.PushBlocksFromCurrentDrawing(new List<CatalogItem> { _draftItem });
+                    if (pushResult.SuccessCount == 0)
+                    {
+                        // Block không xuất được → để rỗng, Tier 1 fallback sẽ xử lý khi Insert
+                        _draftItem.FilePath = "";
+                        Debug.WriteLine("[VirtualItemWindow] Block không export được — Insert dùng current drawing fallback.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _draftItem.FilePath = "";
+                    Debug.WriteLine($"[VirtualItemWindow] Lỗi export block: {ex.Message}");
+                }
+            }
+            else
+            {
+                // Non-Block entity (Line, Polyline…): không cần file
+                _draftItem.BlockName = "";
+                _draftItem.FilePath  = "";
+            }
 
             try
             {

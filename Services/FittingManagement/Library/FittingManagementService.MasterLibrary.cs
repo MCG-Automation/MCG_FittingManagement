@@ -224,6 +224,13 @@ namespace MCG_FittingManagement.Services.FittingManagement
             Debug.WriteLine($"{LOG_PREFIX} Bắt đầu lệnh InsertBlockFromLibrary: {blockName}...");
             try
             {
+                // Tier 1 fallback: Virtual Item không có file .dwg → tìm block trong drawing đang mở
+                if (string.IsNullOrEmpty(dwgPath))
+                {
+                    InsertVirtualBlockFromCurrentDrawing(blockName);
+                    return;
+                }
+
                 Document doc = Application.DocumentManager.MdiActiveDocument;
                 Database db = doc.Database;
                 Editor ed = doc.Editor;
@@ -304,6 +311,82 @@ namespace MCG_FittingManagement.Services.FittingManagement
             {
                 Debug.WriteLine($"{LOG_PREFIX} LỖI InsertBlockFromLibrary: {ex.Message}");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Tier 1 fallback: chèn block trực tiếp từ BlockTable của drawing đang mở,
+        /// dùng khi Virtual Item chưa có file .dwg (FilePath rỗng).
+        /// </summary>
+        private void InsertVirtualBlockFromCurrentDrawing(string blockName)
+        {
+            Debug.WriteLine($"{LOG_PREFIX} InsertVirtualBlockFromCurrentDrawing: {blockName}...");
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Database db  = doc.Database;
+            Editor   ed  = doc.Editor;
+
+            using (DocumentLock loc = doc.LockDocument())
+            {
+                ObjectId btrId = ObjectId.Null;
+
+                using (var tr = db.TransactionManager.StartTransaction())
+                {
+                    try
+                    {
+                        BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+                        if (!bt.Has(blockName))
+                            throw new Exception(
+                                $"Block '{blockName}' không có trong drawing hiện tại.\n" +
+                                $"Hãy mở drawing gốc chứa block này rồi thử lại.");
+
+                        btrId = bt[blockName];
+
+                        // Đảm bảo POS_NUM attribute tồn tại (đồng nhất với InsertBlockFromLibrary)
+                        BlockTableRecord targetBtr = (BlockTableRecord)tr.GetObject(btrId, OpenMode.ForWrite);
+                        bool hasPosNum = false;
+                        foreach (ObjectId childId in targetBtr)
+                        {
+                            DBObject obj = tr.GetObject(childId, OpenMode.ForRead);
+                            if (obj is AttributeDefinition attDef &&
+                                attDef.Tag.Equals("POS_NUM", StringComparison.OrdinalIgnoreCase))
+                            {
+                                hasPosNum = true;
+                                break;
+                            }
+                        }
+                        if (!hasPosNum)
+                            FittingBlockUtility.AddAttributeDef(targetBtr, tr, "POS_NUM", "", "Position Number", true);
+
+                        tr.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"{LOG_PREFIX} Transaction ABORT (InsertVirtual lookup): {ex.Message}");
+                        throw;
+                    }
+                }
+
+                PromptPointOptions ppo = new PromptPointOptions(
+                    $"\nSelect insertion point for '{blockName}' (or press ESC to skip): ");
+                PromptPointResult ppr = ed.GetPoint(ppo);
+
+                if (ppr.Status == PromptStatus.OK)
+                {
+                    using (var tr = db.TransactionManager.StartTransaction())
+                    {
+                        try
+                        {
+                            FittingBlockUtility.InsertBlockReference(db, tr, btrId, ppr.Value);
+                            tr.Commit();
+                            Debug.WriteLine($"{LOG_PREFIX} InsertVirtualBlockFromCurrentDrawing THÀNH CÔNG.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"{LOG_PREFIX} Transaction ABORT (InsertVirtual ref): {ex.Message}");
+                            throw;
+                        }
+                    }
+                }
             }
         }
     }

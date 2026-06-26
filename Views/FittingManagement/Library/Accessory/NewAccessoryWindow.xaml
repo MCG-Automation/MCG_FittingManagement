@@ -30,8 +30,8 @@
 
         <TextBlock Grid.Row="6" Text="Target BOM Type:" FontWeight="SemiBold" Margin="0,0,0,5"/>
         <ComboBox Grid.Row="7" x:Name="CboBomType" Height="26" Margin="0,0,0,10">
-            <ComboBoxItem Content="DETAIL" IsSelected="True"/>
-            <ComboBoxItem Content="PANEL"/>
+            <ComboBoxItem Content="HULL" IsSelected="True"/>
+            <ComboBoxItem Content="EQUIPMENT"/>
         </ComboBox>
 
         <StackPanel Grid.Row="9" Orientation="Horizontal" HorizontalAlignment="Right">

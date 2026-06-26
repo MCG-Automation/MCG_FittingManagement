@@ -38,7 +38,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
         /// của caller sau `await`. Báo tiến độ qua <paramref name="progress"/> nếu có.
         /// </summary>
         /// <param name="idwPaths">Danh sách đường dẫn file .idw</param>
-        /// <param name="bomType">"PANEL" hoặc "DETAIL"</param>
+        /// <param name="bomType">"EQUIPMENT" hoặc "HULL"</param>
         /// <param name="progress">Callback nhận thông điệp trạng thái (có thể null).</param>
         /// <returns>ImportResult tính theo file IDW (thành công khi extract OK và tạo được ≥1 block)</returns>
         public async Task<ImportResult> ImportIdwFilesAsync(string[] idwPaths, string bomType, bool pullFromVault = false, IProgress<string> progress = null)
