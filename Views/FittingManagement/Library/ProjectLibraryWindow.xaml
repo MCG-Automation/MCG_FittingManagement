@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shared="clr-namespace:MCG_FittingManagement.Views.FittingManagement"
         Title="MacGregor Project Library" Height="680" Width="1620"
-        WindowStartupLocation="CenterScreen" Topmost="True"
+        WindowStartupLocation="CenterScreen"
         Background="#FFF0F0F0" FontFamily="Segoe UI">
 
     <Window.Resources>

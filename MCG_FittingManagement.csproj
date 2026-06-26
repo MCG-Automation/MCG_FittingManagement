@@ -26,28 +26,13 @@
     và sync ModuleName trong PackageContents.xml nếu file tồn tại. Dùng XmlPoke (built-in)
     thay cho PowerShell vì PS có thể bị Group Policy chặn (exit 9009) trên một số máy.
   -->
-  <Target Name="DeployToBundle" AfterTargets="Build">
-    <PropertyGroup>
-      <BundleRoot>$(PROGRAMDATA)\Autodesk\ApplicationPlugins\MCG_Plugin.bundle</BundleRoot>
-      <BundleContents>$(BundleRoot)\Contents</BundleContents>
-    </PropertyGroup>
-
-    <!-- Ghi tên DLL ra file để build-and-launch.bat đọc -->
+  <!-- Ghi tên DLL ra file sau mỗi build (dùng bởi build-and-launch.bat) -->
+  <Target Name="WriteBuildInfo" AfterTargets="Build">
     <WriteLinesToFile File="$(OutputPath)_current_dll_name.txt" Lines="$(AssemblyName)" Overwrite="true" />
-
-    <!-- Tạo thư mục bundle nếu chưa có -->
-    <MakeDir Directories="$(BundleContents)" />
-
-    <!-- Copy DLL với tên CỐ ĐỊNH (MCG_FittingManagement.dll) — không dùng timestamp trong bundle.
-         Đảm bảo PackageContents.xml luôn valid mà không cần update sau mỗi Debug build. -->
-    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
-          DestinationFiles="$(BundleContents)\$(PluginName).dll"
-          ContinueOnError="true" />
-
-    <Message Text="[Deploy] $(AssemblyName).dll → $(BundleContents)\$(PluginName).dll" Importance="High" />
+    <Message Text="[Build] $(AssemblyName).dll" Importance="High" />
   </Target>
 
-  <!-- Release: copy thêm vào C:\CustomTools\Autocad cho Install_AutoLoadCadAddin.bat -->
+  <!-- Release: copy vào C:\CustomTools\Autocad để Install_AutoLoadCadAddin.bat deploy vào bundle -->
   <Target Name="DeployToMCGVNSource" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
     <MakeDir Directories="C:\CustomTools\Autocad" />
     <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"

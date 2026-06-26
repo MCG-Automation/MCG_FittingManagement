@@ -4,6 +4,94 @@
 
 ---
 
+## Session 2026-06-26B — UX fix: Topmost dialogs + ListBox color AutoCAD convention
+
+### Đã làm
+- **Topmost fix (7 files)** — Xóa `Topmost="True"` khỏi tất cả Window, thay bằng `WindowStartupLocation="CenterOwner"` nơi phù hợp
+  - `BlockRenameDialog.xaml` → CenterOwner
+  - `VirtualItemWindow.xaml` → CenterOwner (đã có Owner=this)
+  - `NewAccessoryWindow.xaml` → CenterOwner (đã có Owner=this)
+  - `AccessoryManagerWindow.xaml` → CenterOwner
+  - `MasterLibraryWindow.xaml` → CenterScreen (modeless)
+  - `BomPreviewWindow.xaml` → CenterScreen (modeless)
+  - `ProjectLibraryWindow.xaml` → CenterScreen (modeless)
+- **`MasterLibraryWindow.xaml.cs`** — Thêm `Owner = this` cho AccessoryManagerWindow (thiếu sót)
+- **`FittingManagementService.BlockRename.cs`** — Thêm `WindowInteropHelper(dialog).Owner = Application.MainWindow.Handle` trước ShowDialog; add `using System.Windows.Interop`
+- **`BlockRenameDialog.xaml`** — Chuẩn hóa màu sắc theo AutoCAD convention:
+  - ListBox border: `#AAAAA` → `#CCCCCC`
+  - Label fg: `#555555` → `#444444`
+  - ListBoxItem default fg: `#1A1A1A` (explicit setter)
+  - IsMatch state: bg `#D0E8FF` / fg `#003366` → bg `#E8F4FC` / fg `#1A1A1A` (lighter, high contrast)
+  - IsSelected state: bg `#0055A5` / fg White → bg `#CCE4F7` / fg `#1A1A1A` (AutoCAD selection blue, dark text)
+  - Thêm hover trigger: bg `#F0F8FF`
+  - DataTemplate TextBlock: thêm `Foreground` binding về ancestor ListBoxItem (fix WPF propagation bug)
+- **`BlockRenameDialog.xaml.cs`** — Match count colors: green `#107C10`, red `#C42B1C` (chuẩn Windows Fluent)
+
+### Trạng thái
+- Build succeeded, 0 error/warning
+
+### Bước tiếp theo
+- Test trong AutoCAD: click item trong list → text phải đọc được rõ ràng
+- Test: mở dialog trong khi có app khác mở → dialog không được chèn lên app khác
+
+### Ghi chú API
+- `Topmost="True"` + `ShowModelessWindow` = modeless window trên mọi app trong hệ thống (sai)
+- `ShowModelessWindow` của AutoCAD API tự xử lý ownership với AutoCAD — không cần Topmost
+- `WindowInteropHelper(dialog).Owner = Application.MainWindow.Handle` = cách đúng để set owner cho modal WPF dialog trong AutoCAD .NET
+
+---
+
+## Session 2026-06-26 — BlockRenameDialog: thêm Textbox 2 (Old name) + wildcard batch rename
+
+### Đã làm
+- **`Views/FittingManagement/BlockUtilities/BlockRenameDialog.xaml`**
+  - Thêm row "Old name" (Textbox 2) giữa ListBox và "New name", label căn thẳng cùng Grid
+  - ListBox dùng `DataTemplate` + `ItemContainerStyle` với `DataTrigger` trên `IsMatch` để highlight realtime
+  - Nút OK động: `Rename (N)`, disable khi count = 0
+- **`Views/FittingManagement/BlockUtilities/BlockRenameDialog.xaml.cs`**
+  - Thêm `BlockNameItem` (implements `INotifyPropertyChanged`) với `Name` + `IsMatch`
+  - Properties đổi tên: `OriginalName` → `OldPattern`, `NewName` → `NewPattern`
+  - Click list → fill cả Textbox 2 và Textbox 3 (`{name}_New`)
+  - `TxtOldName_TextChanged`: validate max 1 `*`, update `IsMatch` từng item, update match count label
+  - `BtnOk_Click`: validate wildcard consistency (old có `*` → new phải có `*`)
+- **`Services/FittingManagement/BlockUtilities/FittingManagementService.BlockRename.cs`**
+  - Đọc `dialog.OldPattern` / `dialog.NewPattern` thay vì `OriginalName` / `NewName`
+  - Thêm `ResolveWildcardMatches()`: split pattern tại `*`, match prefix+suffix, capture phần giữa, substitute vào newPattern
+  - Thêm `ApplyClone()` và `ApplyRename()` tách khỏi `InteractiveBlockRenameClone()` cho gọn
+  - Batch mode: validate ALL pairs trước (all-or-nothing), loop apply từng cặp
+
+### Trạng thái
+- Build succeeded, không có warning/error
+- Sẵn sàng test trong AutoCAD
+
+### Bước tiếp theo
+- Test: quét block có tên `MCG_Valve_01`, `MCG_Valve_02` → gõ `MCG_Valve_*` ở Old name → verify highlight + rename batch
+- Test edge case: new name conflict, no match, wildcard missing trong New name
+
+### Ghi chú API
+- `INotifyPropertyChanged` trên item class đủ để WPF DataTrigger phản ứng realtime, không cần reset `ItemsSource`
+- `bt.UpgradeOpen()` chỉ cần gọi 1 lần trước vòng lặp Clone (không cần gọi lại từng iteration)
+
+---
+
+## Session 2026-06-25B — Rename Block: multi-select + WPF dialog
+
+### Đã làm
+- **`Views/FittingManagement/BlockUtilities/BlockRenameDialog.xaml`** — Thêm ListBox hiển thị danh sách block đã quét; click item → auto-fill "New name" với `{tên}_New`
+- **`Views/FittingManagement/BlockUtilities/BlockRenameDialog.xaml.cs`** — Constructor nhận `IEnumerable<string>`, expose `OriginalName` property; validation yêu cầu chọn từ list
+- **`Services/FittingManagement/BlockUtilities/FittingManagementService.BlockRename.cs`**
+  - Phase 1: `GetSelection` + `SelectionFilter("INSERT")` thay cho `GetEntity` đơn lẻ
+  - Phase 2: Build `Dictionary<string, List<ObjectId>>` — tên định nghĩa → danh sách ObjectId instance
+  - Phase 3: Pass `definitionMap.Keys` vào dialog
+  - Phase 4 Clone: replace TẤT CẢ instance được chọn của definition đó (`oldRef.OwnerId` để append đúng space)
+  - "Clone" → "Rename Create New" (đổi tên RadioButton)
+
+### Trạng thái
+- Phase hiện tại: BlockUtilities enhancement
+
+### Bước tiếp theo
+- Build và test: quét nhiều block, verify dialog hiển thị đúng list, click → auto-fill, OK → rename/clone chính xác
+
 ## Session 2026-06-25 — Fix PaletteSet title bar buttons (pin + close)
 
 ### Đã làm

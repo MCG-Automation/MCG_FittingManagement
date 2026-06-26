@@ -1,0 +1,117 @@
+<Window x:Class="MCG_FittingManagement.Views.FittingManagement.BlockRenameDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Rename Block" Height="400" Width="460"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#FFF0F0F0" FontFamily="Segoe UI" FontSize="13">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="120"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header: số block đã quét -->
+        <TextBlock x:Name="LblBlockCount" Grid.Row="0"
+                   FontWeight="SemiBold" Foreground="#FF333333" Margin="0,0,0,6"/>
+
+        <!-- Textbox 1: danh sách tên block (read-only), click → auto-fill Textbox 2 -->
+        <ListBox x:Name="LstBlocks" Grid.Row="1"
+                 SelectionChanged="LstBlocks_SelectionChanged"
+                 Background="White" BorderBrush="#FFCCCCCC"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 Padding="2">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <!-- Bind Foreground tường minh để không bị WPF override màu khi selected -->
+                    <TextBlock Text="{Binding Name}" Padding="4,2"
+                               Foreground="{Binding Foreground,
+                                   RelativeSource={RelativeSource AncestorType=ListBoxItem}}"/>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Padding" Value="2,0"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Foreground" Value="#FF1A1A1A"/>
+                    <Style.Triggers>
+                        <!-- Hover: gợi ý nhẹ -->
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#FFF0F8FF"/>
+                        </Trigger>
+                        <!-- Match wildcard pattern: highlight nhạt, text vẫn đậm -->
+                        <DataTrigger Binding="{Binding IsMatch}" Value="True">
+                            <Setter Property="Background" Value="#FFE8F4FC"/>
+                            <Setter Property="Foreground" Value="#FF1A1A1A"/>
+                        </DataTrigger>
+                        <!-- Selected luôn thắng (trigger sau = ưu tiên cao hơn).
+                             Dùng màu AutoCAD selection: light blue bg, dark text — luôn readable -->
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="#FFCCE4F7"/>
+                            <Setter Property="Foreground" Value="#FF1A1A1A"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </ListBox.ItemContainerStyle>
+        </ListBox>
+
+        <!-- Textbox 2 (Old name) + Textbox 3 (New name) trong cùng Grid để label căn thẳng -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="68"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="8"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Textbox 2: Old name — editable, hỗ trợ * wildcard -->
+            <TextBlock Text="Old name:" Grid.Row="0" Grid.Column="0"
+                       VerticalAlignment="Center" Foreground="#FF444444"/>
+            <TextBox x:Name="TxtOldName" Grid.Row="0" Grid.Column="1"
+                     Margin="0,0,8,0" Height="28" Padding="6,0"
+                     VerticalContentAlignment="Center"
+                     Background="White" BorderBrush="#FFCCCCCC"
+                     TextChanged="TxtOldName_TextChanged"/>
+            <TextBlock x:Name="LblMatchCount" Grid.Row="0" Grid.Column="2"
+                       VerticalAlignment="Center" FontSize="11" MinWidth="80"
+                       Foreground="#FF666666"/>
+
+            <!-- Textbox 3: New name — pre-filled {name}_New, user tự sửa -->
+            <TextBlock Text="New name:" Grid.Row="2" Grid.Column="0"
+                       VerticalAlignment="Center" Foreground="#FF444444"/>
+            <TextBox x:Name="TxtNewName" Grid.Row="2" Grid.Column="1"
+                     Margin="0,0,0,0" Height="28" Padding="6,0"
+                     VerticalContentAlignment="Center"
+                     Background="White" BorderBrush="#FFCCCCCC"
+                     KeyDown="TxtNewName_KeyDown"/>
+        </Grid>
+
+        <!-- Action -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal">
+            <RadioButton x:Name="RbRenameCreateNew" Content="Rename Create New" IsChecked="True"
+                         Margin="0,0,20,0" VerticalAlignment="Center" Foreground="#FF333333"/>
+            <RadioButton x:Name="RbRename" Content="Rename"
+                         VerticalAlignment="Center" Foreground="#FF333333"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="7" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" Width="80" Height="28" Margin="0,0,8,0"
+                    Click="BtnCancel_Click" Background="#FFE0E0E0"/>
+            <Button x:Name="BtnOk" Width="120" Height="28"
+                    Background="#FF0055A5" Foreground="White" FontWeight="Bold"
+                    Click="BtnOk_Click" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

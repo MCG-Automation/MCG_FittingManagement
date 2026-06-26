@@ -150,7 +150,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
             if (selected.Count != 1) return;
             try
             {
-                var accWin = new AccessoryManagerWindow(_masterService, selected[0]);
+                var accWin = new AccessoryManagerWindow(_masterService, selected[0]) { Owner = this };
                 if (accWin.ShowDialog() == true)
                 {
                     _recentTracker?.Track(selected[0].BlockName);
