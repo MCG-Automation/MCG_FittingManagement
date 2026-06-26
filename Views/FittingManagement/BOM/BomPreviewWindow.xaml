@@ -99,8 +99,8 @@
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="Target BOM Type:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,15,0" Foreground="#FF444444"/>
                     
-                    <RadioButton x:Name="RadioStructure" Content="Structure (Panel)" IsChecked="True" VerticalAlignment="Center" Margin="0,0,20,0" Foreground="#FF222222"/>
-                    <RadioButton x:Name="RadioHull" Content="Detail (Hull)" VerticalAlignment="Center" Foreground="#FF222222"/>
+                    <RadioButton x:Name="RadioStructure" Content="Equipment" IsChecked="True" VerticalAlignment="Center" Margin="0,0,20,0" Foreground="#FF222222"/>
+                    <RadioButton x:Name="RadioHull" Content="Hull" VerticalAlignment="Center" Foreground="#FF222222"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">

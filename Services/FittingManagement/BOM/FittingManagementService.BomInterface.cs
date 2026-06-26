@@ -63,7 +63,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
                             Extents3d a1Ext = a1Blk.GeometricExtents;
                             string detailName = GetAttributeValue(tr, a1Blk, "VIEW_NAME");
                             if (string.IsNullOrEmpty(detailName)) detailName = GetAttributeValue(tr, a1Blk, "TITLE");
-                            if (string.IsNullOrEmpty(detailName)) detailName = $"Detail {a1Counter}";
+                            if (string.IsNullOrEmpty(detailName)) detailName = $"Hull {a1Counter}";
 
                             foreach (BlockReference innerBlk in allSpaceBlocks)
                             {

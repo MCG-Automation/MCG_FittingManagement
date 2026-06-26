@@ -25,7 +25,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
                 using (DocumentLock docLock = doc.LockDocument())
                 {
                     PromptSelectionOptions pso = new PromptSelectionOptions();
-                    pso.MessageForAdding = "\nSelect Panel or Details blocks to mass-balloon: ";
+                    pso.MessageForAdding = "\nSelect Equipment or Hull blocks to mass-balloon: ";
                     TypedValue[] filter = { new TypedValue((int)DxfCode.Start, "INSERT") };
                     PromptSelectionResult psr = ed.GetSelection(pso, new SelectionFilter(filter));
 

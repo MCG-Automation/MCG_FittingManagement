@@ -245,7 +245,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
 
                     // Sheet 1
                     dynamic wsMatrix = workbook.Sheets[1];
-                    wsMatrix.Name = isInterface ? "FittingInHull" : "FittingInPanel";
+                    wsMatrix.Name = isInterface ? "FittingInHull" : "FittingInEquipment";
 
                     for (int i = 0; i < _bomDataTable.Columns.Count; i++) { wsMatrix.Cells[1, i + 1] = _bomDataTable.Columns[i].ColumnName; }
                     for (int r = 0; r < _bomDataTable.Rows.Count; r++)
@@ -262,7 +262,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
                     // Sheet 2
                     dynamic wsData = workbook.Sheets.Add(After: workbook.Sheets[1]);
                     wsData.Name = isInterface ? "Data" : "Part BOM";
-                    string[] headers = { isInterface ? "Detail Name" : "Panel Name", "Vault Name", "Part ID", "XClass", "Description", "Quantity", "UoM", "Position" };
+                    string[] headers = { isInterface ? "Hull Name" : "Equipment Name", "Vault Name", "Part ID", "XClass", "Description", "Quantity", "UoM", "Position" };
                     for (int i = 0; i < headers.Length; i++) { wsData.Cells[1, i + 1] = headers[i]; }
 
                     var sorted = _lastScanResults.OrderBy(r => r.PanelName).ThenBy(r => r.IsAccessory ? r.ParentPartId : r.VaultName).ThenBy(r => r.IsAccessory).ToList();

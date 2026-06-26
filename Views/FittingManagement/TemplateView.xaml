@@ -19,8 +19,8 @@
                         <StackPanel>
                             <TextBlock Text="Target BOM Type:" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="#FF444444"/>
                             <StackPanel Orientation="Horizontal">
-                                <RadioButton x:Name="RadioPanelFitting" Content="Panel (Structure)" IsChecked="True" Margin="0,0,15,0"/>
-                                <RadioButton x:Name="RadioDetailFitting" Content="Detail (Hull)"/>
+                                <RadioButton x:Name="RadioPanelFitting" Content="Equipment" IsChecked="True" Margin="0,0,15,0"/>
+                                <RadioButton x:Name="RadioDetailFitting" Content="Hull"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>
