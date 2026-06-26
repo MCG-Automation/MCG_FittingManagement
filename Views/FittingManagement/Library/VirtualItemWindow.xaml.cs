@@ -31,8 +31,11 @@ namespace MCG_FittingManagement.Views.FittingManagement
             TxtColor.Text = _draftItem.TriggerColor;
             TxtUoM.Text = _draftItem.UoM;
 
-            TxtPartID.Text = _draftItem.PartNumber; 
-            TxtDesc.Text = _draftItem.Description; 
+            TxtPartID.Text = _draftItem.PartNumber;
+            TxtTitle.Text = !string.IsNullOrEmpty(_draftItem.Title)
+                ? _draftItem.Title
+                : HumanizeBlockName(_draftItem.BlockName);
+            TxtDesc.Text = _draftItem.Description;
             TxtMass.Text = _draftItem.Mass ?? "0";
 
             if (!string.IsNullOrEmpty(_draftItem.BomType))
@@ -102,6 +105,23 @@ namespace MCG_FittingManagement.Views.FittingManagement
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
             this.DialogResult = false; this.Close();
+        }
+
+        /// <summary>Chuyển tên block thô thành label đọc được: bỏ prefix MCG_, thay _ - ; bằng space.</summary>
+        private static string HumanizeBlockName(string blockName)
+        {
+            if (string.IsNullOrWhiteSpace(blockName)) return "";
+            // Lấy phần đầu tiên nếu có nhiều block (semicolon-separated)
+            string name = blockName.Split(';')[0].Trim();
+            // Bỏ prefix thường gặp
+            foreach (string prefix in new[] { "MCG_", "MCG-" })
+            {
+                if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                { name = name.Substring(prefix.Length); break; }
+            }
+            // Thay separator thành space, collapse khoảng trắng
+            name = name.Replace('_', ' ').Replace('-', ' ').Replace(';', ' ');
+            return System.Text.RegularExpressions.Regex.Replace(name.Trim(), @"\s{2,}", " ");
         }
     }
 }

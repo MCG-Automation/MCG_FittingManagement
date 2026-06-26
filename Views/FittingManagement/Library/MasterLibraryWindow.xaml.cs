@@ -131,7 +131,11 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 if (draftItem != null)
                 {
                     var virtualWin = new VirtualItemWindow(_masterService, draftItem) { Owner = this };
-                    if (virtualWin.ShowDialog() == true) LoadCatalog();
+                    if (virtualWin.ShowDialog() == true)
+                {
+                    _recentTracker?.Track(draftItem.BlockName);
+                    LoadCatalog();
+                }
                 }
             }
             catch (Exception ex)

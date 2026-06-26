@@ -100,6 +100,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
             return source.Where(i => keywords.All(kw =>
                 (i.PartNumber != null && i.PartNumber.ToLowerInvariant().Contains(kw)) ||
                 (i.BlockName != null && i.BlockName.ToLowerInvariant().Contains(kw)) ||
+                (i.BlockName != null && i.BlockName.Replace('_', ' ').Replace('-', ' ').ToLowerInvariant().Contains(kw)) ||
                 (i.Description != null && i.Description.ToLowerInvariant().Contains(kw)) ||
                 (i.Title != null && i.Title.ToLowerInvariant().Contains(kw)) ||
                 (i.Designer != null && i.Designer.ToLowerInvariant().Contains(kw)) ||
