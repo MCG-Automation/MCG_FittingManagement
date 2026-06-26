@@ -113,7 +113,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
         // =========================================================
         private void BtnLoadProject_Click(object sender, RoutedEventArgs e)
         {
-            var ofd = new OpenFileDialog { Title = "Select Project Library", Filter = "JSON Files (*.json)|*.json" };
+            var ofd = new OpenFileDialog { Title = "Select Item Library", Filter = "JSON Files (*.json)|*.json" };
             if (ofd.ShowDialog() != true) return;
 
             _projectContext.ProjectFilePath = ofd.FileName;
@@ -125,7 +125,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
         {
             var sfd = new SaveFileDialog
             {
-                Title = "Create New Project Library",
+                Title = "Create New Item Library",
                 Filter = "JSON Files (*.json)|*.json",
                 FileName = "New_Project_Catalog.json"
             };

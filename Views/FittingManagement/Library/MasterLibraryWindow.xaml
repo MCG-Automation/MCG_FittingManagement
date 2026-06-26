@@ -75,7 +75,7 @@
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="Active Project:" Margin="0,0,5,0" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                <TextBox x:Name="TxtActiveProject" Width="160" IsReadOnly="True" Background="#FFE8E8E8" VerticalContentAlignment="Center" ToolTip="Project Library hiện đang active (set qua Project Library window)"/>
+                <TextBox x:Name="TxtActiveProject" Width="160" IsReadOnly="True" Background="#FFE8E8E8" VerticalContentAlignment="Center" ToolTip="Item Library hiện đang active (set qua Item Library window)"/>
             </StackPanel>
         </Grid>
 

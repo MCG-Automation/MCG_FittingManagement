@@ -13,8 +13,8 @@
 
             <GroupBox Header="FITTING LIBRARY">
                 <StackPanel>
-                    <TextBlock Text="Open the Project Library to browse project-configured fittings and insert into the current drawing." Style="{StaticResource HelperTextStyle}"/>
-                    <Button x:Name="BtnOpenLibrary" Content="Open Project Library" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenLibrary_Click"/>
+                    <TextBlock Text="Open the Item Library to browse project-configured fittings and insert into the current drawing." Style="{StaticResource HelperTextStyle}"/>
+                    <Button x:Name="BtnOpenLibrary" Content="Open Item Library" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenLibrary_Click"/>
                 </StackPanel>
             </GroupBox>
 

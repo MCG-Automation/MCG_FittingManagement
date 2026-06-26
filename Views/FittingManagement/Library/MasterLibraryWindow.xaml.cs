@@ -74,7 +74,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
             BtnAddToProject.IsEnabled = hasProject;
             BtnAddToProject.ToolTip = hasProject
                 ? $"Add to: {_projectContext.ProjectFilePath}"
-                : "Open a Project Library window to set the active project.";
+                : "Open an Item Library window to set the active project.";
         }
 
         private void LoadCatalog()
@@ -212,7 +212,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
         {
             if (!_projectContext.HasActiveProject)
             {
-                MessageBox.Show("No active project. Open a Project Library window and load/create one first.",
+                MessageBox.Show("No active project. Open an Item Library window and load/create one first.",
                     "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
