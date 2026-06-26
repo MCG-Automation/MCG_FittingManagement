@@ -19,12 +19,20 @@ namespace MCG_FittingManagement.Views.FittingManagement
             _service = new FittingManagementService();
         }
 
+        private static BomPreviewWindow _bomWin;
+
         private void BtnOpenBomPreview_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                BomPreviewWindow bomWindow = new BomPreviewWindow(_service);
-                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(bomWindow);
+                if (_bomWin != null && _bomWin.IsLoaded)
+                {
+                    _bomWin.Activate();
+                    return;
+                }
+                _bomWin = new BomPreviewWindow(_service);
+                _bomWin.Closed += (_, __) => _bomWin = null;
+                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(_bomWin);
             }
             catch (Exception ex)
             {

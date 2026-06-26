@@ -73,12 +73,20 @@ namespace MCG_FittingManagement.Views.FittingManagement
         // =========================================================
         // OPEN MASTER LIBRARY — Project Library nằm ở tab "Project Config"
         // =========================================================
+        private static MasterLibraryWindow _masterLibWin;
+
         private void BtnOpenMasterLibrary_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var win = new MasterLibraryWindow(_masterService, _projectService, _service);
-                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(win);
+                if (_masterLibWin != null && _masterLibWin.IsLoaded)
+                {
+                    _masterLibWin.Activate();
+                    return;
+                }
+                _masterLibWin = new MasterLibraryWindow(_masterService, _projectService, _service);
+                _masterLibWin.Closed += (_, __) => _masterLibWin = null;
+                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(_masterLibWin);
             }
             catch (Exception ex)
             {

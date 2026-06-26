@@ -22,12 +22,20 @@ namespace MCG_FittingManagement.Views.FittingManagement
             _projectService = _serviceImpl;
         }
 
+        private static ProjectLibraryWindow _projectLibWin;
+
         private void BtnOpenLibrary_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var win = new ProjectLibraryWindow(_projectService, _service);
-                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(win);
+                if (_projectLibWin != null && _projectLibWin.IsLoaded)
+                {
+                    _projectLibWin.Activate();
+                    return;
+                }
+                _projectLibWin = new ProjectLibraryWindow(_projectService, _service);
+                _projectLibWin.Closed += (_, __) => _projectLibWin = null;
+                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(_projectLibWin);
             }
             catch (Exception ex)
             {
