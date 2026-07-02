@@ -13,8 +13,9 @@
 
             <GroupBox Header="BOM EXPORT">
                 <StackPanel>
-                    <TextBlock Text="Scan drawings, count fittings, auto-assign balloons, and export BOM matrix to Excel." Style="{StaticResource HelperTextStyle}"/>
-                    <Button x:Name="BtnOpenBomPreview" Content="Open BOM Export" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenBomPreview_Click"/>
+                    <TextBlock Text="Scan drawings, count fittings, assign positions, and export BOM matrix to Excel." Style="{StaticResource HelperTextStyle}"/>
+                    <Button x:Name="BtnOpenEquipmentBom" Content="Open Equipment BOM" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenEquipmentBom_Click" Margin="0,0,0,4"/>
+                    <Button x:Name="BtnOpenHullBom" Content="Open Hull BOM" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenHullBom_Click"/>
                 </StackPanel>
             </GroupBox>
 

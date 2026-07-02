@@ -19,20 +19,40 @@ namespace MCG_FittingManagement.Views.FittingManagement
             _service = new FittingManagementService();
         }
 
-        private static BomPreviewWindow _bomWin;
+        private static BomPreviewWindow _equipmentBomWin;
+        private static BomPreviewWindow _hullBomWin;
 
-        private void BtnOpenBomPreview_Click(object sender, RoutedEventArgs e)
+        private void BtnOpenEquipmentBom_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                if (_bomWin != null && _bomWin.IsLoaded)
+                if (_equipmentBomWin != null && _equipmentBomWin.IsLoaded)
                 {
-                    _bomWin.Activate();
+                    _equipmentBomWin.Activate();
                     return;
                 }
-                _bomWin = new BomPreviewWindow(_service);
-                _bomWin.Closed += (_, __) => _bomWin = null;
-                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(_bomWin);
+                _equipmentBomWin = new BomPreviewWindow(_service, BomMode.Equipment);
+                _equipmentBomWin.Closed += (_, __) => _equipmentBomWin = null;
+                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(_equipmentBomWin);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnOpenHullBom_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_hullBomWin != null && _hullBomWin.IsLoaded)
+                {
+                    _hullBomWin.Activate();
+                    return;
+                }
+                _hullBomWin = new BomPreviewWindow(_service, BomMode.Hull);
+                _hullBomWin.Closed += (_, __) => _hullBomWin = null;
+                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(_hullBomWin);
             }
             catch (Exception ex)
             {
