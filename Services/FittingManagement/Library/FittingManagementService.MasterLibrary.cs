@@ -220,6 +220,74 @@ namespace MCG_FittingManagement.Services.FittingManagement
             }
         }
 
+        public PushUpdateResult SyncPropertiesFromCatalogToDrawing(IList<CatalogItem> items)
+        {
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu SyncPropertiesFromCatalogToDrawing ({items?.Count ?? 0} items)...");
+            var result = new PushUpdateResult();
+            if (items == null || items.Count == 0) return result;
+
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) throw new InvalidOperationException("Không có drawing nào đang mở.");
+            Database db = doc.Database;
+
+            using (DocumentLock loc = doc.LockDocument())
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                try
+                {
+                    BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+
+                    foreach (var item in items)
+                    {
+                        if (string.IsNullOrEmpty(item?.BlockName)) continue;
+
+                        // BlockName có thể chứa nhiều view, ngăn cách bằng ";"
+                        var blockNames = item.BlockName
+                            .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s));
+
+                        foreach (var bName in blockNames)
+                        {
+                            if (!bt.Has(bName))
+                            {
+                                result.NotFoundInDrawing.Add(bName);
+                                Debug.WriteLine($"{LOG_PREFIX} SyncToDrawing skip (không có trong drawing): {bName}");
+                                continue;
+                            }
+
+                            try
+                            {
+                                // 1. Cập nhật AttributeDefinitions trong BTR
+                                ObjectId btrId = bt[bName];
+                                var btr = (BlockTableRecord)tr.GetObject(btrId, OpenMode.ForWrite);
+                                FittingBlockUtility.EmbedCatalogProperties(btr, tr, item);
+
+                                // 2. Propagate xuống tất cả INSERT instances trong drawing
+                                int refCount = FittingBlockUtility.SyncAttributeReferences(db, tr, bName, item);
+
+                                result.Updated.Add(bName);
+                                Debug.WriteLine($"{LOG_PREFIX} SyncToDrawing OK: {bName} ({refCount} instances updated)");
+                            }
+                            catch (Exception ex)
+                            {
+                                result.AddError(bName, ex.Message);
+                                Debug.WriteLine($"{LOG_PREFIX} LỖI SyncToDrawing {bName}: {ex.Message}");
+                            }
+                        }
+                    }
+
+                    tr.Commit();
+                    Debug.WriteLine($"{LOG_PREFIX} SyncPropertiesFromCatalogToDrawing XONG. OK={result.SuccessCount}, Failed={result.FailCount}.");
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"{LOG_PREFIX} Transaction ABORT SyncPropertiesFromCatalogToDrawing: {ex.Message}");
+                    throw;
+                }
+            }
+        }
+
         public void InsertMultipleBlocksFromLibrary(IList<CatalogItem> items)
         {
             Debug.WriteLine($"{LOG_PREFIX} InsertMultipleBlocksFromLibrary ({items?.Count ?? 0} items)...");

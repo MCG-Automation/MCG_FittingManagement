@@ -79,12 +79,70 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Empty-state overlay (item null hoặc không phải Block) -->
+        <!-- Empty-state overlay (item null) -->
         <Border x:Name="EmptyState" Grid.RowSpan="2" Background="#FFFAFAFA" Visibility="Collapsed">
-            <TextBlock x:Name="EmptyStateText" Text="Select a Block item to preview"
+            <TextBlock x:Name="EmptyStateText" Text="Select an item to preview"
                        Foreground="#FFAAAAAA" FontStyle="Italic"
                        HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"
                        Margin="20"/>
+        </Border>
+
+        <!-- Metadata card cho non-block items (CAD-Linear như dây, ống...) -->
+        <Border x:Name="MetadataCard" Grid.RowSpan="2" Background="#FFFAFAFA" Visibility="Collapsed">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="14,12,14,10">
+                <StackPanel>
+                    <!-- Type badge -->
+                    <Border Background="#FFE8F4FF" BorderBrush="#FFAACCE8" BorderThickness="1"
+                            CornerRadius="4" Padding="8,4" Margin="0,0,0,6" HorizontalAlignment="Left">
+                        <TextBlock x:Name="CardEntityType" FontWeight="Bold" FontSize="12" Foreground="#FF005E9E"/>
+                    </Border>
+
+                    <!-- Source badge -->
+                    <Border Background="#FFEEF7EE" BorderBrush="#FF90C890" BorderThickness="1"
+                            CornerRadius="4" Padding="6,2" Margin="0,0,0,14" HorizontalAlignment="Left">
+                        <TextBlock x:Name="CardSource" FontSize="10" FontWeight="SemiBold" Foreground="#FF2E7D32"/>
+                    </Border>
+
+                    <!-- Part ID + Title -->
+                    <TextBlock x:Name="CardPartNumber" FontSize="13" FontWeight="Bold" Foreground="#FF005E9E" Margin="0,0,0,2"/>
+                    <TextBlock x:Name="CardTitle" FontStyle="Italic" Foreground="#FF555555" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                    <Border Height="1" Background="#FFDDDDDD" Margin="0,0,0,12"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Layer" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" x:Name="CardLayer" Style="{StaticResource ValueStyle}"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="UoM" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" x:Name="CardUoM" Style="{StaticResource ValueStyle}"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Description" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" x:Name="CardDescription" Style="{StaticResource ValueStyle}"/>
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Mass" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="1" x:Name="CardMass" Style="{StaticResource ValueStyle}"/>
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="BOM Type" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="1" x:Name="CardBomType" Style="{StaticResource ValueStyle}"/>
+
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Designer" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="5" Grid.Column="1" x:Name="CardDesigner" Style="{StaticResource ValueStyle}"/>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
         </Border>
     </Grid>
 </UserControl>

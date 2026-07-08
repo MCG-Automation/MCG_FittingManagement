@@ -4,6 +4,7 @@ using System.Linq;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Colors;
+using MCG_FittingManagement.Models.FittingManagement;
 
 namespace MCG_FittingManagement.Utilities.FittingManagement
 {
@@ -85,6 +86,83 @@ namespace MCG_FittingManagement.Utilities.FittingManagement
                 return btr.Name;
             }
             return blk.Name;
+        }
+
+        /// <summary>
+        /// Nhúng/cập nhật catalog properties vào AttributeDefinitions của Block Table Record.
+        /// Gọi trong transaction với btr đã mở ForWrite.
+        /// </summary>
+        public static void EmbedCatalogProperties(BlockTableRecord btr, Transaction tr, CatalogItem item)
+        {
+            var props = BuildCatalogPropDict(item);
+
+            // Thu thập AttributeDefinition hiện có trong BTR
+            var existing = new Dictionary<string, AttributeDefinition>(StringComparer.OrdinalIgnoreCase);
+            foreach (ObjectId id in btr)
+            {
+                if (tr.GetObject(id, OpenMode.ForRead) is AttributeDefinition ad)
+                    existing[ad.Tag] = ad;
+            }
+
+            foreach (var kvp in props)
+            {
+                if (existing.TryGetValue(kvp.Key, out AttributeDefinition def))
+                {
+                    def.UpgradeOpen();
+                    def.TextString = kvp.Value;
+                }
+                else
+                {
+                    AddAttributeDef(btr, tr, kvp.Key, kvp.Value, kvp.Key, true);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Propagate catalog properties xuống tất cả INSERT instances của block trong drawing.
+        /// Scan toàn bộ BlockTable (model space, nested blocks...).
+        /// Trả về số AttributeReference đã cập nhật.
+        /// </summary>
+        public static int SyncAttributeReferences(Database db, Transaction tr, string blockName, CatalogItem item)
+        {
+            var props = BuildCatalogPropDict(item);
+            int count = 0;
+
+            BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+            foreach (ObjectId btrId in bt)
+            {
+                BlockTableRecord btr = (BlockTableRecord)tr.GetObject(btrId, OpenMode.ForRead);
+                foreach (ObjectId entId in btr)
+                {
+                    if (!(tr.GetObject(entId, OpenMode.ForRead) is BlockReference br)) continue;
+                    if (!GetEffectiveName(tr, br).Equals(blockName, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    foreach (ObjectId attId in br.AttributeCollection)
+                    {
+                        var attRef = tr.GetObject(attId, OpenMode.ForRead) as AttributeReference;
+                        if (attRef == null) continue;
+                        if (!props.TryGetValue(attRef.Tag, out string newVal)) continue;
+                        attRef.UpgradeOpen();
+                        attRef.TextString = newVal;
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
+
+        // Props chuẩn nhúng vào block: khớp với các tag AutoCAD đã quy ước
+        private static Dictionary<string, string> BuildCatalogPropDict(CatalogItem item)
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["PART_ID"]  = item.PartNumber  ?? "",
+                ["XCLS"]     = item.Title       ?? "",
+                ["DESCR"]    = item.Description ?? "",
+                ["MASS"]     = item.Mass        ?? "0",
+                ["UOM"]      = item.UoM         ?? "pcs",
+                ["BOM_TYPE"] = item.BomType     ?? "",
+            };
         }
 
         /// <summary>

@@ -87,9 +87,12 @@ namespace MCG_FittingManagement.Services.FittingManagement
                             string vaultName = CleanVaultName(blkName);
                             var mainCatItem = catalog.FirstOrDefault(c => c.PartNumber == vaultName || (c.BlockName != null && c.BlockName.Split(';').Contains(blkName, StringComparer.OrdinalIgnoreCase)));
 
+                            // C: dùng catalog PartNumber làm nguồn truth; fallback về vaultName nếu chưa có trong catalog
+                            string effectivePartId = mainCatItem?.PartNumber ?? vaultName;
+
                             results.Add(new BomHarvestRecord {
-                                PanelName = panelName, VaultName = vaultName, ParentBlockName = blkName,
-                                Quantity = 1, UoM = mainCatItem?.UoM ?? "pcs", PartId = vaultName,
+                                PanelName = panelName, VaultName = effectivePartId, ParentBlockName = blkName,
+                                Quantity = 1, UoM = mainCatItem?.UoM ?? "pcs", PartId = effectivePartId,
                                 Description = mainCatItem != null && !string.IsNullOrEmpty(mainCatItem.Description) ? mainCatItem.Description : "Harvested from CAD",
                                 XClass = mainCatItem?.Title ?? "", ProjectPosNum = mainCatItem?.ProjectPosNum ?? "",
                                 IsAccessory = false, ParentPartId = "",
@@ -106,7 +109,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
                                         Quantity = acc.Quantity, UoM = accCatItem?.UoM ?? "pcs", PartId = acc.PartId,
                                         Description = accCatItem != null && !string.IsNullOrEmpty(accCatItem.Description) ? accCatItem.Description : "Accessory",
                                         XClass = accCatItem?.Title ?? "Accessory", ProjectPosNum = accCatItem?.ProjectPosNum ?? "",
-                                        IsAccessory = true, ParentPartId = vaultName,
+                                        IsAccessory = true, ParentPartId = effectivePartId,
                                         InstanceHandles = new List<long> { blkRef.ObjectId.Handle.Value }
                                     });
                                 }

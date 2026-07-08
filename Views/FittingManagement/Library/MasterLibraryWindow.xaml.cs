@@ -230,6 +230,39 @@ namespace MCG_FittingManagement.Views.FittingManagement
         }
 
         // =========================================================
+        // Edit Properties — mở VirtualItemWindow ở chế độ edit cho item(s) đang chọn
+        // Cho phép chọn nhiều item cùng lúc (cùng Name, khác View)
+        // =========================================================
+        private void BtnEditProperties_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().ToList();
+            if (selected.Count == 0)
+            {
+                MessageBox.Show("Select item(s) to edit.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Chỉ cho edit item được add từ CAD (Inventor block không sửa tay)
+            if (selected.Any(i => i.Source == "Inventor"))
+            {
+                MessageBox.Show("Inventor items are managed by the import process and cannot be edited here.\nDeselect Inventor items and try again.",
+                    "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                VirtualItemWindow editWin = selected.Count == 1
+                    ? new VirtualItemWindow(_masterService, selected[0], isEditMode: true)
+                    : new VirtualItemWindow(_masterService, selected);
+                editWin.Owner = this;
+                if (editWin.ShowDialog() == true)
+                    LoadCatalog();
+            }
+            catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+        }
+
+        // =========================================================
         // Remove
         // =========================================================
         private void BtnRemoveSelected_Click(object sender, RoutedEventArgs e)
@@ -296,7 +329,41 @@ namespace MCG_FittingManagement.Views.FittingManagement
             }
         }
 
-        private void ShowPushUpdateResult(Models.FittingManagement.PushUpdateResult result)
+        private void BtnSyncToDrawing_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().ToList();
+            if (selected.Count == 0)
+            {
+                MessageBox.Show("Select item(s) in the grid first.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var blockItems = selected.Where(i => i.EntityType == "Block" && !string.IsNullOrEmpty(i.BlockName)).ToList();
+            if (blockItems.Count == 0)
+            {
+                MessageBox.Show("No Block-type items selected (Sync to Drawing only applies to Block entries).",
+                    "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Sync catalog properties for {blockItems.Count} block(s) to the current drawing?\n\n" +
+                "Updates both block definitions (AttributeDefinitions) and all existing\n" +
+                "INSERT instances (AttributeReferences) in the current drawing.",
+                "Confirm Sync to Drawing", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes) return;
+
+            try
+            {
+                var result = _masterService.SyncPropertiesFromCatalogToDrawing(blockItems);
+                ShowPushUpdateResult(result, "Sync to Drawing Result");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ShowPushUpdateResult(Models.FittingManagement.PushUpdateResult result, string title = "Push Update Result")
         {
             var sb = new System.Text.StringBuilder();
             sb.AppendLine($"✓ Updated:  {result.SuccessCount}");
@@ -315,12 +382,12 @@ namespace MCG_FittingManagement.Views.FittingManagement
             {
                 sb.AppendLine();
                 sb.AppendLine("── Errors ──");
-                foreach (var e in result.Errors.Take(8)) sb.AppendLine(e);
+                foreach (var err in result.Errors.Take(8)) sb.AppendLine(err);
                 if (result.Errors.Count > 8) sb.AppendLine($"  ... and {result.Errors.Count - 8} more (see log).");
             }
 
             var icon = result.FailCount > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information;
-            MessageBox.Show(sb.ToString(), "Push Update Result", MessageBoxButton.OK, icon);
+            MessageBox.Show(sb.ToString(), title, MessageBoxButton.OK, icon);
         }
     }
 }

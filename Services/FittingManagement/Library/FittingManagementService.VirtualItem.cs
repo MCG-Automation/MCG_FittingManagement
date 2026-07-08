@@ -108,6 +108,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
 
                             if (width > 0) draftItem.Description = $"[Width: {width}] ";
                             draftItem.BomType = "HULL";
+                            draftItem.Source = collectedBlockNames.Count > 0 ? "CAD-Block" : "CAD-Linear";
                             if (string.IsNullOrEmpty(draftItem.PartNumber)) draftItem.PartNumber = "";
                             draftItem.Title = "";
                             draftItem.Mass = "0";

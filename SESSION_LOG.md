@@ -4,6 +4,51 @@
 
 ---
 
+## Session 2026-07-08B — Sync Properties to Drawing (B) + BOM reads from catalog (C)
+
+### Đã làm
+
+**B — Sync catalog metadata xuống drawing:**
+- `Utilities/FittingManagement/FittingManagementUtility.cs` — thêm `EmbedCatalogProperties(btr, tr, item)` cập nhật AttributeDefinition, `SyncAttributeReferences(db, tr, blockName, item)` propagate xuống mọi INSERT instance, `BuildCatalogPropDict` helper (tags: PART_ID, XCLS, DESCR, MASS, UOM, BOM_TYPE)
+- `Services/FittingManagement/Library/IMasterLibraryService.cs` — thêm `SyncPropertiesFromCatalogToDrawing(IList<CatalogItem>)`
+- `Services/FittingManagement/Library/FittingManagementService.MasterLibrary.cs` — implement: mở BTR ForWrite → EmbedCatalogProperties → SyncAttributeReferences → commit một transaction
+- `Views/FittingManagement/Library/MasterLibraryWindow.xaml` — thêm button "Sync to Drawing" cạnh "Push Update"
+- `Views/FittingManagement/Library/MasterLibraryWindow.xaml.cs` — `BtnSyncToDrawing_Click`, `ShowPushUpdateResult` có optional title param
+
+**C — BOM dùng catalog làm nguồn truth:**
+- `Services/FittingManagement/BOM/FittingManagementService.BomStructure.cs` — `effectivePartId = mainCatItem?.PartNumber ?? vaultName`; dùng cho cả `VaultName`, `PartId`, `ParentPartId` của accessories
+- `Services/FittingManagement/BOM/FittingManagementService.BomInterface.cs` — tương tự
+
+### Trạng thái
+- Build: SUCCEEDED
+- Luồng xử lý sau khi edit Properties: (1) MasterCatalog.json cập nhật ngay, (2) nhấn "Sync to Drawing" để đồng bộ drawing đang mở, (3) BOM Export tự đọc catalog PartNumber nên luôn đúng kể cả khi chưa Sync
+
+### Bước tiếp theo
+- Không có task tồn đọng
+
+---
+
+## Session 2026-07-08 — Multi-item Edit Properties
+
+### Đã làm
+- **`Views/FittingManagement/Library/VirtualItemWindow.xaml.cs`**
+  - Thêm field `_editItems: IList<CatalogItem>`
+  - Thêm constructor overload `VirtualItemWindow(masterService, IList<CatalogItem> editItems)` — multi-edit mode, title hiển thị số lượng items
+  - Extract `SetBomTypeCombo()` + `GetCommonValue()` (trả về giá trị chung hoặc "(multiple)")
+  - Refactor `LoadDraftDataToUI()`: branch riêng cho multi-edit vs single item
+  - Refactor `BtnSave_Click()`: edit mode nay áp dụng metadata cho tất cả `_editItems`, gọi `MergeIntoMaster(itemsToSave)` thay vì chỉ `{_draftItem}`
+- **`Views/FittingManagement/Library/MasterLibraryWindow.xaml.cs`**
+  - `BtnEditProperties_Click`: bỏ giới hạn `Count != 1`; chọn đúng constructor theo số item (`selected.Count == 1` → single, else → multi)
+
+### Trạng thái
+- Phase: Master Library hoàn chỉnh
+- Build: SUCCEEDED, không có compiler error
+
+### Bước tiếp theo
+- Không có task tồn đọng hiện tại
+
+---
+
 ## Session 2026-06-26B — UX fix: Topmost dialogs + ListBox color AutoCAD convention
 
 ### Đã làm

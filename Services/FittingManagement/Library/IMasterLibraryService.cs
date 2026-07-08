@@ -35,5 +35,12 @@ namespace MCG_FittingManagement.Services.FittingManagement
         /// Chỉ ghi đè file .dwg, không sửa metadata trong MasterCatalog.json.
         /// </summary>
         PushUpdateResult PushBlocksFromCurrentDrawing(IList<CatalogItem> items);
+
+        /// <summary>
+        /// Sync catalog properties (PartNumber, Title, Description, Mass, UoM, BomType)
+        /// xuống cả AttributeDefinitions trong BTR và AttributeReferences trên mọi
+        /// INSERT instance trong drawing đang mở.
+        /// </summary>
+        PushUpdateResult SyncPropertiesFromCatalogToDrawing(IList<CatalogItem> items);
     }
 }

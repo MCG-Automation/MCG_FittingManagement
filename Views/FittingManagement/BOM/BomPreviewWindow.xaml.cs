@@ -92,6 +92,16 @@ namespace MCG_FittingManagement.Views.FittingManagement
 
         private void BtnScanDrawing_Click(object sender, RoutedEventArgs e)
         {
+            // Bắt buộc có active project trước khi scan — BOM chỉ đếm block đã add vào Item Library
+            var ctx = ActiveProjectContext.Instance;
+            if (!ctx.HasActiveProject)
+            {
+                MessageBox.Show(
+                    "Chưa có Active Project.\n\nMở tab Project Config → Item Library → load hoặc tạo project mới trước khi scan BOM.",
+                    "No Active Project", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             this.Visibility = Visibility.Hidden;
             try
             {
@@ -99,7 +109,6 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 if (_mode == BomMode.Hull)
                 {
                     rawData = _service.HarvestInterfaceBom();
-                    // Fix: overlay ProjectPosNum từ active project catalog (master catalog không có pos)
                     if (rawData != null) OverlayHullPositions(rawData);
                 }
                 else
@@ -107,9 +116,16 @@ namespace MCG_FittingManagement.Views.FittingManagement
                     rawData = _service.HarvestStructureBom();
                 }
 
+                // Chỉ giữ block đã được add vào active project (Item Library) — loại block copy tự do
+                int rawCount = rawData?.Count ?? 0;
+                if (rawData != null) rawData = FilterByProjectCatalog(rawData, ctx);
+                int excludedCount = rawCount - (rawData?.Count ?? 0);
+
                 if (rawData == null || rawData.Count == 0)
                 {
-                    TxtStatus.Text = "No valid blocks found.";
+                    TxtStatus.Text = excludedCount > 0
+                        ? $"No valid blocks found in active project. ({excludedCount} block(s) excluded — not in Item Library)"
+                        : "No valid blocks found.";
                     return;
                 }
 
@@ -163,7 +179,8 @@ namespace MCG_FittingManagement.Views.FittingManagement
 
                 GridBomMatrix.ItemsSource = null;
                 GridBomMatrix.ItemsSource = _bomDataTable.DefaultView;
-                TxtStatus.Text = $"Scan complete. Found {uniqueContainers.Count} group(s).";
+                string excludedNote = excludedCount > 0 ? $"  ({excludedCount} excluded — not in Item Library)" : "";
+                TxtStatus.Text = $"Scan complete. Found {uniqueContainers.Count} group(s).{excludedNote}";
             }
             catch (Exception ex) { MessageBox.Show(ex.Message, "System Error", MessageBoxButton.OK, MessageBoxImage.Error); }
             finally { this.Visibility = Visibility.Visible; }
@@ -196,6 +213,33 @@ namespace MCG_FittingManagement.Views.FittingManagement
             catch (Exception ex)
             {
                 Debug.WriteLine($"{LOG_PREFIX} OverlayHullPositions error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Chỉ giữ lại record có PartId tồn tại trong active project catalog.
+        /// Block trong drawing nhưng chưa add vào Item Library → loại khỏi BOM.
+        /// </summary>
+        private List<BomHarvestRecord> FilterByProjectCatalog(List<BomHarvestRecord> records, ActiveProjectContext ctx)
+        {
+            try
+            {
+                var projectItems = CatalogJsonStore.Read<ProjectCatalogItem>(ctx.ProjectFilePath);
+                var validPartIds = new HashSet<string>(
+                    projectItems.Select(p => p.PartNumber).Where(p => !string.IsNullOrEmpty(p)),
+                    StringComparer.OrdinalIgnoreCase);
+
+                var filtered = records
+                    .Where(r => !string.IsNullOrEmpty(r.PartId) && validPartIds.Contains(r.PartId))
+                    .ToList();
+
+                Debug.WriteLine($"{LOG_PREFIX} FilterByProjectCatalog: {filtered.Count}/{records.Count} records kept.");
+                return filtered;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"{LOG_PREFIX} FilterByProjectCatalog error (fallback — no filter): {ex.Message}");
+                return records;
             }
         }
 

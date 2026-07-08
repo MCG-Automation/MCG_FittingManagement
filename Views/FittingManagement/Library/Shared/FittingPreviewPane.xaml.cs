@@ -32,30 +32,30 @@ namespace MCG_FittingManagement.Views.FittingManagement
         {
             if (item == null)
             {
-                ShowEmpty("Select a Block item to preview");
+                ShowEmpty("Select an item to preview");
                 return;
             }
 
             if (!IsBlockType(item))
             {
-                ShowEmpty($"No preview for {item.EntityType ?? "Unknown"} entity type.");
+                ShowMetadataCard(item);
                 return;
             }
 
+            // Block item — hiện image + properties panel
+            MetadataCard.Visibility = Visibility.Collapsed;
             EmptyState.Visibility = Visibility.Collapsed;
 
-            // Properties
             TxtPartNumber.Text = string.IsNullOrEmpty(item.PartNumber) ? "(no part number)" : item.PartNumber;
-            TxtTitle.Text = item.Title ?? "";
+            TxtTitle.Text      = item.Title ?? "";
             TxtDescription.Text = item.Description ?? "—";
-            TxtMass.Text = string.IsNullOrEmpty(item.Mass) ? "—" : $"{item.Mass} kg";
-            TxtMaterial.Text = string.IsNullOrEmpty(item.Material) ? "—" : item.Material;
-            TxtDesigner.Text = string.IsNullOrEmpty(item.Designer) ? "—" : item.Designer;
-            TxtRevision.Text = string.IsNullOrEmpty(item.Revision) ? "—" : item.Revision;
-            TxtUoM.Text = string.IsNullOrEmpty(item.UoM) ? "—" : item.UoM;
-            TxtBlockName.Text = item.BlockName ?? "";
+            TxtMass.Text       = string.IsNullOrEmpty(item.Mass) ? "—" : $"{item.Mass} kg";
+            TxtMaterial.Text   = string.IsNullOrEmpty(item.Material) ? "—" : item.Material;
+            TxtDesigner.Text   = string.IsNullOrEmpty(item.Designer) ? "—" : item.Designer;
+            TxtRevision.Text   = string.IsNullOrEmpty(item.Revision) ? "—" : item.Revision;
+            TxtUoM.Text        = string.IsNullOrEmpty(item.UoM) ? "—" : item.UoM;
+            TxtBlockName.Text  = item.BlockName ?? "";
 
-            // Image
             var bmp = _previewService?.GetPreview(item);
             if (bmp != null)
             {
@@ -71,19 +71,53 @@ namespace MCG_FittingManagement.Views.FittingManagement
             }
         }
 
-        /// <summary>Reset pane về empty state với message tuỳ chỉnh.</summary>
-        public void Clear() => ShowEmpty("Select a Block item to preview");
+        /// <summary>Reset pane về empty state.</summary>
+        public void Clear() => ShowEmpty("Select an item to preview");
 
         private void ShowEmpty(string message)
         {
+            MetadataCard.Visibility = Visibility.Collapsed;
             EmptyStateText.Text = message;
             EmptyState.Visibility = Visibility.Visible;
             PreviewImage.Source = null;
         }
 
-        private static bool IsBlockType(CatalogItem item)
+        /// <summary>
+        /// Hiện metadata card cho non-block item (CAD-Linear: Polyline, Line, Circle...).
+        /// Thay thế preview image bằng thông tin catalog dạng card.
+        /// </summary>
+        private void ShowMetadataCard(CatalogItem item)
         {
-            return string.Equals(item.EntityType, "Block", StringComparison.OrdinalIgnoreCase);
+            EmptyState.Visibility = Visibility.Collapsed;
+            MetadataCard.Visibility = Visibility.Visible;
+
+            CardEntityType.Text  = GetEntityLabel(item.EntityType);
+            CardSource.Text      = string.IsNullOrEmpty(item.Source) ? "CAD" : item.Source;
+            CardPartNumber.Text  = string.IsNullOrEmpty(item.PartNumber) ? "(no part number)" : item.PartNumber;
+            CardTitle.Text       = item.Title ?? "";
+            CardLayer.Text       = string.IsNullOrEmpty(item.TriggerLayer) ? "—" : item.TriggerLayer;
+            CardUoM.Text         = string.IsNullOrEmpty(item.UoM) ? "—" : item.UoM;
+            CardDescription.Text = string.IsNullOrEmpty(item.Description) ? "—" : item.Description;
+            CardMass.Text        = string.IsNullOrEmpty(item.Mass) ? "—" : $"{item.Mass} kg/m";
+            CardBomType.Text     = string.IsNullOrEmpty(item.BomType) ? "—" : item.BomType;
+            CardDesigner.Text    = string.IsNullOrEmpty(item.Designer) ? "—" : item.Designer;
         }
+
+        private static string GetEntityLabel(string entityType)
+        {
+            switch (entityType?.ToUpperInvariant())
+            {
+                case "POLYLINE":
+                case "POLYLINE2D":
+                case "POLYLINE3D": return "Linear Item  (Polyline)";
+                case "LINE":       return "Linear Item  (Line)";
+                case "CIRCLE":     return "Circular Item  (Circle)";
+                case "ARC":        return "Arc Item";
+                default:           return entityType ?? "Unknown Entity";
+            }
+        }
+
+        private static bool IsBlockType(CatalogItem item)
+            => string.Equals(item.EntityType, "Block", StringComparison.OrdinalIgnoreCase);
     }
 }

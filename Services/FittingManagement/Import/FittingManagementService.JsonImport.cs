@@ -266,7 +266,8 @@ namespace MCG_FittingManagement.Services.FittingManagement
                             BomType = bomType,
                             FilePath = exportPath,
                             EntityType = "Block",
-                            UoM = "pcs"
+                            UoM = "pcs",
+                            Source = "Inventor"
                         };
                         results.Add(Tuple.Create(newBtr.ObjectId, catalogItem));
                         FileLogger.Log(LOG_PREFIX,

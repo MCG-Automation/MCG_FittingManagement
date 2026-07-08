@@ -135,6 +135,15 @@
                       Background="White" BorderBrush="#FFDEDEDE" RowHeight="26">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Type" Binding="{Binding EntityType}" Width="Auto" FontWeight="SemiBold" Foreground="#FF005E9E"/>
+                    <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="80">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontSize" Value="10"/>
+                                <Setter Property="Foreground" Value="#FF888888"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                     <DataGridTextColumn Header="View / File Name" Binding="{Binding BlockName}" Width="Auto" Foreground="#FF555555"/>
                     <DataGridTextColumn Header="Part Complete ID" Binding="{Binding PartNumber}" Width="Auto" FontWeight="Bold"/>
                     <DataGridTextColumn Header="Name" Binding="{Binding Title}" Width="Auto">
@@ -190,9 +199,11 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="BtnEditProperties" Content="Edit Properties" Width="120" Margin="0,0,10,0" Click="BtnEditProperties_Click" FontWeight="SemiBold"/>
                 <Button x:Name="BtnRemoveSelected" Content="Remove Selected" Width="120" Margin="0,0,10,0" Click="BtnRemoveSelected_Click" Foreground="#FFD32F2F" FontWeight="SemiBold"/>
                 <Button x:Name="BtnAddToProject" Content="Add to Active Project" Width="150" Margin="0,0,10,0" Click="BtnAddToProject_Click"/>
                 <Button x:Name="BtnUpdateLibrary" Content="Push Update" Width="100" Margin="0,0,10,0" Click="BtnUpdateLibrary_Click"/>
+                <Button x:Name="BtnSyncToDrawing" Content="Sync to Drawing" Width="130" Margin="0,0,10,0" Click="BtnSyncToDrawing_Click" ToolTip="Update block AttributeDefinitions and all INSERT instances in the current drawing to reflect current catalog metadata"/>
                 <Button x:Name="BtnRefresh" Content="Refresh" Width="70" Margin="0,0,10,0" Click="BtnRefresh_Click"/>
                 <Button x:Name="BtnInsert" Content="Insert to CAD" Width="120" Style="{StaticResource PrimaryButtonStyle}" Click="BtnInsert_Click"/>
             </StackPanel>

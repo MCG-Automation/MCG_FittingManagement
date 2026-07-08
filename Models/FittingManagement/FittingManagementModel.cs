@@ -57,10 +57,12 @@ namespace MCG_FittingManagement.Models.FittingManagement
         public string BomType { get; set; } 
         public string FilePath { get; set; }
         public string ProjectPosNum { get; set; } 
-        public string EntityType { get; set; } = "Block"; 
+        public string EntityType { get; set; } = "Block";
         public string TriggerLayer { get; set; }
         public string TriggerColor { get; set; }
-        public string UoM { get; set; } = "pcs"; 
+        public string UoM { get; set; } = "pcs";
+        /// <summary>Nguồn gốc fitting: "Inventor" | "CAD-Block" | "CAD-Linear".</summary>
+        public string Source { get; set; }
         public List<AccessoryItem> Accessories { get; set; } = new List<AccessoryItem>();
     }
 
