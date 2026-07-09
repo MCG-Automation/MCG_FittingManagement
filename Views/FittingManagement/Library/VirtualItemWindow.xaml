@@ -48,6 +48,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Entity Type:"/>
@@ -60,7 +61,10 @@
                 <TextBox x:Name="TxtColor" Grid.Row="2" Grid.Column="1" Style="{StaticResource ReadOnlyTextBox}" Margin="0,0,0,8"/>
 
                 <TextBlock Grid.Row="3" Grid.Column="0" Text="Default UoM:"/>
-                <TextBox x:Name="TxtUoM" Grid.Row="3" Grid.Column="1"/>
+                <TextBox x:Name="TxtUoM" Grid.Row="3" Grid.Column="1" Margin="0,0,0,8"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Created:"/>
+                <TextBox x:Name="TxtCreatedDate" Grid.Row="4" Grid.Column="1" Style="{StaticResource ReadOnlyTextBox}"/>
             </Grid>
         </GroupBox>
 

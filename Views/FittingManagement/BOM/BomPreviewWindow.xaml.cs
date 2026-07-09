@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.IO;
 using Microsoft.Win32;
 using MCG_FittingManagement.Models.FittingManagement;
@@ -38,23 +39,51 @@ namespace MCG_FittingManagement.Views.FittingManagement
             _mode = mode;
             ApplyMode();
             InitializeEmptyGrid();
+
+            UpdateActiveProjectLabel();
+            ActiveProjectContext.Instance.ProjectChanged += OnActiveProjectChanged;
+            this.Closed += (_, __) => ActiveProjectContext.Instance.ProjectChanged -= OnActiveProjectChanged;
+        }
+
+        private void OnActiveProjectChanged(object sender, EventArgs e) => Dispatcher.Invoke(UpdateActiveProjectLabel);
+
+        private void UpdateActiveProjectLabel()
+        {
+            var ctx = ActiveProjectContext.Instance;
+            TxtActiveProject.Text = ctx.HasActiveProject ? ctx.ProjectDisplayName : "(none)";
         }
 
         private void ApplyMode()
         {
+            // Đồng bộ style Title Grid với Master/Item Library — title in-hoa + badge màu theo mode
             if (_mode == BomMode.Hull)
             {
                 Title = "Hull BOM Export";
-                TxtModeLabel.Text = "Hull BOM Export";
+                TxtModeLabel.Text = "HULL BOM EXPORT";
+                TxtBadgeMode.Text = "HULL";
+                var hullColor = new SolidColorBrush(Color.FromRgb(0xD3, 0x2F, 0x2F));
+                TxtModeLabel.Foreground = hullColor;
+                BadgeMode.Background = hullColor;
                 BtnScanDrawing.Content = "Scan Hull from Drawing";
                 BtnAutoBalloon.Visibility = Visibility.Collapsed;
+                MenuItemSyncPosFromItemLib.Visibility = Visibility.Visible;
+                // Hull Pos được Sync TỪ Item Library xuống (chiều Item Lib → drawing đã có sẵn ở
+                // nút "Sync" bên Item Library) — nút Sync Pos to CAD (đẩy từ grid này ra) không còn
+                // ý nghĩa cho Hull vì grid không còn là nguồn Pos nữa.
+                BtnSyncPosToCad.Visibility = Visibility.Collapsed;
             }
             else
             {
                 Title = "Equipment BOM Export";
-                TxtModeLabel.Text = "Equipment BOM Export";
+                TxtModeLabel.Text = "EQUIPMENT BOM EXPORT";
+                TxtBadgeMode.Text = "EQUIPMENT";
+                var equipColor = new SolidColorBrush(Color.FromRgb(0x00, 0x55, 0xA5));
+                TxtModeLabel.Foreground = equipColor;
+                BadgeMode.Background = equipColor;
                 BtnScanDrawing.Content = "Scan Equipment from Drawing";
                 BtnAutoBalloon.Visibility = Visibility.Visible;
+                MenuItemSyncPosFromItemLib.Visibility = Visibility.Collapsed;
+                BtnSyncPosToCad.Visibility = Visibility.Visible;
             }
         }
 
@@ -79,7 +108,10 @@ namespace MCG_FittingManagement.Views.FittingManagement
             }
             else if (e.PropertyName.EndsWith(" Qty") || e.PropertyName.EndsWith(" Pos"))
             {
-                e.Column.IsReadOnly = e.PropertyName.EndsWith(" Qty");
+                bool isPosColumn = e.PropertyName.EndsWith(" Pos");
+                // Hull: Pos được sửa trực tiếp ở Item Library (Auto-Assign Pos / Edit Properties) rồi
+                // kéo qua bằng "Sync Pos from Item Lib" — không cho sửa tay trên grid này nữa.
+                e.Column.IsReadOnly = !isPosColumn || _mode == BomMode.Hull;
                 Style cellStyle = new Style(typeof(DataGridCell));
                 var color = e.PropertyName.EndsWith(" Qty")
                     ? System.Windows.Media.Color.FromRgb(240, 248, 255)
@@ -129,61 +161,99 @@ namespace MCG_FittingManagement.Views.FittingManagement
                     return;
                 }
 
-                _lastScanResults = rawData;
-                _bomDataTable.Clear();
-                _bomDataTable.Columns.Clear();
+                int containerCount = rawData.Select(r => r.PanelName).Distinct().Count();
+                RebuildBomTable(rawData);
 
-                string[] headers = { "Vault Name", "Type", "Part ID", "XClass", "Description" };
-                foreach (var h in headers) _bomDataTable.Columns.Add(h, typeof(string));
-
-                var uniqueContainers = rawData.Select(r => r.PanelName).Distinct().OrderBy(p => p).ToList();
-                foreach (var container in uniqueContainers)
-                {
-                    _bomDataTable.Columns.Add($"{container} Qty", typeof(int));
-                    _bomDataTable.Columns.Add($"{container} Pos", typeof(string));
-                }
-
-                var groupedFittings = rawData
-                    .GroupBy(r => new { r.VaultName, r.ParentPartId, r.IsAccessory })
-                    .OrderBy(g => g.Key.IsAccessory ? g.Key.ParentPartId : g.Key.VaultName)
-                    .ThenBy(g => g.Key.IsAccessory).ThenBy(g => g.Key.VaultName);
-
-                foreach (var group in groupedFittings)
-                {
-                    DataRow newRow = _bomDataTable.NewRow();
-                    newRow["Vault Name"]   = group.Key.VaultName;
-                    newRow["Type"]         = group.Key.IsAccessory ? $"  ↳ Acc. of {group.Key.ParentPartId}" : "Main Fitting";
-                    newRow["Part ID"]      = group.First().PartId ?? "";
-                    newRow["XClass"]       = group.First().XClass ?? "N/A";
-                    newRow["Description"]  = group.First().Description ?? "Harvested from CAD";
-
-                    foreach (var container in uniqueContainers)
-                    {
-                        int totalQty = group.Where(r => r.PanelName == container).Sum(r => r.Quantity);
-                        if (totalQty > 0)
-                        {
-                            newRow[$"{container} Qty"] = totalQty;
-                            string posNum = group.First().ProjectPosNum;
-                            newRow[$"{container} Pos"] = (!string.IsNullOrEmpty(posNum) && int.TryParse(posNum, out int pNum))
-                                ? pNum.ToString("D3") : (posNum ?? "");
-                            foreach (var r in group.Where(r => r.PanelName == container))
-                                r.Position = newRow[$"{container} Pos"].ToString();
-                        }
-                        else
-                        {
-                            newRow[$"{container} Pos"] = "";
-                        }
-                    }
-                    _bomDataTable.Rows.Add(newRow);
-                }
-
-                GridBomMatrix.ItemsSource = null;
-                GridBomMatrix.ItemsSource = _bomDataTable.DefaultView;
                 string excludedNote = excludedCount > 0 ? $"  ({excludedCount} excluded — not in Item Library)" : "";
-                TxtStatus.Text = $"Scan complete. Found {uniqueContainers.Count} group(s).{excludedNote}";
+                TxtStatus.Text = $"Scan complete. Found {containerCount} group(s).{excludedNote}";
             }
             catch (Exception ex) { MessageBox.Show(ex.Message, "System Error", MessageBoxButton.OK, MessageBoxImage.Error); }
             finally { this.Visibility = Visibility.Visible; }
+        }
+
+        /// <summary>
+        /// Build lại toàn bộ _bomDataTable (cột Qty/Pos theo container + row group theo fitting) từ
+        /// <paramref name="data"/>. Dùng chung cho Scan (data mới harvest) và Sync Pos from Item Lib
+        /// (data cũ, chỉ ProjectPosNum vừa được refresh) — tách riêng để không phải rescan CAD lúc Sync.
+        /// </summary>
+        private void RebuildBomTable(List<BomHarvestRecord> data)
+        {
+            _lastScanResults = data;
+            _bomDataTable.Clear();
+            _bomDataTable.Columns.Clear();
+
+            string[] headers = { "Vault Name", "Type", "Part ID", "XClass", "Description" };
+            foreach (var h in headers) _bomDataTable.Columns.Add(h, typeof(string));
+
+            var uniqueContainers = data.Select(r => r.PanelName).Distinct().OrderBy(p => p).ToList();
+            foreach (var container in uniqueContainers)
+            {
+                _bomDataTable.Columns.Add($"{container} Qty", typeof(int));
+                _bomDataTable.Columns.Add($"{container} Pos", typeof(string));
+            }
+
+            var groupedFittings = data
+                .GroupBy(r => new { r.VaultName, r.ParentPartId, r.IsAccessory })
+                .OrderBy(g => g.Key.IsAccessory ? g.Key.ParentPartId : g.Key.VaultName)
+                .ThenBy(g => g.Key.IsAccessory).ThenBy(g => g.Key.VaultName);
+
+            foreach (var group in groupedFittings)
+            {
+                DataRow newRow = _bomDataTable.NewRow();
+                newRow["Vault Name"]   = group.Key.VaultName;
+                newRow["Type"]         = group.Key.IsAccessory ? $"  ↳ Acc. of {group.Key.ParentPartId}" : "Main Fitting";
+                newRow["Part ID"]      = group.First().PartId ?? "";
+                newRow["XClass"]       = group.First().XClass ?? "N/A";
+                newRow["Description"]  = group.First().Description ?? "Harvested from CAD";
+
+                foreach (var container in uniqueContainers)
+                {
+                    int totalQty = group.Where(r => r.PanelName == container).Sum(r => r.Quantity);
+                    if (totalQty > 0)
+                    {
+                        newRow[$"{container} Qty"] = totalQty;
+                        string posNum = group.First().ProjectPosNum;
+                        newRow[$"{container} Pos"] = (!string.IsNullOrEmpty(posNum) && int.TryParse(posNum, out int pNum))
+                            ? pNum.ToString("D3") : (posNum ?? "");
+                        foreach (var r in group.Where(r => r.PanelName == container))
+                            r.Position = newRow[$"{container} Pos"].ToString();
+                    }
+                    else
+                    {
+                        newRow[$"{container} Pos"] = "";
+                    }
+                }
+                _bomDataTable.Rows.Add(newRow);
+            }
+
+            GridBomMatrix.ItemsSource = null;
+            GridBomMatrix.ItemsSource = _bomDataTable.DefaultView;
+        }
+
+        /// <summary>
+        /// Hull mode — kéo lại ProjectPosNum mới nhất từ Item Library (project catalog) xuống
+        /// bảng đã scan, không cần rescan lại toàn bộ bản vẽ. Dùng sau khi user Auto-Assign Pos /
+        /// Edit Properties (Pos Num) bên Item Library.
+        /// </summary>
+        private void BtnSyncPosFromItemLib_Click(object sender, RoutedEventArgs e)
+        {
+            if (_lastScanResults == null || _lastScanResults.Count == 0)
+            {
+                MessageBox.Show("Scan the drawing first.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var ctx = ActiveProjectContext.Instance;
+            if (!ctx.HasActiveProject)
+            {
+                MessageBox.Show("No active project. Open Item Library and load/create one first.",
+                    "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            OverlayHullPositions(_lastScanResults);
+            RebuildBomTable(_lastScanResults);
+            TxtStatus.Text = "Position synced from Item Library.";
         }
 
         /// <summary>

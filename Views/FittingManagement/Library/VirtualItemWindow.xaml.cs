@@ -58,6 +58,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 TxtLayer.Text  = GetCommonValue(_editItems.Select(i => i.TriggerLayer));
                 TxtColor.Text  = GetCommonValue(_editItems.Select(i => i.TriggerColor));
                 TxtUoM.Text    = GetCommonValue(_editItems.Select(i => i.UoM));
+                TxtCreatedDate.Text = GetCommonValue(_editItems.Select(i => i.CreatedDate));
 
                 TxtPartID.Text = GetCommonValue(_editItems.Select(i => i.PartNumber));
                 TxtTitle.Text  = GetCommonValue(_editItems.Select(i => i.Title));
@@ -74,6 +75,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 TxtLayer.Text = _draftItem.TriggerLayer;
                 TxtColor.Text = _draftItem.TriggerColor;
                 TxtUoM.Text   = _draftItem.UoM;
+                TxtCreatedDate.Text = _draftItem.CreatedDate;
 
                 TxtPartID.Text = _draftItem.PartNumber;
                 TxtTitle.Text  = !string.IsNullOrEmpty(_draftItem.Title)
@@ -159,6 +161,11 @@ namespace MCG_FittingManagement.Views.FittingManagement
 
             if (_draftItem.EntityType == "Block" && !string.IsNullOrEmpty(_draftItem.BlockName))
             {
+                // Nhúng đầy đủ 10 attribute chuẩn (giống block Inventor import) vào block definition
+                // trong drawing đang mở TRƯỚC khi export — để file .dwg xuất ra cũng mang theo attribute.
+                try { _masterService.EmbedBimAttributesInDrawing(_draftItem); }
+                catch (Exception ex) { Debug.WriteLine($"[VirtualItemWindow] Lỗi embed attribute: {ex.Message}"); }
+
                 // Add mode — Tier 2: export block ra .dwg để Insert hoạt động kể cả khi đổi drawing
                 string filePath = Path.Combine(_masterService.MasterLibraryFolder, _draftItem.BlockName + ".dwg");
                 _draftItem.FilePath = filePath;

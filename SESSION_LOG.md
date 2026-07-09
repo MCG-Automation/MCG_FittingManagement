@@ -4,6 +4,169 @@
 
 ---
 
+## Session 2026-07-09G — Cảnh báo trùng fitting trước khi Import IDW (Overwrite/Skip prompt)
+
+### Bối cảnh
+User hỏi: "Nếu Fitting A đã có trong Library, import lại lần nữa thì kết quả thế nào?" — phân tích cho thấy **không có check trùng nào** trước import. Tuỳ theo drawing đang mở: (1) cùng drawing đã có block cũ → `GenerateUniqueBlockName` tự đổi tên `_1/_2` → tạo ENTRY TRÙNG trong Master Catalog; (2) drawing khác/mới → tên block không đổi → **âm thầm ghi đè** file `.dwg` + catalog entry cũ, kể cả `CreatedDate` cũng bị reset về thời điểm import mới (vì `ImportSingleDwgWithSplit` luôn stamp `DateTime.Now` bất kể là lần import đầu hay import lại). User yêu cầu fix hạng mục cảnh báo/prompt overwrite-hay-skip trước khi import.
+
+### Đã làm
+- **`Services/FittingManagement/Import/FittingManagementService.IdwImport.cs`**
+  - `ExtractedIdw`: đổi `private` → `internal` để `ImportDuplicateDialog` (Views, cùng assembly) truy cập được
+  - Thêm PHASE 1.5 vào `ImportIdwFilesAsync` — chạy trên UI thread (sau `await Task.Run` Phase 1, trước Phase 2), gọi `ResolveDuplicatesBeforeImport`
+  - `ResolveDuplicatesBeforeImport(extractedItems, result)`: đọc `GetMasterCatalogItems()`, so khớp từng file extract với `FindDuplicateMatch` — nếu có ít nhất 1 file trùng → mở `ImportDuplicateDialog`. User Cancel → hủy TOÀN BỘ batch (ghi `FailCount`/Errors cho mọi file, kể cả file không trùng, an toàn hơn import 1 phần bất ngờ). User Continue → loại các file bị uncheck "Overwrite" khỏi list trước khi vào Phase 2, ghi Error "Skipped — fitting already exists..." cho từng file bị skip
+  - `FindDuplicateMatch(extracted, masterCatalog, out reason)`: match theo `PartNumber` (ưu tiên) hoặc theo BlockName SẼ ĐƯỢC TẠO (`{baseFileName}_{view.Name}`, tính giống hệt `ImportSingleDwgWithSplit`) — vì lúc PHASE 1.5 block thật sự chưa được tạo, cần tính trước tên để so khớp
+- **`Views/FittingManagement/Import/ImportDuplicateDialog.xaml` + `.xaml.cs`** (mới) — dialog liệt kê file trùng dạng DataGrid: cột checkbox "Overwrite" (mặc định UNCHECK = skip, an toàn) + Source IDW/Matched By/Existing Part Number/Title/Block Name/Created. Nút "Continue" (DialogResult=true) / "Cancel Import" (DialogResult=false, hủy cả batch)
+  - `ImportDuplicateItem` (internal, không notify — DataGrid checkbox edit không cần INotifyPropertyChanged)
+  - Constructor + `Items` property đánh dấu `internal` (không phải `public`) vì tham chiếu `FittingManagementService.ExtractedIdw` (internal) — public member không được lộ kiểu kém public hơn (CS0053/CS0051)
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+- **Chưa fix triệt để**: vẫn còn 1 lỗ hổng — nếu 2 file trong CÙNG 1 batch import trùng nhau về BlockName (không phải trùng với Master Catalog cũ mà trùng LẪN NHAU trong batch), chưa được check (nằm ngoài phạm vi yêu cầu lần này, chỉ check với Master Catalog hiện có)
+
+### Bước tiếp theo
+- Test trong AutoCAD: import 1 file IDW đã từng import trước đó → verify dialog hiện đúng, uncheck "Overwrite" → file đó bị skip, `ImportResult` hiển thị đúng lý do skip trong summary dialog
+- Test Cancel Import → verify không có block/catalog entry nào được tạo dù có file không trùng trong cùng batch
+- Cân nhắc thêm (chưa làm, nằm ngoài yêu cầu lần này): sửa `ImportSingleDwgWithSplit` để giữ nguyên `CreatedDate` gốc khi user chọn Overwrite một BlockName đã tồn tại (hiện tại vẫn stamp `DateTime.Now` mới)
+
+---
+
+## Session 2026-07-09F — Hull BOM Export: Sync qua context menu (giống Library) + bỏ Sync to CAD
+
+### Đã làm
+- **`Views/FittingManagement/BOM/BomPreviewWindow.xaml`**
+  - Bỏ button "Sync Pos from Item Lib" khỏi footer, thay bằng `DataGrid.ContextMenu` trên `GridBomMatrix` với `MenuItem x:Name="MenuItemSyncPosFromItemLib"` — đúng pattern right-click đã dùng ở Master/Item Library thay vì button riêng
+- **`Views/FittingManagement/BOM/BomPreviewWindow.xaml.cs`** — `ApplyMode()`:
+  - Hull: `MenuItemSyncPosFromItemLib.Visibility = Visible`, `BtnSyncPosToCad.Visibility = Collapsed` (Pos của Hull Fitting giờ chỉ chảy 1 chiều Item Library → drawing qua Sync bên Item Library; đẩy ngược từ Hull BOM grid ra CAD không còn ý nghĩa vì grid không còn là nguồn Pos)
+  - Equipment: giữ nguyên `BtnAutoBalloon` + `BtnSyncPosToCad` visible như cũ (Equipment vẫn tự sửa Pos + đẩy ra CAD trực tiếp từ BOM window)
+  - `BtnSyncPosFromItemLib_Click` (logic không đổi) giờ được gọi từ context menu item thay vì button
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+
+### Bước tiếp theo
+- Test trong AutoCAD: Hull BOM Export → right-click trên grid → "Sync Pos from Item Library" hoạt động đúng như button cũ; verify "Sync Pos to CAD" không còn hiện ở Hull mode nhưng vẫn còn ở Equipment mode
+
+---
+
+## Session 2026-07-09E — BOM Export title grid đồng bộ Library + Hull Pos read-only + Sync Pos from Item Lib
+
+### Đã làm
+- **`Views/FittingManagement/BOM/BomPreviewWindow.xaml`**
+  - Title Grid Row 0 đổi sang layout giống Master/Item Library: title in-hoa 16px + badge màu pill (EQUIPMENT/HULL) + ô "Active Project" read-only bên phải, Scan button dời sang cột cuối
+  - Thêm button "Sync Pos from Item Lib" (chỉ hiện ở Hull mode) cạnh "Auto-Assign Positions"/"Sync Pos to CAD"
+- **`Views/FittingManagement/BOM/BomPreviewWindow.xaml.cs`**
+  - `ApplyMode()`: set màu badge theo mode (Equipment = `#FF0055A5` xanh giống Master, Hull = `#FFD32F2F` đỏ giống Item/Project); toggle `BtnSyncPosFromItemLib` visibility ngược với `BtnAutoBalloon` (chỉ hiện ở Hull)
+  - Constructor: subscribe `ActiveProjectContext.ProjectChanged` để cập nhật `TxtActiveProject` live, giống Library windows; unsubscribe lúc `Closed`
+  - `GridBomMatrix_AutoGeneratingColumn`: cột "* Pos" giờ `IsReadOnly = true` khi `_mode == BomMode.Hull` — user không còn sửa tay Pos trên grid Hull nữa (đã sửa trực tiếp ở Item Library qua Auto-Assign Pos / Edit Properties)
+  - Extract `RebuildBomTable(List<BomHarvestRecord> data)` từ thân `BtnScanDrawing_Click` — dùng chung cho Scan và cho `BtnSyncPosFromItemLib_Click` (mới) để không cần rescan lại CAD chỉ để cập nhật Pos
+  - `BtnSyncPosFromItemLib_Click` (mới, Hull only): gọi lại `OverlayHullPositions(_lastScanResults)` (đọc lại `ProjectPosNum` mới nhất từ project catalog) rồi `RebuildBomTable` để refresh cột Pos trên bảng đã scan
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+
+### Bước tiếp theo
+- Test trong AutoCAD: Hull BOM Export → Scan → sang Item Library Auto-Assign Pos hoặc Edit Properties đổi Pos Num → quay lại Hull BOM Export bấm "Sync Pos from Item Lib" → verify cột Pos cập nhật đúng mà không cần Scan lại
+- Verify cột Pos ở Hull mode không còn cho click sửa tay trực tiếp trên DataGrid; Equipment mode vẫn sửa tay + Auto-Assign Positions như cũ
+
+---
+
+## Session 2026-07-09D — Fix Auto-Assign Pos → Sync không đẩy được POS_NUM xuống drawing
+
+### Đã làm
+- **Root cause**: `BuildCatalogPropDict` (dict prop dùng chung cho `EmbedCatalogProperties`/`SyncAttributeReferences` — tức "Sync to Drawing") cố tình LOẠI `POS_NUM` ra khỏi danh sách sync ở session trước, với giả định POS_NUM là dữ liệu instance-level không nên bị Sync ghi đè. Giả định đó sai với workflow thực tế: Item Library có nút "Auto-Assign Pos" ghi `ProjectPosNum` xuống project catalog, rồi user bấm "Sync" kỳ vọng giá trị Pos Num mới được đẩy xuống attribute `POS_NUM` trong bản vẽ — nhưng vì bị loại khỏi dict nên Sync không đụng tới attribute này.
+- **`Utilities/FittingManagement/FittingManagementUtility.cs`**:
+  - `BuildCatalogPropDict` — thêm lại `["POS_NUM"] = item.ProjectPosNum ?? ""`
+  - `EmbedFullBimAttributes` — bỏ dòng override `props["POS_NUM"]` (nay đã có sẵn trong `BuildCatalogPropDict`, tránh set trùng)
+  - Chỉ còn `VIEW_NAME` bị loại khỏi Sync (đúng — đây là identity cố định của block/view, không đổi theo catalog)
+  - Nhờ fix ở [[session 2026-07-09C]] (auto-tạo AttributeReference cho instance thiếu tag), giờ POS_NUM cũng được tự tạo mới cho block instance cũ chưa có attribute này, không chỉ update instance đã có sẵn
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+
+### Bước tiếp theo
+- Test trong AutoCAD: Item Library → Auto-Assign Pos → chọn item(s) → Sync → verify attribute POS_NUM trên block instance trong bản vẽ cập nhật đúng giá trị mới, kể cả block cũ chưa từng có attribute POS_NUM
+
+---
+
+## Session 2026-07-09C — Fix Sync to Drawing không tự tạo Attribute cho block instance cũ
+
+### Đã làm
+- **Root cause**: `FittingBlockUtility.SyncAttributeReferences` chỉ duyệt `AttributeReference` ĐÃ TỒN TẠI trên từng `BlockReference` instance rồi update giá trị theo tag khớp — block instance cũ (insert trước khi tag đó được thêm vào AttributeDefinition, ví dụ do `EmbedCatalogProperties` vừa thêm tag mới) không có sẵn `AttributeReference` cho tag đó nên bị bỏ qua hoàn toàn, không tự sinh attribute mới. AutoCAD không tự đồng bộ instance khi definition đổi (đây cũng là lý do lệnh `ATTSYNC` tồn tại).
+- **`Utilities/FittingManagement/FittingManagementUtility.cs`** — `SyncAttributeReferences`:
+  - Lấy `AttributeDefinition` gốc theo tag từ definition BTR (`bt[blockName]`)
+  - Với mỗi instance: (1) update `AttributeReference` đã có như cũ, (2) với tag nào chưa có trên instance đó → tạo mới `AttributeReference` từ `AttributeDefinition` gốc (`SetAttributeFromBlock` + `BlockTransform` của chính instance đó) rồi `AppendAttribute` vào `AttributeCollection`
+  - `count` trả về giờ gồm cả số update lẫn số tạo mới
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+
+### Bước tiếp theo
+- Test trong AutoCAD: chọn 1 block cũ đã insert từ trước (chưa có đủ attribute) trong Master/Item Library → Sync to Drawing → verify block instance đó tự sinh AttributeReference mới với giá trị đúng, không chỉ block mới insert sau này mới có
+
+---
+
+## Session 2026-07-09B — CreatedDate property, CAD-add attribute parity với Inventor, fix thiếu label AM-9
+
+### Đã làm
+- **`Models/FittingManagement/FittingManagementModel.cs`** — thêm `CatalogItem.CreatedDate` (string, format `yyyy-MM-dd HH:mm`)
+- **`Utilities/FittingManagement/CatalogJsonStore.cs`** — `MergeItems`: copy forward `existing.CreatedDate` sang `newItem` nếu `newItem.CreatedDate` rỗng, tránh mất ngày khởi tạo mỗi lần merge (vì merge hiện tại là replace toàn bộ, không giữ field cũ)
+- Stamp `CreatedDate = DateTime.Now` tại 3 điểm khởi tạo `CatalogItem`:
+  - `Views/FittingManagement/Library/Accessory/NewAccessoryWindow.xaml.cs` (New Accessory)
+  - `Services/FittingManagement/Import/FittingManagementService.JsonImport.cs` (Inventor import, mỗi split-view block)
+  - `Services/FittingManagement/Library/FittingManagementService.VirtualItem.cs` (`PickGeometricFeatureFromCad` — Add from CAD)
+- **`Views/FittingManagement/Library/VirtualItemWindow.xaml` + `.xaml.cs`** — thêm field read-only "Created:" (`TxtCreatedDate`), hiển thị cho cả single/multi-edit
+- **`Views/FittingManagement/Library/MasterLibraryWindow.xaml` + `ProjectLibraryWindow.xaml`** — thêm cột "Created" vào DataGrid
+
+- **Attribute parity CAD-add vs Inventor import:**
+  - `Utilities/FittingManagement/FittingManagementUtility.cs`:
+    - Sửa `BuildCatalogPropDict` dùng ĐÚNG tên tag Inventor (`PART_NUMBER/DESCRIPTION/MATERIAL/MASS/REVISION/DESIGNER/TITLE/BOM_TYPE/UOM`) thay vì scheme cũ `PART_ID/XCLS/DESCR` (mismatch khiến "Sync to Drawing" tạo attribute trùng thay vì update tag đã có trên block Inventor)
+    - Extract `UpsertAttributeDefs` dùng chung cho `EmbedCatalogProperties` (6-9 tag, dùng cho Sync to Drawing — không đụng POS_NUM/VIEW_NAME)
+    - Thêm `EmbedFullBimAttributes(btr, tr, item, viewName)` — nhúng đủ 10 tag (thêm POS_NUM + VIEW_NAME) giống hệt Inventor import
+  - `Services/FittingManagement/Library/IMasterLibraryService.cs` + `FittingManagementService.MasterLibrary.cs` — thêm `EmbedBimAttributesInDrawing(CatalogItem item)`: mở BTR trong drawing đang mở (theo từng BlockName, hỗ trợ multi-block ngăn `;`) và gọi `EmbedFullBimAttributes`
+  - `Views/FittingManagement/Library/VirtualItemWindow.xaml.cs` — Add-mode: gọi `EmbedBimAttributesInDrawing` TRƯỚC `PushBlocksFromCurrentDrawing` (để file .dwg export cũng mang theo attribute)
+
+- **Fix thiếu Text label trên layer AM-9 sau Inventor import:**
+  - Nguyên nhân: `JsonImport.cs` `IsAllowedEntityType` chỉ giữ lại geometry thuần (Line/Arc/Circle/Polyline/Spline/Ellipse), loại bỏ toàn bộ Text/MText/Dimension/Hatch/BlockRef từ DWG Inventor gốc — quyết định cũ (Session 2026-04-22, mục K) chủ động skip việc tự tạo label. Layer `Mechanical-AM_9` vẫn được tạo/unlock nhưng không có gì ghi lên đó cho tới khi user chạy Rename Block thủ công.
+  - `Utilities/FittingManagement/FittingManagementUtility.cs` — thêm `AddNameLabelText(btr, tr, labelText, layerName)` dùng chung
+  - `Services/FittingManagement/Import/FittingManagementService.JsonImport.cs` — gọi `AddNameLabelText(newBtr, destTr, uniqueName, LAYER_LABEL)` ngay sau `InjectBimAttributes`, mỗi block mới tạo lúc import đều có MText label = tên block trên `Mechanical-AM_9`
+  - `Services/FittingManagement/BlockUtilities/FittingManagementService.BlockRename.cs` — refactor `UpdateOrAddInternalMText` nhánh "not found" để gọi `FittingBlockUtility.CheckAndCreateLayer` + `AddNameLabelText` thay vì duplicate code
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+
+### Bước tiếp theo
+- Test trong AutoCAD: Import IDW mới → verify MText label xuất hiện trên layer Mechanical-AM_9 ngay sau import (trước đây phải Rename Block mới có)
+- Test Add from CAD (pick 1 block có sẵn) → Save → verify AttributeDefinition có đủ 10 tag (PART_NUMBER, DESCRIPTION, MATERIAL, MASS, REVISION, DESIGNER, TITLE, BOM_TYPE, POS_NUM, VIEW_NAME)
+- Test Sync to Drawing trên 1 block Inventor cũ đã có sẵn tag PART_NUMBER/... → verify KHÔNG tạo thêm attribute trùng (do đã đổi BuildCatalogPropDict dùng đúng tên tag)
+- Kiểm tra catalog JSON cũ (chưa có CreatedDate) hiển thị cột Created trống — không lỗi
+
+---
+
+## Session 2026-07-09 — Master/Item Library: right-click context menu, Sync moved to Item Lib, Refresh pulls from Master
+
+### Đã làm
+- **`Views/FittingManagement/Library/MasterLibraryWindow.xaml` + `.xaml.cs`**
+  - Bỏ 4 button "Edit Properties", "Remove Selected", "Add to Active Project", "Sync to Drawing" khỏi thanh dưới
+  - Thêm `DataGrid.ContextMenu` (right-click): Edit Properties / Add to Active Project / Remove Selected (Sync to Drawing đã chuyển sang Item Library, không còn ở Master)
+  - Thêm `GridRow_PreviewMouseRightButtonDown` — right-click 1 row chưa được chọn sẽ tự select row đó trước khi mở context menu (giống Windows Explorer)
+  - Xoá `BtnSyncToDrawing_Click`; `UpdateActiveProjectLabel` không còn set `BtnAddToProject.IsEnabled/ToolTip` (button đã xoá)
+- **`Views/FittingManagement/Library/ProjectLibraryWindow.xaml` + `.xaml.cs`**
+  - Cột "Project Pos." chuyển sang read-only, xoá `CellEditEnding` — sửa Pos Num giờ qua dialog `EditPosNumDialog` (context menu "Edit Properties (Pos Num)")
+  - Thêm `DataGrid.ContextMenu`: Edit Properties (Pos Num) / Sync / Remove; bỏ button "Remove Selected" khỏi thanh dưới
+  - Thêm `BtnSyncToDrawing_Click` (logic y hệt bản cũ ở Master) — cần thêm dependency `IMasterLibraryService _masterService` vào constructor
+  - `BtnRefresh_Click` giờ gọi thêm `RefreshPropertiesFromMaster()` trước khi `LoadCatalog()`: so khớp BlockName với Master Catalog, cập nhật PartNumber/Title/Description/Material/Mass/Revision/Designer/BomType/UoM nếu khác, giữ nguyên `ProjectPosNum`, rồi lưu xuống project JSON nếu có thay đổi
+- **`Views/FittingManagement/Library/EditPosNumDialog.xaml` + `.xaml.cs`** (mới) — dialog nhỏ sửa Project Pos Num cho 1 hoặc nhiều item cùng lúc
+- **`Views/FittingManagement/ProjectConfigView.xaml.cs`** — thêm `_masterService`, truyền vào constructor `ProjectLibraryWindow` mới (3 tham số)
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+
+### Bước tiếp theo
+- Test trong AutoCAD: right-click multi-select ở cả 2 window → đúng item bị tác động; Edit Properties (Pos Num) ở Item Lib chỉ sửa Pos Num; Refresh ở Item Lib kéo đúng property mới nhất từ Master sau khi Master đã Edit Properties/Push Update
+- Chưa test UI thực tế trong AutoCAD (chỉ build thành công), cần user xác nhận qua palette
+
+---
+
 ## Session 2026-07-08B — Sync Properties to Drawing (B) + BOM reads from catalog (C)
 
 ### Đã làm

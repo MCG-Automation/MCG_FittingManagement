@@ -56,8 +56,10 @@ namespace MCG_FittingManagement.Models.FittingManagement
         public string Title { get; set; }
         public string BomType { get; set; } 
         public string FilePath { get; set; }
-        public string ProjectPosNum { get; set; } 
+        public string ProjectPosNum { get; set; }
         public string EntityType { get; set; } = "Block";
+        /// <summary>Ngày khởi tạo fitting (lúc user Import/Add from CAD). Format "yyyy-MM-dd HH:mm".</summary>
+        public string CreatedDate { get; set; }
         public string TriggerLayer { get; set; }
         public string TriggerColor { get; set; }
         public string UoM { get; set; } = "pcs";

@@ -133,6 +133,14 @@
                       AutoGenerateColumns="False" CanUserAddRows="False"
                       IsReadOnly="True" SelectionMode="Extended"
                       Background="White" BorderBrush="#FFDEDEDE" RowHeight="26">
+                <DataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Edit Properties" Click="BtnEditProperties_Click"/>
+                        <MenuItem Header="Add to Active Project" Click="BtnAddToProject_Click"/>
+                        <Separator/>
+                        <MenuItem Header="Remove Selected" Click="BtnRemoveSelected_Click" Foreground="#FFD32F2F"/>
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Type" Binding="{Binding EntityType}" Width="Auto" FontWeight="SemiBold" Foreground="#FF005E9E"/>
                     <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="80">
@@ -163,10 +171,19 @@
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Weight" Binding="{Binding Mass, StringFormat={}{0} kg}" Width="Auto"/>
                     <DataGridTextColumn Header="Originator" Binding="{Binding Designer}" Width="Auto"/>
+                    <DataGridTextColumn Header="Created" Binding="{Binding CreatedDate}" Width="Auto">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontSize" Value="10"/>
+                                <Setter Property="Foreground" Value="#FF888888"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                 </DataGrid.Columns>
                 <DataGrid.RowStyle>
                     <Style TargetType="DataGridRow">
                         <EventSetter Event="MouseDoubleClick" Handler="GridCatalog_MouseDoubleClick"/>
+                        <EventSetter Event="PreviewMouseRightButtonDown" Handler="GridRow_PreviewMouseRightButtonDown"/>
                     </Style>
                 </DataGrid.RowStyle>
             </DataGrid>
@@ -199,11 +216,7 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button x:Name="BtnEditProperties" Content="Edit Properties" Width="120" Margin="0,0,10,0" Click="BtnEditProperties_Click" FontWeight="SemiBold"/>
-                <Button x:Name="BtnRemoveSelected" Content="Remove Selected" Width="120" Margin="0,0,10,0" Click="BtnRemoveSelected_Click" Foreground="#FFD32F2F" FontWeight="SemiBold"/>
-                <Button x:Name="BtnAddToProject" Content="Add to Active Project" Width="150" Margin="0,0,10,0" Click="BtnAddToProject_Click"/>
                 <Button x:Name="BtnUpdateLibrary" Content="Push Update" Width="100" Margin="0,0,10,0" Click="BtnUpdateLibrary_Click"/>
-                <Button x:Name="BtnSyncToDrawing" Content="Sync to Drawing" Width="130" Margin="0,0,10,0" Click="BtnSyncToDrawing_Click" ToolTip="Update block AttributeDefinitions and all INSERT instances in the current drawing to reflect current catalog metadata"/>
                 <Button x:Name="BtnRefresh" Content="Refresh" Width="70" Margin="0,0,10,0" Click="BtnRefresh_Click"/>
                 <Button x:Name="BtnInsert" Content="Insert to CAD" Width="120" Style="{StaticResource PrimaryButtonStyle}" Click="BtnInsert_Click"/>
             </StackPanel>

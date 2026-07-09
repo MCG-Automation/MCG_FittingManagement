@@ -89,13 +89,31 @@ namespace MCG_FittingManagement.Utilities.FittingManagement
         }
 
         /// <summary>
-        /// Nhúng/cập nhật catalog properties vào AttributeDefinitions của Block Table Record.
-        /// Gọi trong transaction với btr đã mở ForWrite.
+        /// Nhúng/cập nhật catalog properties (bao gồm POS_NUM) vào AttributeDefinitions của Block Table Record.
+        /// Gọi trong transaction với btr đã mở ForWrite. Không đụng tới VIEW_NAME (thuộc về identity
+        /// cố định của block/view, không đổi theo catalog nên Sync không ghi đè).
         /// </summary>
         public static void EmbedCatalogProperties(BlockTableRecord btr, Transaction tr, CatalogItem item)
         {
-            var props = BuildCatalogPropDict(item);
+            UpsertAttributeDefs(btr, tr, BuildCatalogPropDict(item));
+        }
 
+        /// <summary>
+        /// Nhúng đầy đủ 10 attribute chuẩn (giống hệt tag Inventor import: PART_NUMBER, DESCRIPTION,
+        /// MATERIAL, MASS, REVISION, DESIGNER, TITLE, BOM_TYPE, POS_NUM, VIEW_NAME) vào BTR.
+        /// Dùng khi "Add from CAD" để block tạo theo cách này có attribute tương đương block Inventor.
+        /// Upsert an toàn — cập nhật nếu tag đã tồn tại (vd POS_NUM có thể đã được thêm lúc Insert trước đó).
+        /// </summary>
+        public static void EmbedFullBimAttributes(BlockTableRecord btr, Transaction tr, CatalogItem item, string viewName)
+        {
+            var props = BuildCatalogPropDict(item);
+            props["VIEW_NAME"] = viewName ?? "";
+            UpsertAttributeDefs(btr, tr, props);
+        }
+
+        /// <summary>Cập nhật AttributeDefinition đã tồn tại (theo Tag, case-insensitive) hoặc thêm mới nếu chưa có.</summary>
+        private static void UpsertAttributeDefs(BlockTableRecord btr, Transaction tr, Dictionary<string, string> props)
+        {
             // Thu thập AttributeDefinition hiện có trong BTR
             var existing = new Dictionary<string, AttributeDefinition>(StringComparer.OrdinalIgnoreCase);
             foreach (ObjectId id in btr)
@@ -119,9 +137,32 @@ namespace MCG_FittingManagement.Utilities.FittingManagement
         }
 
         /// <summary>
+        /// Thêm (hoặc cập nhật nếu đã có sẵn trên layer chỉ định) MText label hiển thị tên block —
+        /// quy ước layer "Mechanical-AM_9". Dùng khi tạo block mới (Inventor import) hoặc khi Rename Block.
+        /// </summary>
+        public static void AddNameLabelText(BlockTableRecord btr, Transaction tr, string labelText, string layerName)
+        {
+            MText newMText = new MText();
+            newMText.SetDatabaseDefaults();
+            newMText.Location = new Point3d(0, -15, 0);
+            newMText.TextHeight = 10;
+            newMText.Contents = labelText ?? "";
+            newMText.Layer = layerName;
+            newMText.Attachment = AttachmentPoint.BottomLeft;
+
+            btr.UpgradeOpen();
+            btr.AppendEntity(newMText);
+            tr.AddNewlyCreatedDBObject(newMText, true);
+        }
+
+        /// <summary>
         /// Propagate catalog properties xuống tất cả INSERT instances của block trong drawing.
-        /// Scan toàn bộ BlockTable (model space, nested blocks...).
-        /// Trả về số AttributeReference đã cập nhật.
+        /// Scan toàn bộ BlockTable (model space, nested blocks...). Instance cũ đã tồn tại trước khi
+        /// tag này được thêm vào AttributeDefinition (vd block insert từ lâu, hoặc EmbedCatalogProperties
+        /// vừa thêm tag mới) sẽ KHÔNG có AttributeReference tương ứng — AutoCAD không tự đồng bộ instance
+        /// khi definition đổi (tương tự lý do lệnh ATTSYNC tồn tại). Nên với các tag còn thiếu trên từng
+        /// instance, ta tự tạo mới AttributeReference từ AttributeDefinition gốc thay vì chỉ update cái đã có.
+        /// Trả về số AttributeReference đã cập nhật + tạo mới.
         /// </summary>
         public static int SyncAttributeReferences(Database db, Transaction tr, string blockName, CatalogItem item)
         {
@@ -129,6 +170,18 @@ namespace MCG_FittingManagement.Utilities.FittingManagement
             int count = 0;
 
             BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+            if (!bt.Has(blockName)) return count;
+
+            // AttributeDefinition gốc (theo tag) từ definition BTR — dùng để tạo AttributeReference mới
+            // cho instance nào còn thiếu tag đó.
+            BlockTableRecord defBtr = (BlockTableRecord)tr.GetObject(bt[blockName], OpenMode.ForRead);
+            var attDefs = new Dictionary<string, AttributeDefinition>(StringComparer.OrdinalIgnoreCase);
+            foreach (ObjectId defId in defBtr)
+            {
+                if (tr.GetObject(defId, OpenMode.ForRead) is AttributeDefinition ad && props.ContainsKey(ad.Tag))
+                    attDefs[ad.Tag] = ad;
+            }
+
             foreach (ObjectId btrId in bt)
             {
                 BlockTableRecord btr = (BlockTableRecord)tr.GetObject(btrId, OpenMode.ForRead);
@@ -137,13 +190,29 @@ namespace MCG_FittingManagement.Utilities.FittingManagement
                     if (!(tr.GetObject(entId, OpenMode.ForRead) is BlockReference br)) continue;
                     if (!GetEffectiveName(tr, br).Equals(blockName, StringComparison.OrdinalIgnoreCase)) continue;
 
+                    // 1. Cập nhật AttributeReference đã tồn tại trên instance
+                    var existingTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     foreach (ObjectId attId in br.AttributeCollection)
                     {
                         var attRef = tr.GetObject(attId, OpenMode.ForRead) as AttributeReference;
                         if (attRef == null) continue;
+                        existingTags.Add(attRef.Tag);
                         if (!props.TryGetValue(attRef.Tag, out string newVal)) continue;
                         attRef.UpgradeOpen();
                         attRef.TextString = newVal;
+                        count++;
+                    }
+
+                    // 2. Tag nào chưa có trên instance này (block cũ, tag mới thêm sau) → tạo mới
+                    foreach (var kvp in attDefs)
+                    {
+                        if (existingTags.Contains(kvp.Key)) continue;
+                        AttributeReference ar = new AttributeReference();
+                        ar.SetAttributeFromBlock(kvp.Value, br.BlockTransform);
+                        ar.TextString = props[kvp.Key];
+                        br.UpgradeOpen();
+                        br.AttributeCollection.AppendAttribute(ar);
+                        tr.AddNewlyCreatedDBObject(ar, true);
                         count++;
                     }
                 }
@@ -151,17 +220,25 @@ namespace MCG_FittingManagement.Utilities.FittingManagement
             return count;
         }
 
-        // Props chuẩn nhúng vào block: khớp với các tag AutoCAD đã quy ước
+        // Props chuẩn nhúng vào block: khớp CHÍNH XÁC tên tag Inventor import dùng
+        // (PART_NUMBER/DESCRIPTION/TITLE...) — trước đây dùng tag khác (PART_ID/XCLS/DESCR) gây
+        // mismatch: Sync to Drawing tạo attribute trùng thay vì update tag đã có trên block Inventor.
+        // POS_NUM nằm trong dict này vì Item Library workflow là Auto-Assign Pos (ghi ProjectPosNum
+        // xuống project catalog) rồi Sync — Sync phải đẩy được giá trị Pos Num mới xuống drawing.
         private static Dictionary<string, string> BuildCatalogPropDict(CatalogItem item)
         {
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                ["PART_ID"]  = item.PartNumber  ?? "",
-                ["XCLS"]     = item.Title       ?? "",
-                ["DESCR"]    = item.Description ?? "",
-                ["MASS"]     = item.Mass        ?? "0",
-                ["UOM"]      = item.UoM         ?? "pcs",
-                ["BOM_TYPE"] = item.BomType     ?? "",
+                ["PART_NUMBER"] = item.PartNumber  ?? "",
+                ["DESCRIPTION"] = item.Description ?? "",
+                ["MATERIAL"]    = item.Material    ?? "",
+                ["MASS"]        = item.Mass        ?? "0",
+                ["REVISION"]    = item.Revision    ?? "",
+                ["DESIGNER"]    = item.Designer    ?? "",
+                ["TITLE"]       = item.Title       ?? "",
+                ["BOM_TYPE"]    = item.BomType     ?? "",
+                ["UOM"]         = item.UoM         ?? "pcs",
+                ["POS_NUM"]     = item.ProjectPosNum ?? "",
             };
         }
 

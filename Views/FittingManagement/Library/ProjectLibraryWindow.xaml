@@ -133,25 +133,32 @@
 
             <DataGrid Grid.Column="2" x:Name="GridCatalog"
                       AutoGenerateColumns="False" CanUserAddRows="False"
-                      IsReadOnly="False" SelectionMode="Extended"
-                      Background="White" BorderBrush="#FFDEDEDE" RowHeight="26"
-                      CellEditEnding="GridCatalog_CellEditEnding">
+                      IsReadOnly="True" SelectionMode="Extended"
+                      Background="White" BorderBrush="#FFDEDEDE" RowHeight="26">
+                <DataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Edit Properties (Pos Num)" Click="BtnEditProperties_Click"/>
+                        <MenuItem Header="Sync" Click="BtnSyncToDrawing_Click" ToolTip="Update block AttributeDefinitions and all INSERT instances in the current drawing to reflect current catalog metadata"/>
+                        <Separator/>
+                        <MenuItem Header="Remove" Click="BtnRemoveSelected_Click" Foreground="#FFD32F2F"/>
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Type" Binding="{Binding EntityType}" Width="Auto" IsReadOnly="True" FontWeight="SemiBold" Foreground="#FF005E9E"/>
-                    <DataGridTextColumn Header="View / File Name" Binding="{Binding BlockName}" Width="Auto" Foreground="#FF555555" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Part Complete ID" Binding="{Binding PartNumber}" Width="Auto" FontWeight="Bold" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Title}" Width="Auto" IsReadOnly="True">
+                    <DataGridTextColumn Header="Type" Binding="{Binding EntityType}" Width="Auto" FontWeight="SemiBold" Foreground="#FF005E9E"/>
+                    <DataGridTextColumn Header="View / File Name" Binding="{Binding BlockName}" Width="Auto" Foreground="#FF555555"/>
+                    <DataGridTextColumn Header="Part Complete ID" Binding="{Binding PartNumber}" Width="Auto" FontWeight="Bold"/>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Title}" Width="Auto">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" IsReadOnly="True">
+                    <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
 
-                    <DataGridTextColumn x:Name="ColProjectPos" Header="Project Pos." Binding="{Binding ProjectPosNum, UpdateSourceTrigger=PropertyChanged}" Width="90">
+                    <DataGridTextColumn x:Name="ColProjectPos" Header="Project Pos." Binding="{Binding ProjectPosNum}" Width="90">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="FontWeight" Value="Bold"/>
@@ -166,17 +173,26 @@
                         </DataGridTextColumn.CellStyle>
                     </DataGridTextColumn>
 
-                    <DataGridTextColumn Header="UoM" Binding="{Binding UoM}" Width="50" IsReadOnly="True">
+                    <DataGridTextColumn Header="UoM" Binding="{Binding UoM}" Width="50">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Center"/></Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Weight" Binding="{Binding Mass, StringFormat={}{0} kg}" Width="Auto" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Originator" Binding="{Binding Designer}" Width="Auto" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Weight" Binding="{Binding Mass, StringFormat={}{0} kg}" Width="Auto"/>
+                    <DataGridTextColumn Header="Originator" Binding="{Binding Designer}" Width="Auto"/>
+                    <DataGridTextColumn Header="Created" Binding="{Binding CreatedDate}" Width="Auto">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontSize" Value="10"/>
+                                <Setter Property="Foreground" Value="#FF888888"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                 </DataGrid.Columns>
                 <DataGrid.RowStyle>
                     <Style TargetType="DataGridRow">
                         <EventSetter Event="MouseDoubleClick" Handler="GridCatalog_MouseDoubleClick"/>
+                        <EventSetter Event="PreviewMouseRightButtonDown" Handler="GridRow_PreviewMouseRightButtonDown"/>
                     </Style>
                 </DataGrid.RowStyle>
             </DataGrid>
@@ -204,7 +220,6 @@
 
             <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button x:Name="BtnAutoAssignPos" Content="Auto-Assign Pos" Width="120" Margin="0,0,10,0" Click="BtnAutoAssignPos_Click"/>
-                <Button x:Name="BtnRemoveSelected" Content="Remove Selected" Width="120" Margin="0,0,10,0" Click="BtnRemoveSelected_Click" Foreground="#FFD32F2F" FontWeight="SemiBold"/>
                 <Button x:Name="BtnRefresh" Content="Refresh" Width="70" Margin="0,0,10,0" Click="BtnRefresh_Click"/>
                 <Button x:Name="BtnInsert" Content="Insert to CAD" Width="120" Style="{StaticResource PrimaryButtonStyle}" Click="BtnInsert_Click"/>
             </StackPanel>

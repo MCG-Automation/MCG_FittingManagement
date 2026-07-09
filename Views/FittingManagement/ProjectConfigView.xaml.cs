@@ -13,6 +13,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
         private readonly FittingManagementService _serviceImpl;
         private readonly IFittingManagementService _service;
         private readonly IProjectLibraryService _projectService;
+        private readonly IMasterLibraryService _masterService;
 
         public ProjectConfigView()
         {
@@ -20,6 +21,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
             _serviceImpl = new FittingManagementService();
             _service = _serviceImpl;
             _projectService = _serviceImpl;
+            _masterService = _serviceImpl;
         }
 
         private static ProjectLibraryWindow _projectLibWin;
@@ -33,7 +35,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
                     _projectLibWin.Activate();
                     return;
                 }
-                _projectLibWin = new ProjectLibraryWindow(_projectService, _service);
+                _projectLibWin = new ProjectLibraryWindow(_projectService, _service, _masterService);
                 _projectLibWin.Closed += (_, __) => _projectLibWin = null;
                 Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(_projectLibWin);
             }

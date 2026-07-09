@@ -42,5 +42,13 @@ namespace MCG_FittingManagement.Services.FittingManagement
         /// INSERT instance trong drawing đang mở.
         /// </summary>
         PushUpdateResult SyncPropertiesFromCatalogToDrawing(IList<CatalogItem> items);
+
+        /// <summary>
+        /// Nhúng đầy đủ 10 attribute chuẩn (PART_NUMBER, DESCRIPTION, MATERIAL, MASS, REVISION,
+        /// DESIGNER, TITLE, BOM_TYPE, POS_NUM, VIEW_NAME) vào block definition(s) trong drawing đang mở —
+        /// dùng cho "Add from CAD" để block tạo theo cách này có attribute tương đương block Inventor.
+        /// <paramref name="item"/>.BlockName có thể chứa nhiều tên ngăn cách bằng ";" (multi-block virtual item).
+        /// </summary>
+        void EmbedBimAttributesInDrawing(CatalogItem item);
     }
 }

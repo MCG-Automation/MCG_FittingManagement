@@ -288,6 +288,46 @@ namespace MCG_FittingManagement.Services.FittingManagement
             }
         }
 
+        public void EmbedBimAttributesInDrawing(CatalogItem item)
+        {
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu EmbedBimAttributesInDrawing ({item?.BlockName})...");
+            if (item == null || string.IsNullOrEmpty(item.BlockName)) return;
+
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) throw new InvalidOperationException("Không có drawing nào đang mở.");
+            Database db = doc.Database;
+
+            var blockNames = item.BlockName
+                .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s));
+
+            using (DocumentLock loc = doc.LockDocument())
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                try
+                {
+                    BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+                    foreach (var bName in blockNames)
+                    {
+                        if (!bt.Has(bName))
+                        {
+                            Debug.WriteLine($"{LOG_PREFIX} EmbedBimAttributesInDrawing skip (không có trong drawing): {bName}");
+                            continue;
+                        }
+                        BlockTableRecord btr = (BlockTableRecord)tr.GetObject(bt[bName], OpenMode.ForWrite);
+                        FittingBlockUtility.EmbedFullBimAttributes(btr, tr, item, bName);
+                    }
+                    tr.Commit();
+                    Debug.WriteLine($"{LOG_PREFIX} EmbedBimAttributesInDrawing THÀNH CÔNG.");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"{LOG_PREFIX} Transaction ABORT EmbedBimAttributesInDrawing: {ex.Message}");
+                    throw;
+                }
+            }
+        }
+
         public void InsertMultipleBlocksFromLibrary(IList<CatalogItem> items)
         {
             Debug.WriteLine($"{LOG_PREFIX} InsertMultipleBlocksFromLibrary ({items?.Count ?? 0} items)...");

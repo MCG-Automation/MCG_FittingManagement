@@ -1,0 +1,57 @@
+<Window x:Class="MCG_FittingManagement.Views.FittingManagement.ImportDuplicateDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Fitting(s) Already Exist" Height="420" Width="820"
+        WindowStartupLocation="CenterOwner"
+        Background="#FFF0F0F0" FontFamily="Segoe UI" FontSize="12">
+
+    <Window.Resources>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#FFE8E8E8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="6,6"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="BorderBrush" Value="#FFDEDEDE"/>
+            <Setter Property="Foreground" Value="#FF333333"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" TextWrapping="Wrap" Foreground="#FF333333">
+            <Run Text="The fitting(s) below already exist in Master Library (matched by Part Number or Block Name)."/>
+            <LineBreak/>
+            <Run Text="Check &quot;Overwrite&quot; for the ones you want to re-import (existing .dwg / catalog entry will be replaced). Unchecked items are skipped."/>
+        </TextBlock>
+
+        <DataGrid Grid.Row="2" x:Name="GridDuplicates"
+                  AutoGenerateColumns="False" CanUserAddRows="False"
+                  SelectionMode="Extended" RowHeight="26"
+                  Background="White" BorderBrush="#FFDEDEDE" BorderThickness="1">
+            <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="Overwrite" Binding="{Binding Overwrite, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
+                <DataGridTextColumn Header="Source IDW" Binding="{Binding FileName}" Width="*" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Matched By" Binding="{Binding MatchReason}" Width="90" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Existing Part Number" Binding="{Binding ExistingPartNumber}" Width="130" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Existing Title" Binding="{Binding ExistingTitle}" Width="140" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Existing Block Name" Binding="{Binding ExistingBlockName}" Width="160" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Created" Binding="{Binding ExistingCreatedDate}" Width="110" IsReadOnly="True"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel Import" Width="110" Height="28" Margin="0,0,8,0"
+                    Click="BtnCancel_Click" Background="#FFE0E0E0"/>
+            <Button x:Name="BtnOk" Content="Continue" Width="120" Height="28"
+                    Background="#FF0055A5" Foreground="White" FontWeight="Bold"
+                    Click="BtnOk_Click" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

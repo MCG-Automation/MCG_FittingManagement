@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using MCG_FittingManagement.Models.FittingManagement;
 using MCG_FittingManagement.Utilities;
+using MCG_FittingManagement.Views.FittingManagement;
 
 namespace MCG_FittingManagement.Services.FittingManagement
 {
@@ -24,8 +26,10 @@ namespace MCG_FittingManagement.Services.FittingManagement
     {
         /// <summary>
         /// Gói dữ liệu của 1 file IDW đã extract thành công, dùng làm input cho bước split-view.
+        /// internal (không phải private) để <c>ImportDuplicateDialog</c> (Views) truy cập được khi
+        /// hiển thị prompt overwrite/skip cho fitting trùng.
         /// </summary>
-        private class ExtractedIdw
+        internal class ExtractedIdw
         {
             public string SourceIdwName { get; set; }
             public string DwgPath { get; set; }
@@ -78,6 +82,13 @@ namespace MCG_FittingManagement.Services.FittingManagement
                 var extractedItems = await Task.Run(() =>
                     ExtractAllIdw(idwPaths, result, progress, pullFromVault, vaultService));
 
+                // PHASE 1.5 — thread gốc: kiểm tra trùng với Master Catalog (PartNumber hoặc BlockName
+                // sẽ-được-tạo), hỏi user Overwrite/Skip từng file trùng TRƯỚC khi tạo block.
+                if (extractedItems.Count > 0)
+                {
+                    extractedItems = ResolveDuplicatesBeforeImport(extractedItems, result);
+                }
+
                 // PHASE 2 — thread gốc: AutoCAD db phải chạy trên main thread
                 if (extractedItems.Count > 0)
                 {
@@ -94,6 +105,87 @@ namespace MCG_FittingManagement.Services.FittingManagement
             FileLogger.Log(LOG_PREFIX, $"HOÀN TẤT ImportIdwFilesAsync — Thành công: {result.SuccessCount}, Thất bại: {result.FailCount}.");
             Debug.WriteLine($"{LOG_PREFIX} HOÀN TẤT ImportIdwFilesAsync — Thành công: {result.SuccessCount}, Thất bại: {result.FailCount}.");
             return result;
+        }
+
+        /// <summary>
+        /// PHASE 1.5 — So khớp từng file vừa extract với Master Catalog theo PartNumber hoặc theo
+        /// BlockName SẼ ĐƯỢC TẠO (base name + tên view, tính giống hệt <c>ImportSingleDwgWithSplit</c>)
+        /// — vì <c>GenerateUniqueBlockName</c> chỉ check trùng với BlockTable của DRAWING đang mở, không
+        /// check Master Catalog, nên import lại 1 fitting đã có sẵn dễ tạo entry trùng (cùng drawing)
+        /// hoặc âm thầm ghi đè (drawing khác). Không có duplicate nào → trả nguyên list, không hỏi gì.
+        /// User Cancel dialog → hủy TOÀN BỘ batch (an toàn hơn import 1 phần bất ngờ).
+        /// </summary>
+        private List<ExtractedIdw> ResolveDuplicatesBeforeImport(List<ExtractedIdw> extractedItems, ImportResult result)
+        {
+            List<CatalogItem> masterCatalog;
+            try { masterCatalog = GetMasterCatalogItems(); }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"{LOG_PREFIX} ResolveDuplicatesBeforeImport: không đọc được Master Catalog, bỏ qua check trùng. {ex.Message}");
+                return extractedItems;
+            }
+            if (masterCatalog.Count == 0) return extractedItems;
+
+            var duplicateMatches = new List<Tuple<ExtractedIdw, CatalogItem, string>>();
+            foreach (var extracted in extractedItems)
+            {
+                CatalogItem match = FindDuplicateMatch(extracted, masterCatalog, out string reason);
+                if (match != null) duplicateMatches.Add(Tuple.Create(extracted, match, reason));
+            }
+
+            if (duplicateMatches.Count == 0) return extractedItems;
+
+            Debug.WriteLine($"{LOG_PREFIX} ResolveDuplicatesBeforeImport: phát hiện {duplicateMatches.Count} file trùng với Master Catalog — hỏi user.");
+            var dlg = new ImportDuplicateDialog(duplicateMatches);
+            bool? dlgResult = dlg.ShowDialog();
+
+            if (dlgResult != true)
+            {
+                foreach (var extracted in extractedItems)
+                {
+                    result.AddError(extracted.SourceIdwName, "Import cancelled by user (duplicate check).");
+                    result.FailCount++;
+                }
+                return new List<ExtractedIdw>();
+            }
+
+            var toSkip = new HashSet<ExtractedIdw>(dlg.Items.Where(i => !i.Overwrite).Select(i => i.Extracted));
+            foreach (var extracted in duplicateMatches.Select(m => m.Item1))
+            {
+                if (!toSkip.Contains(extracted)) continue;
+                result.AddError(extracted.SourceIdwName, "Skipped — fitting already exists in Master Library (user chose not to overwrite).");
+                result.FailCount++;
+            }
+
+            return extractedItems.Where(e => !toSkip.Contains(e)).ToList();
+        }
+
+        /// <summary>Trả về CatalogItem trùng đầu tiên tìm được (ưu tiên PartNumber, sau đó BlockName sẽ-tạo), hoặc null.</summary>
+        private static CatalogItem FindDuplicateMatch(ExtractedIdw extracted, List<CatalogItem> masterCatalog, out string reason)
+        {
+            reason = null;
+            string partNumber = extracted.Metadata?.PartNumber;
+            if (!string.IsNullOrEmpty(partNumber))
+            {
+                var byPart = masterCatalog.FirstOrDefault(m =>
+                    !string.IsNullOrEmpty(m.PartNumber) && m.PartNumber.Equals(partNumber, StringComparison.OrdinalIgnoreCase));
+                if (byPart != null) { reason = "Part Number"; return byPart; }
+            }
+
+            if (extracted.Metadata?.Views != null)
+            {
+                string baseFileName = Path.GetFileNameWithoutExtension(extracted.DwgPath);
+                foreach (var view in extracted.Metadata.Views)
+                {
+                    if (view == null || view.Is3D) continue;
+                    string candidateName = $"{baseFileName}_{view.Name}";
+                    var byBlock = masterCatalog.FirstOrDefault(m =>
+                        !string.IsNullOrEmpty(m.BlockName) && m.BlockName.Equals(candidateName, StringComparison.OrdinalIgnoreCase));
+                    if (byBlock != null) { reason = "Block Name"; return byBlock; }
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

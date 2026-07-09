@@ -33,11 +33,12 @@ namespace MCG_FittingManagement.Views.FittingManagement
             {
                 PartNumber = CreatedPartId,
                 Description = TxtDesc.Text.Trim(),
-                Title = string.IsNullOrWhiteSpace(TxtXClass.Text) ? "Accessory" : TxtXClass.Text.Trim(), 
+                Title = string.IsNullOrWhiteSpace(TxtXClass.Text) ? "Accessory" : TxtXClass.Text.Trim(),
                 BomType = bomType,
-                EntityType = "Accessory", 
+                EntityType = "Accessory",
                 UoM = "pcs",
-                BlockName = ""
+                BlockName = "",
+                CreatedDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
             };
 
             try

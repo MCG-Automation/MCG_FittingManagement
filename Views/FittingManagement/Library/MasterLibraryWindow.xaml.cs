@@ -71,10 +71,18 @@ namespace MCG_FittingManagement.Views.FittingManagement
         {
             bool hasProject = _projectContext.HasActiveProject;
             TxtActiveProject.Text = hasProject ? _projectContext.ProjectDisplayName : "(none)";
-            BtnAddToProject.IsEnabled = hasProject;
-            BtnAddToProject.ToolTip = hasProject
-                ? $"Add to: {_projectContext.ProjectFilePath}"
-                : "Open an Item Library window to set the active project.";
+        }
+
+        // =========================================================
+        // Right-click context menu — chọn row trước khi mở menu (giống Windows Explorer)
+        // =========================================================
+        private void GridRow_PreviewMouseRightButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (sender is DataGridRow row && !row.IsSelected)
+            {
+                GridCatalog.SelectedItems.Clear();
+                row.IsSelected = true;
+            }
         }
 
         private void LoadCatalog()
@@ -322,40 +330,6 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 }
                 ShowPushUpdateResult(result);
                 LoadCatalog();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private void BtnSyncToDrawing_Click(object sender, RoutedEventArgs e)
-        {
-            var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().ToList();
-            if (selected.Count == 0)
-            {
-                MessageBox.Show("Select item(s) in the grid first.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-            var blockItems = selected.Where(i => i.EntityType == "Block" && !string.IsNullOrEmpty(i.BlockName)).ToList();
-            if (blockItems.Count == 0)
-            {
-                MessageBox.Show("No Block-type items selected (Sync to Drawing only applies to Block entries).",
-                    "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var confirm = MessageBox.Show(
-                $"Sync catalog properties for {blockItems.Count} block(s) to the current drawing?\n\n" +
-                "Updates both block definitions (AttributeDefinitions) and all existing\n" +
-                "INSERT instances (AttributeReferences) in the current drawing.",
-                "Confirm Sync to Drawing", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (confirm != MessageBoxResult.Yes) return;
-
-            try
-            {
-                var result = _masterService.SyncPropertiesFromCatalogToDrawing(blockItems);
-                ShowPushUpdateResult(result, "Sync to Drawing Result");
             }
             catch (Exception ex)
             {

@@ -252,6 +252,11 @@ namespace MCG_FittingManagement.Services.FittingManagement
                         // Inject 10 attribute chuẩn (7 từ metadata + BOM_TYPE + POS_NUM + VIEW_NAME)
                         InjectBimAttributes(newBtr, destTr, metadata, bomType, view.Name);
 
+                        // Thêm MText label tên block trên layer Mechanical-AM_9 — DBText gốc từ Inventor
+                        // bị loại bởi IsAllowedEntityType (chỉ giữ geometry), nên block mới luôn thiếu
+                        // label cho tới khi user chạy Rename Block. Tạo label ngay lúc import cho đồng bộ.
+                        FittingBlockUtility.AddNameLabelText(newBtr, destTr, uniqueName, LAYER_LABEL);
+
                         string exportPath = Path.Combine(_libraryFolderPath, uniqueName + ".dwg");
                         var catalogItem = new CatalogItem
                         {
@@ -267,7 +272,8 @@ namespace MCG_FittingManagement.Services.FittingManagement
                             FilePath = exportPath,
                             EntityType = "Block",
                             UoM = "pcs",
-                            Source = "Inventor"
+                            Source = "Inventor",
+                            CreatedDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
                         };
                         results.Add(Tuple.Create(newBtr.ObjectId, catalogItem));
                         FileLogger.Log(LOG_PREFIX,

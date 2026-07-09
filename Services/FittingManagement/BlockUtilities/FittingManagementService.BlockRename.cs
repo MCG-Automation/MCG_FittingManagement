@@ -5,7 +5,7 @@ using System.Windows.Interop;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
-using Autodesk.AutoCAD.Geometry;
+using MCG_FittingManagement.Utilities.FittingManagement;
 using MCG_FittingManagement.Views.FittingManagement;
 
 namespace MCG_FittingManagement.Services.FittingManagement
@@ -224,33 +224,9 @@ namespace MCG_FittingManagement.Services.FittingManagement
 
             if (!textFound)
             {
-                LayerTable lt      = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
-                string     reqLayer = "Mechanical-AM_9";
-
-                if (!lt.Has(reqLayer))
-                {
-                    lt.UpgradeOpen();
-                    LayerTableRecord newLtr = new LayerTableRecord
-                    {
-                        Name  = reqLayer,
-                        Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(
-                                    Autodesk.AutoCAD.Colors.ColorMethod.ByAci, 7)
-                    };
-                    lt.Add(newLtr);
-                    tr.AddNewlyCreatedDBObject(newLtr, true);
-                }
-
-                MText newMText = new MText();
-                newMText.SetDatabaseDefaults();
-                newMText.Location   = new Point3d(0, -15, 0);
-                newMText.TextHeight = 10;
-                newMText.Contents   = newBlockName;
-                newMText.Layer      = reqLayer;
-                newMText.Attachment = AttachmentPoint.BottomLeft;
-
-                btr.UpgradeOpen();
-                btr.AppendEntity(newMText);
-                tr.AddNewlyCreatedDBObject(newMText, true);
+                const string reqLayer = "Mechanical-AM_9";
+                FittingBlockUtility.CheckAndCreateLayer(db, tr, reqLayer, 7);
+                FittingBlockUtility.AddNameLabelText(btr, tr, newBlockName, reqLayer);
             }
         }
     }

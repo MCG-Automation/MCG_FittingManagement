@@ -68,6 +68,9 @@ namespace MCG_FittingManagement.Utilities.FittingManagement
                 else
                 {
                     if (existing.Revision != newItem.Revision) updatedCount++;
+                    // Giữ nguyên CreatedDate gốc — newItem thường được build mới (không mang theo
+                    // CreatedDate) nên phải copy forward từ bản ghi cũ, tránh mất ngày khởi tạo mỗi lần merge.
+                    if (string.IsNullOrEmpty(newItem.CreatedDate)) newItem.CreatedDate = existing.CreatedDate;
                     catalog.Remove(existing);
                     catalog.Add(newItem);
                 }

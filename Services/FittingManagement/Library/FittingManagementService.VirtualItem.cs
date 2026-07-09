@@ -112,6 +112,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
                             if (string.IsNullOrEmpty(draftItem.PartNumber)) draftItem.PartNumber = "";
                             draftItem.Title = "";
                             draftItem.Mass = "0";
+                            draftItem.CreatedDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
 
                             tr.Commit();
                             Debug.WriteLine($"{LOG_PREFIX} Pick Feature THÀNH CÔNG.");
