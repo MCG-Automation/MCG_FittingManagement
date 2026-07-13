@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using System.IO;
 using Microsoft.Win32;
 using MCG_FittingManagement.Models.FittingManagement;
@@ -39,31 +38,14 @@ namespace MCG_FittingManagement.Views.FittingManagement
             _mode = mode;
             ApplyMode();
             InitializeEmptyGrid();
-
-            UpdateActiveProjectLabel();
-            ActiveProjectContext.Instance.ProjectChanged += OnActiveProjectChanged;
-            this.Closed += (_, __) => ActiveProjectContext.Instance.ProjectChanged -= OnActiveProjectChanged;
-        }
-
-        private void OnActiveProjectChanged(object sender, EventArgs e) => Dispatcher.Invoke(UpdateActiveProjectLabel);
-
-        private void UpdateActiveProjectLabel()
-        {
-            var ctx = ActiveProjectContext.Instance;
-            TxtActiveProject.Text = ctx.HasActiveProject ? ctx.ProjectDisplayName : "(none)";
         }
 
         private void ApplyMode()
         {
-            // Đồng bộ style Title Grid với Master/Item Library — title in-hoa + badge màu theo mode
             if (_mode == BomMode.Hull)
             {
                 Title = "Hull BOM Export";
-                TxtModeLabel.Text = "HULL BOM EXPORT";
-                TxtBadgeMode.Text = "HULL";
-                var hullColor = new SolidColorBrush(Color.FromRgb(0xD3, 0x2F, 0x2F));
-                TxtModeLabel.Foreground = hullColor;
-                BadgeMode.Background = hullColor;
+                TxtModeLabel.Text = "Hull BOM Export";
                 BtnScanDrawing.Content = "Scan Hull from Drawing";
                 BtnAutoBalloon.Visibility = Visibility.Collapsed;
                 MenuItemSyncPosFromItemLib.Visibility = Visibility.Visible;
@@ -75,11 +57,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
             else
             {
                 Title = "Equipment BOM Export";
-                TxtModeLabel.Text = "EQUIPMENT BOM EXPORT";
-                TxtBadgeMode.Text = "EQUIPMENT";
-                var equipColor = new SolidColorBrush(Color.FromRgb(0x00, 0x55, 0xA5));
-                TxtModeLabel.Foreground = equipColor;
-                BadgeMode.Background = equipColor;
+                TxtModeLabel.Text = "Equipment BOM Export";
                 BtnScanDrawing.Content = "Scan Equipment from Drawing";
                 BtnAutoBalloon.Visibility = Visibility.Visible;
                 MenuItemSyncPosFromItemLib.Visibility = Visibility.Collapsed;

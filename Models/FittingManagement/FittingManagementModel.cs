@@ -18,6 +18,13 @@ namespace MCG_FittingManagement.Models.FittingManagement
 
         /// <summary>true = view iso/arbitrary 3D (skip publish); false = view ortho 2D (publish vào Master).</summary>
         public bool Is3D { get; set; }
+
+        /// <summary>
+        /// true = view Plan/Top (nhìn từ trên xuống, trục Z chiếm ưu thế trong hướng camera).
+        /// Dùng để phân biệt view nào là "view chính" khi 1 fitting có nhiều mặt cắt/view trong
+        /// cùng 1 khung A1 (Hull BOM) — vd fitting loại "Guide" chỉ đếm Qty theo Plan View.
+        /// </summary>
+        public bool IsPlanView { get; set; }
     }
 
     /// <summary>
@@ -65,6 +72,15 @@ namespace MCG_FittingManagement.Models.FittingManagement
         public string UoM { get; set; } = "pcs";
         /// <summary>Nguồn gốc fitting: "Inventor" | "CAD-Block" | "CAD-Linear".</summary>
         public string Source { get; set; }
+        /// <summary>true nếu block này là view Plan/Top của fitting — xem <see cref="ViewMetadata.IsPlanView"/>.</summary>
+        public bool IsPlanView { get; set; }
+        /// <summary>
+        /// true = fitting này (mọi view chia sẻ cùng PartNumber) chỉ đếm Qty theo view được đánh dấu
+        /// <see cref="IsPlanView"/>, bỏ qua các view khác — dùng cho fitting loại "chỉ có Plan View là
+        /// đại diện đúng số lượng thật" (vd Guide). Field tường minh, user tự đánh dấu qua Edit View Type
+        /// — không hardcode theo tên/Title để dễ mở rộng cho fitting khác trong tương lai.
+        /// </summary>
+        public bool CountPlanViewOnly { get; set; }
         public List<AccessoryItem> Accessories { get; set; } = new List<AccessoryItem>();
     }
 
@@ -83,8 +99,12 @@ namespace MCG_FittingManagement.Models.FittingManagement
         public string ParentBlockName { get; set; }
         public bool IsAccessory { get; set; } = false;
         public string ParentPartId { get; set; } = "";
-        public string Position { get; set; } 
-        public string ProjectPosNum { get; set; } 
+        public string Position { get; set; }
+        public string ProjectPosNum { get; set; }
+        /// <summary>true nếu block/view nguồn của record này là Plan View — xem <see cref="CatalogItem.IsPlanView"/>.</summary>
+        public bool IsPlanView { get; set; }
+        /// <summary>true nếu fitting này chỉ đếm Qty theo Plan View — xem <see cref="CatalogItem.CountPlanViewOnly"/>.</summary>
+        public bool CountPlanViewOnly { get; set; }
 
         // SỬA ĐỔI QUAN TRỌNG ĐỂ ĐÁP ỨNG KIẾN TRÚC MỚI: 
         // Thay vì dùng ObjectId của AutoCAD, ta dùng long (Handle Value)

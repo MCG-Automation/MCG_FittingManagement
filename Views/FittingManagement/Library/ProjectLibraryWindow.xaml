@@ -138,6 +138,8 @@
                 <DataGrid.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Edit Properties (Pos Num)" Click="BtnEditProperties_Click"/>
+                        <MenuItem Header="Edit View Type" Click="BtnEditViewType_Click"
+                                  ToolTip="Đánh dấu Plan View / quy tắc đếm Qty theo Plan View cho Hull BOM khi 1 fitting có nhiều mặt cắt trong cùng 1 khung A1."/>
                         <MenuItem Header="Sync" Click="BtnSyncToDrawing_Click" ToolTip="Update block AttributeDefinitions and all INSERT instances in the current drawing to reflect current catalog metadata"/>
                         <Separator/>
                         <MenuItem Header="Remove" Click="BtnRemoveSelected_Click" Foreground="#FFD32F2F"/>

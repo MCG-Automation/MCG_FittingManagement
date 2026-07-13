@@ -1,0 +1,39 @@
+<Window x:Class="MCG_FittingManagement.Views.FittingManagement.EditViewTypeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Edit View Type" Height="230" Width="420"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#FFF0F0F0" FontFamily="Segoe UI" FontSize="13">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="LblSummary" Grid.Row="0"
+                   FontWeight="SemiBold" Foreground="#FF333333"/>
+
+        <CheckBox x:Name="ChkIsPlanView" Grid.Row="2" Content="Is Plan View (this specific view)"
+                  Foreground="#FF333333"
+                  ToolTip="Đánh dấu view này là Plan/Top view của fitting — dùng làm view đại diện khi fitting có nhiều mặt cắt trong cùng 1 khung A1."/>
+
+        <CheckBox x:Name="ChkCountPlanViewOnly" Grid.Row="4" Content="Count BOM Qty from Plan View only"
+                  Foreground="#FF333333"
+                  ToolTip="Fitting này chỉ đếm Qty theo view Plan (bỏ qua các view khác) khi xuất hiện nhiều mặt cắt trong cùng 1 khung A1 — nên chọn cho TẤT CẢ view của fitting (không chỉ view Plan)."/>
+
+        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" Width="80" Height="28" Margin="0,0,8,0"
+                    Click="BtnCancel_Click" Background="#FFE0E0E0"/>
+            <Button x:Name="BtnOk" Content="Save" Width="100" Height="28"
+                    Background="#FF0055A5" Foreground="White" FontWeight="Bold"
+                    Click="BtnOk_Click" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

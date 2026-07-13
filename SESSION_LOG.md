@@ -4,6 +4,156 @@
 
 ---
 
+## Session 2026-07-09M — Chuyển "Edit View Type" từ Master Library sang Item Library
+
+### Bối cảnh
+User yêu cầu dời dialog "Edit View Type" (session trước) từ Master Library sang Item Library. Phát hiện: nếu chỉ dời UI mà không đổi nguồn dữ liệu, tính năng sẽ **hỏng âm thầm** — `HarvestInterfaceBom` đọc `IsPlanView`/`CountPlanViewOnly` từ `GetMasterCatalogItems()` (Master Catalog), nếu sửa chỉ lưu vào project catalog (Item Library) thì Hull harvest sẽ không bao giờ thấy giá trị mới. Áp dụng đúng pattern đã có sẵn cho Pos Num (`OverlayHullPositions` — sửa ở Item Library, overlay vào kết quả harvest lúc scan) cho 2 field này.
+
+### Đã làm
+- **`Views/FittingManagement/Library/MasterLibraryWindow.xaml` + `.xaml.cs`** — xoá menu item "Edit View Type" + handler `BtnEditViewType_Click`
+- **`Views/FittingManagement/Library/ProjectLibraryWindow.xaml` + `.xaml.cs`** — thêm menu item "Edit View Type" + handler `BtnEditViewType_Click` (pattern giống hệt "Edit Properties (Pos Num)": lọc `EntityType == "Block"`, mở `EditViewTypeDialog`, lưu qua `_projectService.SaveProjectCatalog`)
+- **`Services/FittingManagement/BOM/FittingManagementService.BomInterface.cs`** — `HarvestInterfaceBom`: thêm `OverlayViewTypeFromProjectCatalog(masterCatalog)` ngay sau `GetMasterCatalogItems()` — đọc project catalog (Item Library) đang active, overlay `IsPlanView`/`CountPlanViewOnly` lên `masterCatalog` (in-memory, theo BlockName, KHÔNG ghi lại `MasterCatalog.json`) trước khi dùng để resolve `mainCatItem` trong `ExtractFittingsFromBlock`
+- **`Views/FittingManagement/Library/EditViewTypeDialog.xaml.cs`** — cập nhật doc comment (Item Library thay vì Master Library)
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+- Master Catalog vẫn giữ giá trị mặc định `IsPlanView` lúc import (từ heuristic hướng camera Inventor) làm baseline; giá trị thật sự dùng để tính Qty giờ lấy từ Item Library nếu fitting đã được Add to Active Project
+
+### Bước tiếp theo
+- Test: Item Library → chọn 1 view → "Edit View Type" → tick → Save → verify ghi đúng vào project catalog JSON
+- Test full flow: Scan Hull BOM sau khi sửa ở Item Library → verify Qty tính đúng theo giá trị mới overlay (không cần sửa gì ở Master Library)
+- Lưu ý: fitting CHƯA được "Add to Active Project" (chưa có trong Item Library) sẽ không có gì để overlay → dùng nguyên giá trị mặc định từ Master Catalog (baseline lúc import)
+
+---
+
+## Session 2026-07-09L — Edit View Type (Plan View) cho Master Library + bỏ hardcode "Guide"
+
+### Bối cảnh
+Tiếp nối tính năng Plan View (session trước): user hỏi field `IsPlanView` có phải Attribute trên Block và edit được không → xác nhận KHÔNG (chỉ nằm trong `MasterCatalog.json`, không có UI sửa). User quyết định: làm dialog riêng, hẹp (giống `EditPosNumDialog`), không nới lỏng chặn "Inventor item không sửa Edit Properties" hiện có.
+
+User cũng chỉ ra: logic `ResolveMultiViewQuantity` đang hardcode check chữ "Guide" trong Title/XClass để áp luật "chỉ đếm Plan View" — không phù hợp nếu tương lai có fitting khác cần luật tương tự (phải sửa code mỗi lần). Quyết định: chuyển thành field dữ liệu tường minh, user tự đánh dấu qua UI.
+
+### Đã làm
+- **`Models/FittingManagement/FittingManagementModel.cs`** — thêm `CatalogItem.CountPlanViewOnly` (bool) + `BomHarvestRecord.CountPlanViewOnly` (bool)
+- **`Services/FittingManagement/BOM/FittingManagementService.BomHelpers.cs`** (`ConsolidateRawResults`) — propagate `CountPlanViewOnly = g.First().CountPlanViewOnly`
+- **`Services/FittingManagement/BOM/FittingManagementService.BomInterface.cs`**
+  - `ExtractFittingsFromBlock`: gán `CountPlanViewOnly = mainCatItem?.CountPlanViewOnly ?? false` (cả fitting chính lẫn accessory)
+  - `ResolveMultiViewQuantity`: bỏ hoàn toàn check string `XClass.Contains("Guide")`, thay bằng `viewRecords[0].CountPlanViewOnly` — logic MAX/Plan-only/fallback giữ nguyên, chỉ đổi nguồn quyết định từ suy đoán tên sang field tường minh
+- **`Views/FittingManagement/Library/EditViewTypeDialog.xaml` + `.xaml.cs`** (mới) — dialog nhỏ, 2 checkbox: "Is Plan View" (cho view/BlockName đang chọn) + "Count BOM Qty from Plan View only" (cho cả fitting — nên chọn tất cả view của fitting đó để áp dụng nhất quán). Không check `Source` — field này không đụng PartNumber/Title/... nên áp dụng được cho cả item Inventor
+- **`Views/FittingManagement/Library/MasterLibraryWindow.xaml` + `.xaml.cs`** — thêm context menu item "Edit View Type" (không chặn Inventor, chỉ lọc `EntityType == "Block"` vì Accessory không có khái niệm view) + handler `BtnEditViewType_Click` → mở dialog → `MergeIntoMaster` → `LoadCatalog`
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error, 0 warning
+
+### Bước tiếp theo
+- Test trong AutoCAD: Master Library → chọn 1 view của fitting Inventor → right-click "Edit View Type" (phải mở được, không bị chặn như "Edit Properties") → tick "Is Plan View" → Save → verify `MasterCatalog.json` cập nhật đúng
+- Test full flow: fitting có 2 view trong 1 khung A1, tick "Count BOM Qty from Plan View only" cho cả 2 view + "Is Plan View" cho 1 view → Scan Hull → verify Qty lấy đúng theo view Plan, không cộng dồn
+- Nhắc lại (đã nói ở session trước, còn hiệu lực): nhúng `IsPlanView`/`CountPlanViewOnly` thành Attribute trên Block trong bản vẽ (nếu vẫn muốn) sẽ chỉ mang tính hiển thị — logic đếm hiện đọc thẳng từ `MasterCatalog.json`, không đọc Attribute
+
+---
+
+## Session 2026-07-09K — Đếm Qty đúng khi 1 Fitting có nhiều mặt cắt/view trong cùng khung A1 (Hull)
+
+### Bối cảnh
+User hỏi: 1 fitting có nhiều "mặt cắt" (view) khác nhau trong cùng khung A1 thì đếm Qty thế nào? Trace ra: mỗi view từ Inventor import là 1 BlockName riêng (cùng chung 1 PartNumber) — nếu 2+ view đều được insert trong cùng khung A1, hệ thống trước đây **cộng dồn** Quantity của tất cả view lại, gây đếm dư nếu các view chỉ là nhiều cách minh hoạ cho CÙNG 1 vật lý (không phải nhiều fitting khác nhau).
+
+User xác nhận: cần cơ chế phân biệt. Quyết định:
+- Quy tắc chung: lấy Qty của view có số lượng LỚN NHẤT (MAX), không cộng dồn.
+- Riêng fitting loại "Guide" (nhận diện qua chữ "Guide" trong Title/XClass): CHỈ đếm theo Plan View, bỏ qua các view khác.
+- Plan View xác định qua hướng camera Inventor (đã có sẵn trong code nhưng bị bỏ, chỉ cần lưu lại) — chỉ khả thi cho fitting import MỚI; block cũ (chưa có dữ liệu) → fallback về quy tắc MAX chung.
+
+### Đã làm
+- **`Models/FittingManagement/FittingManagementModel.cs`** — thêm `IsPlanView` (bool) vào `ViewMetadata`, `CatalogItem`, `BomHarvestRecord`
+- **`Services/FittingManagement/Import/FittingManagementService.IdwImport.Views.cs`** (`ExtractDrawingViews`) — tận dụng vector hướng camera `(dx,dy,dz)` ĐÃ được tính sẵn để phân loại 2D/3D, thêm tính `isPlanView = maxComp >= 0.95 && nz >= nx && nz >= ny && dz < 0` (trục Z chiếm ưu thế + camera nhìn xuống, quy ước Z model hướng lên) — trước đây giá trị này bị tính rồi bỏ, giờ lưu vào `ViewMetadata.IsPlanView` và log ra để debug
+- **`Services/FittingManagement/Import/FittingManagementService.JsonImport.cs`** — `ImportSingleDwgWithSplit`: gán `CatalogItem.IsPlanView = view.IsPlanView` khi build catalog item cho từng split-view block
+- **`Services/FittingManagement/BOM/FittingManagementService.BomHelpers.cs`** — `ConsolidateRawResults`: propagate `IsPlanView = g.First().IsPlanView` (cùng ParentBlockName/view → cùng giá trị, an toàn lấy First)
+- **`Services/FittingManagement/BOM/FittingManagementService.BomInterface.cs`**
+  - `ExtractFittingsFromBlock`: gán `IsPlanView = mainCatItem?.IsPlanView ?? false` cho cả record fitting chính lẫn accessory
+  - Thêm `ResolveMultiViewQuantity(consolidated)` — gọi SAU `ConsolidateRawResults`, TRƯỚC khi trả kết quả cho `BomPreviewWindow`: group theo `{PanelName, VaultName, IsAccessory, ParentPartId}` (bỏ `ParentBlockName`/view khỏi key), với nhóm có ≥2 view → áp quy tắc MAX (mặc định) hoặc chỉ-Plan-View (nếu Title/XClass chứa "Guide", fallback về MAX nếu không có view nào đánh dấu Plan). `InstanceHandles` của TẤT CẢ view (kể cả view không được chọn tính Qty) vẫn được gộp vào record kết quả — đảm bảo Sync Pos Num từ Item Library cập nhật đúng cho mọi block minh hoạ, không chỉ view dùng để tính Qty
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error, 0 warning
+- Chỉ áp dụng cho **Hull mode** — Equipment (Panel) chưa có thay đổi tương tự (cùng rủi ro về lý thuyết nhưng chưa được user xác nhận cần fix, để riêng nếu cần)
+
+### Bước tiếp theo
+- Test thực tế với Inventor: import 1 fitting có ≥2 view 2D ortho khác trục (vd Front + Top) → kiểm tra log `View_N: ... isPlanView=...` để verify heuristic hướng camera đúng thực tế (giả định Z model hướng lên — cần xác nhận với dữ liệu Inventor thật, có thể cần điều chỉnh dấu `dz` nếu sai)
+- Test Hull BOM: đặt 2 block cùng PartNumber (2 view khác nhau) trong 1 khung A1 → verify Qty lấy theo MAX thay vì cộng dồn; test riêng fitting "Guide" → verify chỉ đếm theo Plan View
+- Đã ghi nhận nhưng chưa làm: Equipment (Panel) có thể gặp rủi ro tương tự nếu 1 fitting được nest nhiều view trong cùng Panel — ngoài phạm vi yêu cầu lần này
+
+---
+
+## Session 2026-07-09J — Revert "Title Grid BOM Export giống Library"
+
+### Bối cảnh
+User yêu cầu bỏ hẳn thay đổi Title Grid của `BomPreviewWindow` (badge màu + ô "Active Project" đồng bộ style Master/Item Library, làm ở session 2026-07-09E) — không update phần này nữa.
+
+### Đã làm
+- **`Views/FittingManagement/BOM/BomPreviewWindow.xaml`** — Row 0 revert về layout gốc: `Grid` 2 cột (`TxtModeLabel` FontSize=14 bên trái + `BtnScanDrawing` bên phải), bỏ `StackPanel` badge (`BadgeMode`/`TxtBadgeMode`) và ô `TxtActiveProject`
+- **`Views/FittingManagement/BOM/BomPreviewWindow.xaml.cs`**
+  - `ApplyMode()`: bỏ set màu badge (`SolidColorBrush`) và text in-hoa, `TxtModeLabel.Text` quay lại dạng thường ("Hull BOM Export"/"Equipment BOM Export"). **Giữ nguyên** phần toggle `BtnAutoBalloon`/`MenuItemSyncPosFromItemLib`/`BtnSyncPosToCad` (không thuộc phạm vi Title Grid, làm ở session sau — 2026-07-09F)
+  - Constructor: bỏ `UpdateActiveProjectLabel()` + subscribe/unsubscribe `ActiveProjectContext.ProjectChanged` (không còn `TxtActiveProject` để cập nhật)
+  - Bỏ `using System.Windows.Media;` (không còn dùng `SolidColorBrush`/`Color`)
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+- Các thay đổi khác của BOM Export (Sync qua context menu, ẩn Sync Pos to CAD ở Hull, BOM_TYPE opt-in, bỏ hardcode "CAS-") — **không đổi**, vẫn giữ nguyên
+
+---
+
+## Session 2026-07-09I — BOM_TYPE chuyển thành opt-in bắt buộc + bỏ hardcode tên "CAS-"
+
+### Bối cảnh
+Tiếp nối phân tích quy tắc đếm Hull/Equipment session trước — user chỉ ra 2 vấn đề cần sửa:
+1. Logic BOM_TYPE hiện tại là **loại trừ** (exclusion/opt-out): block không gắn `BOM_TYPE` gì vẫn được đếm mặc định → rủi ro double-count nếu 1 block vừa lồng trong Panel (Equipment) vừa nằm hình học trong khung A1 (Hull) mà không tag gì cả.
+2. Điều kiện tên block phải chứa `"CAS-"` là hardcode theo naming convention — nên bỏ, chỉ cần BOM_TYPE khớp đúng mode + PartNumber tồn tại trong Item Library.
+
+User quyết định: chuyển sang **opt-in bắt buộc** (chỉ đếm khi BOM_TYPE khớp đúng mode) + bỏ hardcode "CAS-".
+
+### Đã làm
+- **`Services/FittingManagement/BOM/FittingManagementService.BomStructure.cs`** (`ExtractStructureItemsRecursive`)
+  - Bỏ điều kiện `blkName.IndexOf("CAS-", ...) >= 0`
+  - Đổi `if (bomType != "DETAIL" && bomType != "HULL")` (opt-out) → `if (bomType == "EQUIPMENT" || bomType == "PANEL")` (opt-in bắt buộc)
+- **`Services/FittingManagement/BOM/FittingManagementService.BomInterface.cs`** (`ExtractFittingsFromBlock`)
+  - Bỏ điều kiện `blkName.IndexOf("CAS-", ...) >= 0` (giữ nguyên guard loại tên chính xác `"A1"`/`"CAS_HEAD"` — không liên quan tới "CAS-" convention, dùng để tránh quét lại chính khung tên)
+  - Đổi `if (bomType != "EQUIPMENT" && bomType != "PANEL")` (opt-out) → `if (bomType == "DETAIL" || bomType == "HULL")` (opt-in bắt buộc)
+- Cả 2 file: đệ quy vào block con (`if (!blkRef.IsDynamicBlock) {...}`) vẫn nằm NGOÀI check BOM_TYPE như code gốc — traversal không đổi, chỉ đổi điều kiện "có add record hay không" cho từng block
+
+### Hệ quả cần lưu ý (đã cảnh báo user trước khi làm)
+- **Sửa được lỗ hổng ngược**: block gắn đúng BOM_TYPE nhưng tên không có "CAS-" trước đây bị loại khỏi CẢ 2 BOM — giờ được đếm đúng.
+- **Rủi ro breaking change**: mọi fitting hiện có trong bản vẽ/Master Catalog CHƯA được gắn `BOM_TYPE` (đặc biệt là item "Add from CAD" tạo trước session attribute-parity gần đây) sẽ **biến mất khỏi cả 2 BOM** cho tới khi user Sync/gắn tag lại. Đây là đánh đổi user đã chấp nhận để loại rủi ro double-count.
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+
+### Bước tiếp theo
+- Test trong AutoCAD: Scan 1 Panel/Hull sheet có fitting CHƯA gắn `BOM_TYPE` → verify fitting đó biến mất khỏi BOM (đúng behavior mới) → dùng "Sync to Drawing" ở Item/Master Library gắn `BOM_TYPE` → Scan lại → verify fitting xuất hiện trở lại
+- Khuyến nghị (chưa làm, ngoài phạm vi yêu cầu lần này): rà soát Master Catalog để liệt kê các entry đang thiếu `BOM_TYPE`, giúp user biết cần Sync lại bao nhiêu fitting trước khi áp dụng rule mới vào dự án thật
+
+---
+
+## Session 2026-07-09H — Phân tích quy tắc đếm Fitting Hull vs Equipment + fix bất đối xứng BOM_TYPE
+
+### Bối cảnh
+User yêu cầu phân tích lại quy tắc đếm fitting của Hull BOM Export vs Equipment BOM Export, đánh giá có còn phù hợp với các update gần đây không (Pos Num theo PartNumber, duplicate-detection khi import...).
+
+### Phân tích (đã trình bày cho user, xem hội thoại)
+- `HarvestStructureBom` (Equipment) và `HarvestInterfaceBom` (Hull) đều resolve `VaultName`/`PartId` về `mainCatItem.PartNumber` (catalog lookup) — **đã PartNumber-centric**, nhất quán với các thay đổi Pos Num/duplicate-detection gần đây. Không cần sửa phần identity/grouping.
+- 2 mode khác nhau về bản chất xác định "container": Equipment = nesting theo cây block definition của Panel được pick; Hull = test hình học điểm-insert nằm trong khung A1. User xác nhận đây vẫn là behavior mong muốn (không hỏi thêm).
+- **Phát hiện bất đối xứng**: Equipment loại bỏ block gắn `BOM_TYPE=DETAIL/HULL` (`BomStructure.cs:84-85`); Hull hoàn toàn KHÔNG check `BOM_TYPE` — chỉ cần nằm trong khung A1 kèm tên chứa "CAS-" là được tính, kể cả nếu gắn `BOM_TYPE=EQUIPMENT/PANEL`.
+- Rủi ro phụ (duplicate BlockName-suffix cùng PartNumber lệch nhau gây đếm sai) — user xác nhận chấp nhận rủi ro, không cần thêm data-integrity check.
+
+### Đã làm (theo quyết định user: thêm BOM_TYPE filter cho Hull)
+- **`Services/FittingManagement/BOM/FittingManagementService.BomInterface.cs`** — `ExtractFittingsFromBlock`: thêm check `BOM_TYPE` đối xứng với Equipment — đọc `GetAttributeValue(tr, blkRef, "BOM_TYPE")`, loại block nếu `BOM_TYPE == "EQUIPMENT"` hoặc `"PANEL"` (trước đây không check gì). Logic add-record + accessories được lồng vào bên trong check mới; phần recursion vào block con (`if (!blkRef.IsDynamicBlock) {...}`) vẫn nằm NGOÀI check này như code gốc — không ảnh hưởng traversal, chỉ ảnh hưởng có add record hay không cho block đó.
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+
+### Bước tiếp theo
+- Test trong AutoCAD: Hull BOM Export → Scan drawing có chứa 1 block gắn `BOM_TYPE=EQUIPMENT` nằm trong khung A1 → verify block đó KHÔNG còn xuất hiện trong Hull BOM (trước đây có)
+- Đã ghi nhận nhưng KHÔNG fix theo yêu cầu user: rủi ro duplicate BlockName-suffix cùng PartNumber lệch nhau (chấp nhận rủi ro); `multiplier` param trong `ExtractFittingsFromBlock` là vestigial (luôn = 1×1, không có ý nghĩa thực tế) — không đụng tới vì ngoài phạm vi yêu cầu lần này
+
+---
+
 ## Session 2026-07-09G — Cảnh báo trùng fitting trước khi Import IDW (Overwrite/Skip prompt)
 
 ### Bối cảnh

@@ -273,7 +273,8 @@ namespace MCG_FittingManagement.Services.FittingManagement
                             EntityType = "Block",
                             UoM = "pcs",
                             Source = "Inventor",
-                            CreatedDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+                            CreatedDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+                            IsPlanView = view.IsPlanView
                         };
                         results.Add(Tuple.Create(newBtr.ObjectId, catalogItem));
                         FileLogger.Log(LOG_PREFIX,

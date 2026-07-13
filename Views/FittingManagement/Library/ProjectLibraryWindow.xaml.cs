@@ -280,6 +280,37 @@ namespace MCG_FittingManagement.Views.FittingManagement
         }
 
         // =========================================================
+        // Edit View Type — sửa IsPlanView/CountPlanViewOnly cho item(s) đang chọn (chỉ ảnh hưởng
+        // project catalog của Item Library — Hull harvest overlay giá trị này từ đây, xem
+        // OverlayViewTypeFromProjectCatalog trong FittingManagementService.BomInterface.cs).
+        // Chỉ áp dụng Block-type (Accessory không có khái niệm "view").
+        // =========================================================
+        private void BtnEditViewType_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_projectContext.HasActiveProject) return;
+
+            var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().Where(i => i.EntityType == "Block").ToList();
+            if (selected.Count == 0)
+            {
+                MessageBox.Show("Select Block-type item(s) to edit (Edit View Type doesn't apply to Accessories).",
+                    "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var dlg = new EditViewTypeDialog(selected) { Owner = this };
+                if (dlg.ShowDialog() == true)
+                {
+                    _projectService.SaveProjectCatalog(_projectContext.ProjectFilePath, _fullCatalog);
+                    foreach (var it in selected) _recentTracker?.Track(it.BlockName);
+                    LoadCatalog();
+                }
+            }
+            catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+        }
+
+        // =========================================================
         // Sync — đồng bộ property của catalog xuống drawing đang mở
         // (chuyển từ Master Library sang Item Library)
         // =========================================================

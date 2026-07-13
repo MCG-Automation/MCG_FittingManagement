@@ -24,6 +24,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
                     UoM = g.Key.UoM, PartId = g.First().PartId, Description = g.First().Description,
                     XClass = g.First().XClass, ProjectPosNum = g.First().ProjectPosNum,
                     IsAccessory = g.Key.IsAccessory, ParentPartId = g.Key.ParentPartId,
+                    IsPlanView = g.First().IsPlanView, CountPlanViewOnly = g.First().CountPlanViewOnly,
                     Quantity = g.Sum(r => r.Quantity),
                     InstanceHandles = g.SelectMany(r => r.InstanceHandles).ToList()
                 }).ToList();

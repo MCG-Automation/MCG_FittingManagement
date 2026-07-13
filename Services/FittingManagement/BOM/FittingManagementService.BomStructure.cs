@@ -79,40 +79,43 @@ namespace MCG_FittingManagement.Services.FittingManagement
                     if (blkRef.Layer == "Mechanical-AM_7") continue; 
 
                     string blkName = FittingBlockUtility.GetEffectiveName(tr, blkRef);
-                    if (blkName.IndexOf("CAS-", StringComparison.OrdinalIgnoreCase) >= 0)
+
+                    // Opt-in: chỉ đếm khi BOM_TYPE khớp ĐÚNG EQUIPMENT/PANEL — không còn dựa vào
+                    // tên block chứa "CAS-" (naming convention dễ vỡ). Loại hẳn rủi ro double-count
+                    // (1 block để trống BOM_TYPE mà vừa lồng trong Panel vừa nằm trong khung A1)
+                    // và sửa luôn lỗ hổng ngược: block gắn đúng BOM_TYPE nhưng tên không có "CAS-"
+                    // trước đây bị loại khỏi CẢ 2 BOM.
+                    string bomType = GetAttributeValue(tr, blkRef, "BOM_TYPE").ToUpper();
+                    if (bomType == "EQUIPMENT" || bomType == "PANEL")
                     {
-                        string bomType = GetAttributeValue(tr, blkRef, "BOM_TYPE").ToUpper();
-                        if (bomType != "DETAIL" && bomType != "HULL")
+                        string vaultName = CleanVaultName(blkName);
+                        var mainCatItem = catalog.FirstOrDefault(c => c.PartNumber == vaultName || (c.BlockName != null && c.BlockName.Split(';').Contains(blkName, StringComparer.OrdinalIgnoreCase)));
+
+                        // C: dùng catalog PartNumber làm nguồn truth; fallback về vaultName nếu chưa có trong catalog
+                        string effectivePartId = mainCatItem?.PartNumber ?? vaultName;
+
+                        results.Add(new BomHarvestRecord {
+                            PanelName = panelName, VaultName = effectivePartId, ParentBlockName = blkName,
+                            Quantity = 1, UoM = mainCatItem?.UoM ?? "pcs", PartId = effectivePartId,
+                            Description = mainCatItem != null && !string.IsNullOrEmpty(mainCatItem.Description) ? mainCatItem.Description : "Harvested from CAD",
+                            XClass = mainCatItem?.Title ?? "", ProjectPosNum = mainCatItem?.ProjectPosNum ?? "",
+                            IsAccessory = false, ParentPartId = "",
+                            InstanceHandles = new List<long> { blkRef.ObjectId.Handle.Value }
+                        });
+
+                        if (mainCatItem != null && mainCatItem.Accessories != null)
                         {
-                            string vaultName = CleanVaultName(blkName);
-                            var mainCatItem = catalog.FirstOrDefault(c => c.PartNumber == vaultName || (c.BlockName != null && c.BlockName.Split(';').Contains(blkName, StringComparer.OrdinalIgnoreCase)));
-
-                            // C: dùng catalog PartNumber làm nguồn truth; fallback về vaultName nếu chưa có trong catalog
-                            string effectivePartId = mainCatItem?.PartNumber ?? vaultName;
-
-                            results.Add(new BomHarvestRecord {
-                                PanelName = panelName, VaultName = effectivePartId, ParentBlockName = blkName,
-                                Quantity = 1, UoM = mainCatItem?.UoM ?? "pcs", PartId = effectivePartId,
-                                Description = mainCatItem != null && !string.IsNullOrEmpty(mainCatItem.Description) ? mainCatItem.Description : "Harvested from CAD",
-                                XClass = mainCatItem?.Title ?? "", ProjectPosNum = mainCatItem?.ProjectPosNum ?? "",
-                                IsAccessory = false, ParentPartId = "",
-                                InstanceHandles = new List<long> { blkRef.ObjectId.Handle.Value }
-                            });
-
-                            if (mainCatItem != null && mainCatItem.Accessories != null)
+                            foreach (var acc in mainCatItem.Accessories)
                             {
-                                foreach (var acc in mainCatItem.Accessories)
-                                {
-                                    var accCatItem = catalog.FirstOrDefault(c => c.PartNumber == acc.PartId);
-                                    results.Add(new BomHarvestRecord {
-                                        PanelName = panelName, VaultName = acc.PartId, ParentBlockName = blkName,
-                                        Quantity = acc.Quantity, UoM = accCatItem?.UoM ?? "pcs", PartId = acc.PartId,
-                                        Description = accCatItem != null && !string.IsNullOrEmpty(accCatItem.Description) ? accCatItem.Description : "Accessory",
-                                        XClass = accCatItem?.Title ?? "Accessory", ProjectPosNum = accCatItem?.ProjectPosNum ?? "",
-                                        IsAccessory = true, ParentPartId = effectivePartId,
-                                        InstanceHandles = new List<long> { blkRef.ObjectId.Handle.Value }
-                                    });
-                                }
+                                var accCatItem = catalog.FirstOrDefault(c => c.PartNumber == acc.PartId);
+                                results.Add(new BomHarvestRecord {
+                                    PanelName = panelName, VaultName = acc.PartId, ParentBlockName = blkName,
+                                    Quantity = acc.Quantity, UoM = accCatItem?.UoM ?? "pcs", PartId = acc.PartId,
+                                    Description = accCatItem != null && !string.IsNullOrEmpty(accCatItem.Description) ? accCatItem.Description : "Accessory",
+                                    XClass = accCatItem?.Title ?? "Accessory", ProjectPosNum = accCatItem?.ProjectPosNum ?? "",
+                                    IsAccessory = true, ParentPartId = effectivePartId,
+                                    InstanceHandles = new List<long> { blkRef.ObjectId.Handle.Value }
+                                });
                             }
                         }
                     }

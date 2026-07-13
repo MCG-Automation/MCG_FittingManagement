@@ -60,6 +60,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
                             // Heuristic (2) bắt được iso views mà Inventor báo orient = kCurrent (10303) hoặc kDefault (10313)
                             // — case enum không kê khai chính xác orient.
                             bool is3D = false;
+                            bool isPlanView = false;
                             int orientCode = -1;
                             double nx = double.NaN, ny = double.NaN, nz = double.NaN;
                             try
@@ -84,6 +85,12 @@ namespace MCG_FittingManagement.Services.FittingManagement
                                         double maxComp = Math.Max(nx, Math.Max(ny, nz));
                                         // 2D ortho: max gần 1 (dọc trục chính). Iso/skew: max < 0.95.
                                         isoByVector = maxComp < 0.95;
+
+                                        // Plan/Top view: trục Z chiếm ưu thế (nhìn thẳng từ trên xuống) +
+                                        // camera hướng XUỐNG (dz < 0 — quy ước Z model hướng lên, chuẩn kỹ
+                                        // thuật). Chỉ set true khi đây thật sự là 2D ortho (maxComp ≥ 0.95),
+                                        // tránh nhận nhầm view iso gần trục Z là Plan.
+                                        isPlanView = maxComp >= 0.95 && nz >= nx && nz >= ny && dz < 0;
                                     }
                                 }
                                 catch { /* không đọc được Eye/Target — bỏ qua heuristic vector */ }
@@ -91,7 +98,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
                                 is3D = isoByEnum || isoByVector;
 
                                 FileLogger.Log(LOG_PREFIX,
-                                    $"    View_{viewIndex}: orient={orientCode}, dir=({nx:F2},{ny:F2},{nz:F2}), isoByEnum={isoByEnum}, isoByVector={isoByVector} → {(is3D ? "3D" : "2D")}");
+                                    $"    View_{viewIndex}: orient={orientCode}, dir=({nx:F2},{ny:F2},{nz:F2}), isoByEnum={isoByEnum}, isoByVector={isoByVector} → {(is3D ? "3D" : "2D")}, isPlanView={isPlanView}");
                             }
                             catch (System.Exception exOrient)
                             {
@@ -105,7 +112,8 @@ namespace MCG_FittingManagement.Services.FittingManagement
                                 CenterY = cySheet * baseScaleFactor,
                                 Width = wSheet * baseScaleFactor,
                                 Height = hSheet * baseScaleFactor,
-                                Is3D = is3D
+                                Is3D = is3D,
+                                IsPlanView = isPlanView
                             });
                             viewIndex++;
                         }

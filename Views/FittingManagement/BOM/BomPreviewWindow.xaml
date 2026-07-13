@@ -91,26 +91,14 @@
         <Border Grid.Row="0" Style="{StaticResource ContainerBorderStyle}" Margin="0,0,0,10">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <TextBlock x:Name="TxtModeLabel" FontSize="16" FontWeight="Bold"
-                               Foreground="#FF005E9E" VerticalAlignment="Center"/>
-                    <Border x:Name="BadgeMode" Background="#FF005E9E" CornerRadius="3" Padding="6,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                        <TextBlock x:Name="TxtBadgeMode" Foreground="White" FontSize="10" FontWeight="Bold"/>
-                    </Border>
-                </StackPanel>
+                <TextBlock x:Name="TxtModeLabel" Grid.Column="0" FontSize="14" FontWeight="Bold"
+                           Foreground="#FF005E9E" VerticalAlignment="Center"/>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,15,0">
-                    <TextBlock Text="Active Project:" Margin="0,0,5,0" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                    <TextBox x:Name="TxtActiveProject" Width="160" IsReadOnly="True" Background="#FFE8E8E8" VerticalContentAlignment="Center"/>
-                </StackPanel>
-
-                <Button x:Name="BtnScanDrawing" Grid.Column="3" Width="240"
+                <Button x:Name="BtnScanDrawing" Grid.Column="1" Width="240"
                         Style="{StaticResource PrimaryButtonStyle}" Click="BtnScanDrawing_Click"/>
             </Grid>
         </Border>
