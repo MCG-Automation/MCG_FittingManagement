@@ -14,35 +14,52 @@ using MCG_FittingManagement.Utilities.FittingManagement;
 namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
-    /// Phần partial xử lý Master Library — đọc MasterCatalog.json, publish block, insert block.
+    /// Phần partial xử lý Library (catalog của Project Folder đang active) — đọc FittingCatalog.json,
+    /// publish block, insert block. Không còn khái niệm "Master Library toàn công ty" — mỗi Project
+    /// Folder (<see cref="ActiveProjectContext"/>) có 1 catalog riêng, độc lập.
     /// </summary>
     public partial class FittingManagementService : IFittingManagementService, IMasterLibraryService
     {
         private const string LOG_PREFIX = "[FittingManagementService]";
-        private readonly string _libraryFolderPath = @"C:\Temp_BIM_Library";
+
+        /// <summary>Folder của Project đang active — KHÔNG còn hardcode, đọc từ <see cref="ActiveProjectContext"/>.</summary>
+        private string _libraryFolderPath => ActiveProjectContext.Instance.ProjectFolderPath;
 
         public string MasterLibraryFolder => _libraryFolderPath;
-        public string MasterCatalogPath => Path.Combine(_libraryFolderPath, "MasterCatalog.json");
+        public string MasterCatalogPath => ActiveProjectContext.Instance.CatalogFilePath;
 
         public FittingManagementService()
         {
             Debug.WriteLine($"{LOG_PREFIX} Khởi tạo service.");
         }
 
+        /// <summary>Throw nếu chưa có Project Folder active — dùng ở đầu mọi thao tác GHI (đọc thì
+        /// tự trả rỗng, xem <see cref="GetMasterCatalogItems"/>).</summary>
+        private void EnsureActiveProjectFolder()
+        {
+            if (!ActiveProjectContext.Instance.HasActiveProject)
+                throw new InvalidOperationException("Chưa chọn Project Folder — dùng \"Load Folder\" trước khi thao tác.");
+        }
+
         public List<CatalogItem> GetMasterCatalogItems()
         {
-            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu lấy dữ liệu Master Catalog...");
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu lấy dữ liệu Catalog...");
             try
             {
+                if (!ActiveProjectContext.Instance.HasActiveProject)
+                {
+                    Debug.WriteLine($"{LOG_PREFIX} Chưa có Project Folder active — trả về catalog rỗng.");
+                    return new List<CatalogItem>();
+                }
                 if (!File.Exists(MasterCatalogPath))
                 {
-                    Debug.WriteLine($"{LOG_PREFIX} CẢNH BÁO: Không tìm thấy file MasterCatalog.json.");
+                    Debug.WriteLine($"{LOG_PREFIX} CẢNH BÁO: Không tìm thấy file FittingCatalog.json.");
                     return new List<CatalogItem>();
                 }
 
                 string json = File.ReadAllText(MasterCatalogPath);
                 var items = JsonConvert.DeserializeObject<List<CatalogItem>>(json) ?? new List<CatalogItem>();
-                Debug.WriteLine($"{LOG_PREFIX} Đọc THÀNH CÔNG {items.Count} items từ Master Catalog.");
+                Debug.WriteLine($"{LOG_PREFIX} Đọc THÀNH CÔNG {items.Count} items từ Catalog.");
                 return items;
             }
             catch (Exception ex)
@@ -57,6 +74,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
             Debug.WriteLine($"{LOG_PREFIX} Bắt đầu MergeIntoMaster ({items?.Count ?? 0} items)...");
             try
             {
+                EnsureActiveProjectFolder();
                 if (!Directory.Exists(_libraryFolderPath)) Directory.CreateDirectory(_libraryFolderPath);
                 var result = CatalogJsonStore.MergeItems(MasterCatalogPath, items);
                 Debug.WriteLine($"{LOG_PREFIX} MergeIntoMaster THÀNH CÔNG (Mới: {result.Item1}, Sửa: {result.Item2}).");
@@ -74,6 +92,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
             Debug.WriteLine($"{LOG_PREFIX} Bắt đầu RemoveFromMaster...");
             try
             {
+                EnsureActiveProjectFolder();
                 int removed = CatalogJsonStore.RemoveItems(MasterCatalogPath, blockNames);
                 Debug.WriteLine($"{LOG_PREFIX} RemoveFromMaster THÀNH CÔNG ({removed} items).");
                 return removed;
@@ -85,11 +104,58 @@ namespace MCG_FittingManagement.Services.FittingManagement
             }
         }
 
-        public Tuple<int, int> PublishToCentralLibrary(List<Tuple<ObjectId, CatalogItem>> itemsToPublish)
+        /// <summary>
+        /// Gán tự động Position Number (D3, tăng dần) cho các fitting DETAIL/HULL trong catalog của
+        /// Project Folder đang active — gom nhóm theo PartNumber (mỗi PartNumber 1 số). Trả về số
+        /// nhóm đã gán.
+        /// </summary>
+        public int AutoAssignPositions()
         {
-            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu Publish lên Central Library...");
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu AutoAssignPositions...");
             try
             {
+                EnsureActiveProjectFolder();
+                var catalog = CatalogJsonStore.Read<CatalogItem>(MasterCatalogPath);
+
+                var detailFittings = catalog
+                    .Where(x => !string.IsNullOrWhiteSpace(x.BomType)
+                                && (x.BomType.Equals("DETAIL", StringComparison.OrdinalIgnoreCase)
+                                    || x.BomType.Equals("HULL", StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+
+                if (detailFittings.Count == 0) return 0;
+
+                var groupedByPartId = detailFittings
+                    .Where(x => !string.IsNullOrEmpty(x.PartNumber))
+                    .GroupBy(x => x.PartNumber)
+                    .OrderBy(g => g.Key)
+                    .ToList();
+
+                int posCounter = 1;
+                foreach (var group in groupedByPartId)
+                {
+                    string posString = posCounter.ToString("D3");
+                    foreach (var item in group) item.ProjectPosNum = posString;
+                    posCounter++;
+                }
+
+                CatalogJsonStore.Write(MasterCatalogPath, catalog);
+                Debug.WriteLine($"{LOG_PREFIX} AutoAssignPositions THÀNH CÔNG ({groupedByPartId.Count} nhóm).");
+                return groupedByPartId.Count;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"{LOG_PREFIX} LỖI AutoAssignPositions: {ex.Message}");
+                throw;
+            }
+        }
+
+        public Tuple<int, int> PublishToCentralLibrary(List<Tuple<ObjectId, CatalogItem>> itemsToPublish)
+        {
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu Publish lên Project Catalog...");
+            try
+            {
+                EnsureActiveProjectFolder();
                 if (!Directory.Exists(_libraryFolderPath)) Directory.CreateDirectory(_libraryFolderPath);
 
                 Database db = HostApplicationServices.WorkingDatabase;
@@ -146,6 +212,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
 
             try
             {
+                EnsureActiveProjectFolder();
                 Document doc = Application.DocumentManager.MdiActiveDocument;
                 if (doc == null) throw new InvalidOperationException("Không có drawing nào đang mở.");
                 Database db = doc.Database;
@@ -353,41 +420,12 @@ namespace MCG_FittingManagement.Services.FittingManagement
                         {
                             if (string.IsNullOrEmpty(item?.BlockName)) continue;
 
-                            ObjectId btrId = ObjectId.Null;
-
-                            if (string.IsNullOrEmpty(item.FilePath))
+                            ObjectId btrId = FittingBlockUtility.ResolveOrLoadBlockDefinition(db, tr, bt, item.BlockName, item.FilePath);
+                            if (btrId.IsNull)
                             {
-                                // Tier 1 fallback: tìm trong drawing hiện tại
-                                if (!bt.Has(item.BlockName))
-                                {
-                                    Debug.WriteLine($"{LOG_PREFIX} Multi-insert skip (không có trong drawing): {item.BlockName}");
-                                    continue;
-                                }
-                                btrId = bt[item.BlockName];
+                                Debug.WriteLine($"{LOG_PREFIX} Multi-insert skip (không có trong drawing và không load được từ file): {item.BlockName}");
+                                continue;
                             }
-                            else
-                            {
-                                if (!File.Exists(item.FilePath))
-                                {
-                                    Debug.WriteLine($"{LOG_PREFIX} Multi-insert skip (file không tồn tại): {item.FilePath}");
-                                    continue;
-                                }
-                                if (!bt.Has(item.BlockName))
-                                {
-                                    using (Database sideDb = new Database(false, true))
-                                    {
-                                        sideDb.ReadDwgFile(item.FilePath, FileShare.Read, true, "");
-                                        sideDb.Insunits = db.Insunits;
-                                        btrId = db.Insert(item.BlockName, sideDb, true);
-                                    }
-                                }
-                                else
-                                {
-                                    btrId = bt[item.BlockName];
-                                }
-                            }
-
-                            if (btrId.IsNull) continue;
 
                             BlockTableRecord btr = (BlockTableRecord)tr.GetObject(btrId, OpenMode.ForWrite);
                             btr.Units = db.Insunits;
@@ -481,6 +519,29 @@ namespace MCG_FittingManagement.Services.FittingManagement
             }
 
             return (minX < double.MaxValue && maxX > double.MinValue) ? maxX - minX : 0.0;
+        }
+
+        /// <summary>Tương tự <see cref="ComputeBlockWidth"/> nhưng theo trục Y — dùng cho Fitting Schedule
+        /// để scale view vừa chiều cao hàng.</summary>
+        private static double ComputeBlockHeight(Transaction tr, BlockTableRecord btr)
+        {
+            double minY = double.MaxValue;
+            double maxY = double.MinValue;
+
+            foreach (ObjectId id in btr)
+            {
+                try
+                {
+                    if (!(tr.GetObject(id, OpenMode.ForRead) is Entity ent)) continue;
+                    if (ent is AttributeDefinition) continue;
+                    Extents3d ext = ent.GeometricExtents;
+                    if (ext.MinPoint.Y < minY) minY = ext.MinPoint.Y;
+                    if (ext.MaxPoint.Y > maxY) maxY = ext.MaxPoint.Y;
+                }
+                catch { }
+            }
+
+            return (minY < double.MaxValue && maxY > double.MinValue) ? maxY - minY : 0.0;
         }
 
         public void InsertBlockFromLibrary(string dwgPath, string blockName)

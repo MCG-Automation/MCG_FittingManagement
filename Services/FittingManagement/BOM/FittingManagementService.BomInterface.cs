@@ -26,11 +26,10 @@ namespace MCG_FittingManagement.Services.FittingManagement
                 Database db = doc.Database;
                 Editor ed = doc.Editor;
 
+                // IsPlanView/CountPlanViewOnly được edit qua "Edit View Type" ở Fitting Table — ghi thẳng
+                // vào catalog của Project Folder đang active (1 catalog duy nhất, không còn tầng overlay
+                // riêng), nên GetMasterCatalogItems() đã trả về giá trị đúng, không cần overlay thêm.
                 List<CatalogItem> masterCatalog = GetMasterCatalogItems();
-                // IsPlanView/CountPlanViewOnly được edit ở Item Library ("Edit View Type"), không phải
-                // Master Library — overlay giá trị từ project catalog đang active lên masterCatalog
-                // (in-memory, không ghi lại MasterCatalog.json) trước khi dùng để resolve mainCatItem.
-                OverlayViewTypeFromProjectCatalog(masterCatalog);
 
                 PromptSelectionOptions selOpt = new PromptSelectionOptions();
                 selOpt.MessageForAdding = "\nSelect A1 Frames to scan: ";
@@ -90,41 +89,6 @@ namespace MCG_FittingManagement.Services.FittingManagement
             {
                 Debug.WriteLine($"{LOG_PREFIX} LỖI HarvestInterfaceBom: {ex.Message}");
                 throw;
-            }
-        }
-
-        /// <summary>
-        /// Overlay <see cref="CatalogItem.IsPlanView"/>/<see cref="CatalogItem.CountPlanViewOnly"/> từ
-        /// project catalog (Item Library) đang active lên <paramref name="masterCatalog"/> — theo
-        /// BlockName. 2 field này được edit ở Item Library ("Edit View Type"), không phải Master
-        /// Library, nên Master Catalog chỉ giữ giá trị mặc định lúc import; giá trị thật sự dùng để
-        /// tính Qty phải lấy từ project catalog. In-memory only — không ghi lại MasterCatalog.json.
-        /// </summary>
-        private void OverlayViewTypeFromProjectCatalog(List<CatalogItem> masterCatalog)
-        {
-            var ctx = ActiveProjectContext.Instance;
-            if (!ctx.HasActiveProject) return;
-
-            try
-            {
-                var projectItems = CatalogJsonStore.Read<ProjectCatalogItem>(ctx.ProjectFilePath);
-                var overlay = projectItems
-                    .Where(p => !string.IsNullOrEmpty(p.BlockName))
-                    .GroupBy(p => p.BlockName, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-
-                foreach (var item in masterCatalog)
-                {
-                    if (string.IsNullOrEmpty(item.BlockName)) continue;
-                    if (!overlay.TryGetValue(item.BlockName, out var projItem)) continue;
-                    item.IsPlanView = projItem.IsPlanView;
-                    item.CountPlanViewOnly = projItem.CountPlanViewOnly;
-                }
-                Debug.WriteLine($"{LOG_PREFIX} OverlayViewTypeFromProjectCatalog: overlaid {overlay.Count} project item(s).");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"{LOG_PREFIX} OverlayViewTypeFromProjectCatalog error: {ex.Message}");
             }
         }
 

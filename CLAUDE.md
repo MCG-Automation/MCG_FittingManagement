@@ -237,7 +237,9 @@ if (result.Status == PromptStatus.OK)
 
 - Toàn plugin dùng **DUY NHẤT 1 PaletteSet** title `"Fitting Management"`, GUID cố định, không bao giờ thay đổi
 - `PaletteManager.cs` là Singleton nằm trong `Commands/`
-- 4 tab cùng 1 PaletteSet: **Fitting Handle / Project Config / Template / Block Utilities**
+- 3 tab cùng 1 PaletteSet: **Fitting Handle / Fitting Table / Block Utilities**
+  (Tab "Project Config" đã bỏ — chức năng "Open Fitting Table" gộp vào tab "Fitting Table",
+  cùng mở `FittingTableWindow` — xem `Views/FittingManagement/Library/FittingTableWindow.xaml.cs`)
 - Mỗi tab là 1 UserControl độc lập (Service riêng, chia sẻ styles qua `FittingStyles.xaml`)
 - **Cấm** tạo PaletteSet thứ 2 ở bất kỳ file nào khác
 - **Thứ tự tab KHÔNG đổi sau deploy** — AutoCAD nhớ index theo GUID
@@ -246,9 +248,8 @@ if (result.Status == PromptStatus.OK)
 Commands/PaletteManager.cs                              ← Singleton duy nhất
 Views/FittingManagement/FittingStyles.xaml              ← ResourceDictionary chung
 Views/FittingManagement/FittingHandleView.xaml          ← Tab 1: BOM + Balloon
-Views/FittingManagement/ProjectConfigView.xaml          ← Tab 2: Open Library
-Views/FittingManagement/TemplateView.xaml               ← Tab 3: Import .idw + Open Library
-Views/FittingManagement/BlockUtilitiesView.xaml         ← Tab 4: 6 block utility buttons
+Views/FittingManagement/TemplateView.xaml               ← Tab 2 "Fitting Table": Import .idw + Open Fitting Table
+Views/FittingManagement/BlockUtilitiesView.xaml         ← Tab 3: 6 block utility buttons
 ```
 
 ```csharp
@@ -262,8 +263,7 @@ private void Initialize()
 
     // 2. Nạp nội dung — PHẢI thực hiện TRƯỚC khi set Dock/Size
     _paletteSet.AddVisual("Fitting Handle",  new FittingHandleView());
-    _paletteSet.AddVisual("Project Config",  new ProjectConfigView());
-    _paletteSet.AddVisual("Template",        new TemplateView());
+    _paletteSet.AddVisual("Fitting Table",   new TemplateView());
     _paletteSet.AddVisual("Block Utilities", new BlockUtilitiesView());
 
     // 3. Thiết lập kích thước và khả năng neo — SAU AddVisual

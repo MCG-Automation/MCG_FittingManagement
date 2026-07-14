@@ -37,9 +37,16 @@ namespace MCG_FittingManagement.Models.FittingManagement
         public string Revision { get; set; }
         public string Mass { get; set; }
         public string Material { get; set; }
-        public string Designer { get; set; } 
+        public string Designer { get; set; }
         public string Title { get; set; }
-        public List<ViewMetadata> Views { get; set; } 
+        public List<ViewMetadata> Views { get; set; }
+
+        /// <summary>
+        /// Mọi iProperty KHÁC (ngoài 7 field ở trên) đọc được từ Inventor document — duyệt generic qua
+        /// toàn bộ PropertySet (bao gồm "User Defined Properties", nơi Vault UDP thường map vào). Phục
+        /// vụ Customize Grid ở Fitting Table — xem <see cref="CatalogItem.ExtraProperties"/>.
+        /// </summary>
+        public Dictionary<string, string> ExtraProperties { get; set; } = new Dictionary<string, string>();
     }
 
     public class AccessoryItem
@@ -49,7 +56,7 @@ namespace MCG_FittingManagement.Models.FittingManagement
     }
 
     /// <summary>
-    /// Cấu trúc mục lục cho file MasterCatalog.json.
+    /// Cấu trúc mục lục cho file FittingCatalog.json (1 file/Project Folder — xem ActiveProjectContext).
     /// </summary>
     public class CatalogItem
     {
@@ -82,6 +89,23 @@ namespace MCG_FittingManagement.Models.FittingManagement
         /// </summary>
         public bool CountPlanViewOnly { get; set; }
         public List<AccessoryItem> Accessories { get; set; } = new List<AccessoryItem>();
+
+        /// <summary>
+        /// Thứ tự Sub Folder trong Category tree (Fitting Table) do user tự kéo-thả sắp xếp — CHỈ để
+        /// hiển thị theo ý muốn user, KHÔNG PHẢI Pos Num nghiệp vụ thật của BOM/bản vẽ. Đặc biệt với
+        /// "Fitting In Equipment": 1 PartNumber có thể có NHIỀU <see cref="ProjectPosNum"/> khác nhau
+        /// (mỗi Equipment 1 số riêng), nên KHÔNG được ghi đè lên <see cref="ProjectPosNum"/> khi kéo-thả.
+        /// Null = chưa từng sắp xếp (fallback alphabet theo PartNumber).
+        /// </summary>
+        public int? CategorySortOrder { get; set; }
+
+        /// <summary>
+        /// Mọi iProperty/Vault field KHÁC ngoài các field cố định ở trên — item "Add from CAD" (không
+        /// qua Inventor) sẽ luôn rỗng. Hiển thị qua cột động + "Customize Grid" (click phải Header) ở
+        /// Fitting Table (Views/FittingManagement/Library/FittingTableWindow.xaml.cs). KHÔNG được đẩy
+        /// xuống block attribute AutoCAD (chỉ 10 attribute chuẩn theo CLAUDE.md).
+        /// </summary>
+        public Dictionary<string, string> ExtraProperties { get; set; } = new Dictionary<string, string>();
     }
 
     /// <summary>

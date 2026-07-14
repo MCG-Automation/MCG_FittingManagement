@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
@@ -52,12 +53,15 @@ namespace MCG_FittingManagement.Utilities.FittingManagement
         }
 
         /// <summary>
-        /// Chèn Block Reference vào ModelSpace và gán các Attribute từ định nghĩa.
+        /// Chèn Block Reference vào ModelSpace và gán các Attribute từ định nghĩa, scale đều 3 trục
+        /// theo <paramref name="scale"/> (mặc định 1.0 = giữ nguyên kích thước gốc).
+        /// Trả về ObjectId của BlockReference vừa tạo (dùng khi cần đọc lại GeometricExtents sau đó).
         /// </summary>
-        public static void InsertBlockReference(Database db, Transaction tr, ObjectId btrId, Point3d pos)
+        public static ObjectId InsertBlockReference(Database db, Transaction tr, ObjectId btrId, Point3d pos, double scale = 1.0)
         {
             BlockTableRecord ms = (BlockTableRecord)tr.GetObject(SymbolUtilityServices.GetBlockModelSpaceId(db), OpenMode.ForWrite);
             BlockReference br = new BlockReference(pos, btrId);
+            if (scale != 1.0) br.ScaleFactors = new Scale3d(scale, scale, scale);
             ms.AppendEntity(br);
             tr.AddNewlyCreatedDBObject(br, true);
 
@@ -72,6 +76,28 @@ namespace MCG_FittingManagement.Utilities.FittingManagement
                     br.AttributeCollection.AppendAttribute(ar);
                     tr.AddNewlyCreatedDBObject(ar, true);
                 }
+            }
+
+            return br.ObjectId;
+        }
+
+        /// <summary>
+        /// Trả về ObjectId của block definition trong drawing hiện tại — nếu đã có thì dùng luôn,
+        /// nếu chưa có và <paramref name="filePath"/> hợp lệ thì load từ file .dwg phụ (side database).
+        /// Trả về <see cref="ObjectId.Null"/> nếu không tìm/load được (không có trong drawing VÀ
+        /// không có file hoặc file không tồn tại).
+        /// </summary>
+        public static ObjectId ResolveOrLoadBlockDefinition(Database db, Transaction tr, BlockTable bt, string blockName, string filePath)
+        {
+            if (string.IsNullOrEmpty(blockName)) return ObjectId.Null;
+            if (bt.Has(blockName)) return bt[blockName];
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return ObjectId.Null;
+
+            using (Database sideDb = new Database(false, true))
+            {
+                sideDb.ReadDwgFile(filePath, FileShare.Read, true, "");
+                sideDb.Insunits = db.Insunits;
+                return db.Insert(blockName, sideDb, true);
             }
         }
 

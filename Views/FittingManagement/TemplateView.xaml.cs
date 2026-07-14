@@ -20,7 +20,6 @@ namespace MCG_FittingManagement.Views.FittingManagement
         private readonly FittingManagementService _serviceImpl;
         private readonly IFittingManagementService _service;
         private readonly IMasterLibraryService _masterService;
-        private readonly IProjectLibraryService _projectService;
 
         public TemplateView()
         {
@@ -28,14 +27,22 @@ namespace MCG_FittingManagement.Views.FittingManagement
             _serviceImpl = new FittingManagementService();
             _service = _serviceImpl;
             _masterService = _serviceImpl;
-            _projectService = _serviceImpl;
         }
 
         // =========================================================
-        // IDW IMPORT — Extract → Split View → Create Blocks → Publish Library
+        // IDW IMPORT — Extract → Split View → Create Blocks → Publish vào Project Folder đang active.
+        // Nếu chưa có Project Folder nào active, hỏi user chọn (hoặc tạo mới) 1 lần — các lần import
+        // sau dùng lại đúng folder đó, không hỏi lại (đúng mô hình "1 Project = 1 Folder").
         // =========================================================
         private async void BtnBatchImportInventor_Click(object sender, RoutedEventArgs e)
         {
+            if (!ActiveProjectContext.Instance.HasActiveProject)
+            {
+                string chosen = FittingTableWindow.PromptSelectProjectFolder();
+                if (chosen == null) return;
+                ActiveProjectContext.Instance.ProjectFolderPath = chosen;
+            }
+
             OpenFileDialog ofd = new OpenFileDialog
             {
                 Title = "Select Inventor Drawing Files (.idw)",
@@ -71,22 +78,13 @@ namespace MCG_FittingManagement.Views.FittingManagement
         }
 
         // =========================================================
-        // OPEN MASTER LIBRARY — Project Library nằm ở tab "Project Config"
+        // OPEN FITTING TABLE (FittingTableWindow.ShowOrActivate tự quản lý singleton instance).
         // =========================================================
-        private static MasterLibraryWindow _masterLibWin;
-
         private void BtnOpenMasterLibrary_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                if (_masterLibWin != null && _masterLibWin.IsLoaded)
-                {
-                    _masterLibWin.Activate();
-                    return;
-                }
-                _masterLibWin = new MasterLibraryWindow(_masterService, _projectService, _service);
-                _masterLibWin.Closed += (_, __) => _masterLibWin = null;
-                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(_masterLibWin);
+                FittingTableWindow.ShowOrActivate(_masterService, _service);
             }
             catch (Exception ex)
             {

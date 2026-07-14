@@ -8,7 +8,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
     /// <summary>
     /// Hợp đồng chính cho FittingManagement: import IDW, BOM harvest, balloon, block utilities,
     /// drawing collection và 2 thao tác library "thuộc tính chéo" (Insert + Pick virtual item).
-    /// Library CRUD đã tách ra <see cref="IMasterLibraryService"/> và <see cref="IProjectLibraryService"/>.
+    /// Library CRUD (catalog của Project Folder đang active) đã tách ra <see cref="IMasterLibraryService"/>.
     /// </summary>
     public interface IFittingManagementService
     {
@@ -16,7 +16,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
         Task<ImportResult> ImportIdwFilesAsync(string[] idwPaths, string bomType, bool pullFromVault = false, IProgress<string> progress = null);
 
         // --- Giai đoạn 3.1: Library — operations chéo (Insert vào CAD, Pick từ CAD) ---
-        // Đọc/ghi catalog đã chuyển sang IMasterLibraryService / IProjectLibraryService.
+        // Đọc/ghi catalog đã chuyển sang IMasterLibraryService.
         void InsertBlockFromLibrary(string dwgPath, string blockName);
 
         /// <summary>
@@ -26,6 +26,20 @@ namespace MCG_FittingManagement.Services.FittingManagement
         void InsertMultipleBlocksFromLibrary(IList<CatalogItem> items);
 
         CatalogItem PickGeometricFeatureFromCad();
+
+        /// <summary>
+        /// Chèn "Fitting Table" — bảng lưới N hàng (mỗi hàng 1 fitting, gom theo PartNumber từ
+        /// <paramref name="projectItems"/>) x cột (Pos./Part Number/Title/Views/Description/Material/
+        /// Mass/UoM). Cột "Views" gộp tất cả hình chiếu của fitting đó vào chung 1 ô, scale tỉ lệ theo
+        /// kích thước thật của hình chiếu (không dùng cỡ chữ/hàng cố định). <paramref name="projectItems"/>
+        /// do caller truyền vào (toàn bộ catalog hoặc theo Category đang chọn — xem FittingTableWindow).
+        /// Hỗ trợ UPDATE-IN-PLACE: trước khi vẽ, hỏi user click chọn (tùy chọn) 1 entity của Fitting
+        /// Table cũ trong bản vẽ — nếu chọn đúng, xóa bảng cũ đó rồi vẽ bảng mới thay thế; nếu bỏ qua
+        /// (Enter), chèn bảng mới như bình thường.
+        /// Trả về đường dẫn file báo cáo chẩn đoán (.txt) để đánh giá chất lượng bảng vừa chèn mà
+        /// không cần gửi ảnh chụp màn hình; trả về null nếu user hủy chọn điểm chèn.
+        /// </summary>
+        string InsertFittingTable(IList<CatalogItem> projectItems);
 
         // --- Giai đoạn 3.2: BOM Harvester & Ballooning ---
         List<BomHarvestRecord> HarvestStructureBom();

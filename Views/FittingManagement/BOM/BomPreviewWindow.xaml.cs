@@ -102,12 +102,12 @@ namespace MCG_FittingManagement.Views.FittingManagement
 
         private void BtnScanDrawing_Click(object sender, RoutedEventArgs e)
         {
-            // Bắt buộc có active project trước khi scan — BOM chỉ đếm block đã add vào Item Library
+            // Bắt buộc có active project trước khi scan — BOM chỉ đếm block đã có trong catalog
             var ctx = ActiveProjectContext.Instance;
             if (!ctx.HasActiveProject)
             {
                 MessageBox.Show(
-                    "Chưa có Active Project.\n\nMở tab Project Config → Item Library → load hoặc tạo project mới trước khi scan BOM.",
+                    "Chưa có Active Project.\n\nMở tab \"Fitting Table\" → Load Folder trước khi scan BOM.",
                     "No Active Project", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -126,7 +126,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
                     rawData = _service.HarvestStructureBom();
                 }
 
-                // Chỉ giữ block đã được add vào active project (Item Library) — loại block copy tự do
+                // Chỉ giữ block đã có trong catalog của Project Folder đang active — loại block copy tự do
                 int rawCount = rawData?.Count ?? 0;
                 if (rawData != null) rawData = FilterByProjectCatalog(rawData, ctx);
                 int excludedCount = rawCount - (rawData?.Count ?? 0);
@@ -134,7 +134,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 if (rawData == null || rawData.Count == 0)
                 {
                     TxtStatus.Text = excludedCount > 0
-                        ? $"No valid blocks found in active project. ({excludedCount} block(s) excluded — not in Item Library)"
+                        ? $"No valid blocks found in active project. ({excludedCount} block(s) excluded — not in Fitting Table)"
                         : "No valid blocks found.";
                     return;
                 }
@@ -142,7 +142,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 int containerCount = rawData.Select(r => r.PanelName).Distinct().Count();
                 RebuildBomTable(rawData);
 
-                string excludedNote = excludedCount > 0 ? $"  ({excludedCount} excluded — not in Item Library)" : "";
+                string excludedNote = excludedCount > 0 ? $"  ({excludedCount} excluded — not in Fitting Table)" : "";
                 TxtStatus.Text = $"Scan complete. Found {containerCount} group(s).{excludedNote}";
             }
             catch (Exception ex) { MessageBox.Show(ex.Message, "System Error", MessageBoxButton.OK, MessageBoxImage.Error); }
@@ -224,7 +224,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
             var ctx = ActiveProjectContext.Instance;
             if (!ctx.HasActiveProject)
             {
-                MessageBox.Show("No active project. Open Item Library and load/create one first.",
+                MessageBox.Show("No active project. Open \"Fitting Table\" and Load Folder first.",
                     "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
@@ -235,8 +235,8 @@ namespace MCG_FittingManagement.Views.FittingManagement
         }
 
         /// <summary>
-        /// Hull mode: đọc ProjectPosNum từ active project catalog (project JSON),
-        /// vì master catalog không chứa pos đã assign trong Item Library.
+        /// Hull mode: đọc lại ProjectPosNum mới nhất từ catalog của Project Folder đang active (đề
+        /// phòng user vừa Auto-Assign Pos/Edit Pos Num sau khi đã Scan, xem BtnSyncPosFromItemLib_Click).
         /// </summary>
         private void OverlayHullPositions(List<BomHarvestRecord> records)
         {
@@ -245,7 +245,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
 
             try
             {
-                var projectItems = CatalogJsonStore.Read<ProjectCatalogItem>(ctx.ProjectFilePath);
+                var projectItems = CatalogJsonStore.Read<CatalogItem>(ctx.CatalogFilePath);
                 var posLookup = projectItems
                     .Where(p => !string.IsNullOrEmpty(p.PartNumber) && !string.IsNullOrEmpty(p.ProjectPosNum))
                     .ToDictionary(p => p.PartNumber, p => p.ProjectPosNum, StringComparer.OrdinalIgnoreCase);
@@ -265,14 +265,14 @@ namespace MCG_FittingManagement.Views.FittingManagement
         }
 
         /// <summary>
-        /// Chỉ giữ lại record có PartId tồn tại trong active project catalog.
-        /// Block trong drawing nhưng chưa add vào Item Library → loại khỏi BOM.
+        /// Chỉ giữ lại record có PartId tồn tại trong catalog của Project Folder đang active.
+        /// Block trong drawing nhưng chưa từng add vào catalog → loại khỏi BOM.
         /// </summary>
         private List<BomHarvestRecord> FilterByProjectCatalog(List<BomHarvestRecord> records, ActiveProjectContext ctx)
         {
             try
             {
-                var projectItems = CatalogJsonStore.Read<ProjectCatalogItem>(ctx.ProjectFilePath);
+                var projectItems = CatalogJsonStore.Read<CatalogItem>(ctx.CatalogFilePath);
                 var validPartIds = new HashSet<string>(
                     projectItems.Select(p => p.PartNumber).Where(p => !string.IsNullOrEmpty(p)),
                     StringComparer.OrdinalIgnoreCase);

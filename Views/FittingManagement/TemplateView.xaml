@@ -30,10 +30,10 @@
                 </StackPanel>
             </GroupBox>
 
-            <GroupBox Header="MASTER LIBRARY">
+            <GroupBox Header="FITTING TABLE">
                 <StackPanel>
-                    <TextBlock Text="Browse imported templates in the Master library (project catalog has its own tab)." Style="{StaticResource HelperTextStyle}"/>
-                    <Button x:Name="BtnOpenMasterLibrary" Content="Open Master Library" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenMasterLibrary_Click"/>
+                    <TextBlock Text="Browse and manage all imported fittings (Master Library + Active Project in one table)." Style="{StaticResource HelperTextStyle}"/>
+                    <Button x:Name="BtnOpenMasterLibrary" Content="Open Fitting Table" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenMasterLibrary_Click"/>
                 </StackPanel>
             </GroupBox>
 

@@ -19,7 +19,9 @@ namespace MCG_FittingManagement.Services.FittingManagement
     /// </summary>
     public partial class FittingManagementService
     {
-        // Tolerance khi clip entity theo bbox view (mm) — để bắt trọn edge entities vẽ sát biên
+        // Tolerance nới bbox của mỗi view (mm) trước khi test OVERLAP với extents thật của entity (xem
+        // AssignEntitiesToViews) — Inventor DrawingView.Width/Height là frame "danh nghĩa", geometry
+        // thật (centerline overshoot, hatch...) có thể tràn ra ngoài 1 chút.
         private const double BBOX_TOLERANCE_MM = 50.0;
 
         // Layer đích cho kiểu nét trong block (theo chuẩn Mechanical-AM)
@@ -150,10 +152,11 @@ namespace MCG_FittingManagement.Services.FittingManagement
                     BlockTableRecord srcMs = (BlockTableRecord)srcTr.GetObject(
                         SymbolUtilityServices.GetBlockModelSpaceId(sourceDb), OpenMode.ForRead);
 
-                    // Pre-compute allowed entities + center — 1 pass/DWG (tránh GeometricExtents lặp V×E).
-                    // Đồng thời enumerate TẤT CẢ entity types (kept + filtered + no-extents) để log breakdown
-                    // cho user biết DWG chứa gì và ta đang drop cái nào.
-                    var allowed = new List<(ObjectId Id, double Cx, double Cy)>();
+                    // Pre-compute allowed entities + FULL extents (không chỉ centroid — xem lý do ở
+                    // AssignEntitiesToViews) — 1 pass/DWG (tránh GeometricExtents lặp V×E). Đồng thời
+                    // enumerate TẤT CẢ entity types (kept + filtered + no-extents) để log breakdown cho
+                    // user biết DWG chứa gì và ta đang drop cái nào.
+                    var allowed = new List<(ObjectId Id, double MinX, double MaxX, double MinY, double MaxY, double Cx, double Cy)>();
                     var keptBreakdown = new Dictionary<string, int>();
                     var filteredBreakdown = new Dictionary<string, int>();
                     var noExtentsBreakdown = new Dictionary<string, int>();
@@ -178,7 +181,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
                             Extents3d ext = ent.GeometricExtents;
                             double cx = (ext.MinPoint.X + ext.MaxPoint.X) * 0.5;
                             double cy = (ext.MinPoint.Y + ext.MaxPoint.Y) * 0.5;
-                            allowed.Add((eid, cx, cy));
+                            allowed.Add((eid, ext.MinPoint.X, ext.MaxPoint.X, ext.MinPoint.Y, ext.MaxPoint.Y, cx, cy));
                             IncrementCount(keptBreakdown, typeName);
                         }
                         catch
@@ -190,34 +193,23 @@ namespace MCG_FittingManagement.Services.FittingManagement
 
                     LogEntityBreakdown(totalEntities, keptBreakdown, filteredBreakdown, noExtentsBreakdown);
 
-                    foreach (var view in metadata.Views)
+                    // Gán MỖI entity vào ĐÚNG 1 view (theo extents OVERLAP thật, không chỉ centroid — xem
+                    // AssignEntitiesToViews) TRƯỚC khi loop dựng block — cần biết view nào 3D bị skip để
+                    // loại khỏi phép gán, và cần toàn bộ view 2D cùng lúc để xử lý overlap giữa 2 view kề nhau.
+                    var views2D = metadata.Views.Where(v => v != null && !v.Is3D).ToList();
+                    foreach (var v3d in metadata.Views.Where(v => v != null && v.Is3D))
                     {
-                        if (view == null) continue;
+                        skipped3D++;
+                        FileLogger.Log(LOG_PREFIX, $"  Bỏ qua '{v3d.Name}' — view 3D (iso/arbitrary), không publish vào Master.");
+                    }
+                    var entitiesByView = AssignEntitiesToViews(allowed, views2D);
 
-                        // Yêu cầu: chỉ block hoá view 2D ortho. View 3D iso/arbitrary skip — không vào Master Library.
-                        if (view.Is3D)
-                        {
-                            skipped3D++;
-                            FileLogger.Log(LOG_PREFIX, $"  Bỏ qua '{view.Name}' — view 3D (iso/arbitrary), không publish vào Master.");
-                            continue;
-                        }
-
-                        double minX = view.CenterX - view.Width * 0.5 - BBOX_TOLERANCE_MM;
-                        double maxX = view.CenterX + view.Width * 0.5 + BBOX_TOLERANCE_MM;
-                        double minY = view.CenterY - view.Height * 0.5 - BBOX_TOLERANCE_MM;
-                        double maxY = view.CenterY + view.Height * 0.5 + BBOX_TOLERANCE_MM;
-
-                        var entsToClone = new ObjectIdCollection();
-                        foreach (var a in allowed)
-                        {
-                            if (a.Cx >= minX && a.Cx <= maxX && a.Cy >= minY && a.Cy <= maxY)
-                                entsToClone.Add(a.Id);
-                        }
-
-                        if (entsToClone.Count == 0)
+                    foreach (var view in views2D)
+                    {
+                        if (!entitiesByView.TryGetValue(view, out ObjectIdCollection entsToClone) || entsToClone.Count == 0)
                         {
                             FileLogger.Log(LOG_PREFIX,
-                                $"  Bỏ qua '{view.Name}' — không có entity nào rơi trong bbox.");
+                                $"  Bỏ qua '{view.Name}' — không có entity nào thuộc view (overlap bbox).");
                             continue;
                         }
 
@@ -274,7 +266,10 @@ namespace MCG_FittingManagement.Services.FittingManagement
                             UoM = "pcs",
                             Source = "Inventor",
                             CreatedDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
-                            IsPlanView = view.IsPlanView
+                            IsPlanView = view.IsPlanView,
+                            ExtraProperties = metadata.ExtraProperties != null
+                                ? new Dictionary<string, string>(metadata.ExtraProperties)
+                                : new Dictionary<string, string>()
                         };
                         results.Add(Tuple.Create(newBtr.ObjectId, catalogItem));
                         FileLogger.Log(LOG_PREFIX,
@@ -307,6 +302,52 @@ namespace MCG_FittingManagement.Services.FittingManagement
                 || ent is Polyline3d
                 || ent is Spline
                 || ent is Ellipse;
+        }
+
+        /// <summary>
+        /// Gán mỗi entity (đã pass <see cref="IsAllowedEntityType"/> + có extents hợp lệ) vào ĐÚNG 1
+        /// view — theo phép test OVERLAP thật giữa <c>Extents3d</c> của entity với bbox (đã tolerance)
+        /// của view, KHÔNG PHẢI chỉ kiểm tra centroid như thiết kế cũ. Bug đã báo: 1 entity to (vd
+        /// đường thẳng dài, arc rộng) có thể có TÂM extents nằm ngoài bbox dù phần lớn thân nó vẫn nằm
+        /// trong view — centroid-only test làm rớt hẳn entity đó dù đáng lẽ phải giữ (thiếu nét). Nếu 1
+        /// entity overlap NHIỀU view (2 view kề sát nhau trên cùng sheet), chọn view có TÂM gần centroid
+        /// entity NHẤT để không nhân đôi entity sang view lân cận.
+        /// </summary>
+        private static Dictionary<ViewMetadata, ObjectIdCollection> AssignEntitiesToViews(
+            List<(ObjectId Id, double MinX, double MaxX, double MinY, double MaxY, double Cx, double Cy)> allowed,
+            List<ViewMetadata> views2D)
+        {
+            var viewBoxes = views2D.Select(v => (
+                View: v,
+                MinX: v.CenterX - v.Width * 0.5 - BBOX_TOLERANCE_MM,
+                MaxX: v.CenterX + v.Width * 0.5 + BBOX_TOLERANCE_MM,
+                MinY: v.CenterY - v.Height * 0.5 - BBOX_TOLERANCE_MM,
+                MaxY: v.CenterY + v.Height * 0.5 + BBOX_TOLERANCE_MM
+            )).ToList();
+
+            var result = new Dictionary<ViewMetadata, ObjectIdCollection>();
+            foreach (var a in allowed)
+            {
+                ViewMetadata best = null;
+                double bestDistSq = double.MaxValue;
+
+                foreach (var vb in viewBoxes)
+                {
+                    bool overlaps = a.MinX <= vb.MaxX && a.MaxX >= vb.MinX && a.MinY <= vb.MaxY && a.MaxY >= vb.MinY;
+                    if (!overlaps) continue;
+
+                    double dx = a.Cx - vb.View.CenterX;
+                    double dy = a.Cy - vb.View.CenterY;
+                    double distSq = dx * dx + dy * dy;
+                    if (distSq < bestDistSq) { bestDistSq = distSq; best = vb.View; }
+                }
+
+                if (best == null) continue;
+                if (!result.TryGetValue(best, out ObjectIdCollection coll))
+                    result[best] = coll = new ObjectIdCollection();
+                coll.Add(a.Id);
+            }
+            return result;
         }
 
         /// <summary>Tăng counter cho entity type name (tránh TryGetValue pattern ở call site).</summary>

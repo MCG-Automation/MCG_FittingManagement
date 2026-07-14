@@ -4,6 +4,641 @@
 
 ---
 
+## Session 2026-07-14M — Sửa 5 phản hồi Fitting Table + audit Fitting Handle
+
+### Bối cảnh
+User phản hồi sau khi test session trước:
+1. Kéo-thả Sub Folder KHÔNG được ghi đè `ProjectPosNum` thật — Equipment có thể có nhiều Pos khác
+   nhau cho cùng 1 PartNumber (mỗi Equipment 1 số riêng); số ở đầu Sub Folder chỉ là thứ tự hiển thị
+   theo ý muốn user.
+2. Cần multi-select Sub Folder (Ctrl/Shift-click) + right-click thao tác hàng loạt, Grid hiện union.
+3. Tên Sub Folder rút gọn: `Pos-Name (PartNum)`.
+4. Table Title (CAD) chưa nổi bật — đổi màu (không đen) + to hơn Header.
+5. Nội dung bảng CAD: chữ không đồng đều (do scale-theo-hàng session trước), cột chưa đủ rộng, chữ đè
+   lưới → quay về cỡ chữ đồng nhất, cột rộng theo dữ liệu thật.
+6. Audit tab Fitting Handle — xác nhận KHÔNG cần sửa gì (chỉ thao tác entity/attribute CAD + đã migrate
+   đúng "1 Project = 1 Folder" từ trước, không đụng CategoryNode/ExtraProperties/field nào đổi hôm nay).
+
+### Đã làm
+- **`Models/FittingManagement/FittingManagementModel.cs`**: thêm `CatalogItem.CategorySortOrder`
+  (int?) — thứ tự hiển thị Sub Folder do user kéo-thả, TÁCH RIÊNG khỏi `ProjectPosNum` (Pos Num nghiệp
+  vụ thật, BOM/Balloon vẫn đọc `ProjectPosNum` y nguyên, không bị ảnh hưởng).
+- **`Views/FittingManagement/Library/Shared/CategoryNode.cs`**: implement `INotifyPropertyChanged`,
+  thêm `bool IsMultiSelected` (tô nền khi multi-select).
+- **`Views/FittingManagement/Library/Shared/CatalogTreeBuilder.cs`**: sort Sub Folder theo
+  `CategorySortOrder` (null → cuối) thay vì `ProjectPosNum`; label đổi format
+  `"{PosNum:D3}-{Title} ({PartNumber})"` (vd "001-Guide (CAS-1234567)").
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml`**: bọc `HierarchicalDataTemplate` trong
+  `Border x:Name="RowBorder"` + `DataTrigger` tô nền `#FFCCE5FF` khi `IsMultiSelected=true`.
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml.cs`**:
+  - Multi-select: `_selectedCategoryNodes` (List) + `_multiSelectAnchor` (Shift range-select). Ctrl-click
+    toggle, Shift-click chọn dải liên tục (cùng parent), plain click reset về 1 node (qua
+    `TreeCategories_SelectedItemChanged` đồng bộ lại, tránh xung đột timing Preview/tunnel vs native
+    selection). `ApplyFilters()` dùng union `.Items` của mọi node đang chọn khi có multi-select.
+  - Right-click: nếu node đang KHÔNG nằm trong multi-selection hiện tại → reset về đúng node đó
+    (Explorer-style); nếu ĐÃ multi-select → giữ nguyên cả nhóm, menu áp dụng cho toàn bộ union.
+  - `RenumberPosNumInCategory` đổi tên `RenumberCategorySortOrder`, ghi `CategorySortOrder` (int) thay
+    vì `ProjectPosNum` (string "D3") — không đụng Pos Num BOM thật.
+- **`Services/FittingManagement/Library/FittingManagementService.FittingTable.cs`**:
+  - Bỏ hẳn scale-theo-hàng (`rowTextHeights`) của session trước — quay về 1 `textHeight` chung cho
+    MỌI ô dữ liệu (đồng đều toàn bảng).
+  - Cột `Vault Name`/`Part ID`/`X.Class`/`Description`/`Weight`/`Designer`: tính độ rộng theo ĐỘ DÀI
+    THẬT của dữ liệu (quét toàn bộ `rows`, cap 30 ký tự thường/40 Description) thay vì hằng số ước
+    lượng cố định (16/16/16/24/10/14) — sửa bug "cột không đủ rộng, chữ đè lưới".
+  - `ColWidthFor` thêm biên an toàn 15% cho ước lượng DATA (trước chỉ header có 30%).
+  - `AddHeaderText` thêm tham số `Color color = null` (mặc định đen — không đổi hành vi cột header cũ);
+    Title gọi với màu xanh brand `Color.FromRgb(0, 0x55, 0xA5)` thay vì đen, `titleTextHeight` tăng từ
+    `headerTextHeight * 1.3` → `* 1.8`.
+- Build `dotnet build -c Debug` — 0 error, 0 warning code-related (chỉ MSB3061 khoá file .dll cũ).
+
+### Trạng thái
+- Phase hiện tại: cả 5 điểm đã build thành công. Fitting Handle tab xác nhận không cần sửa (audit-only,
+  không có thay đổi code).
+
+### Bước tiếp theo
+- Test trong AutoCAD thật: kéo-thả Sub Folder Equipment → verify `ProjectPosNum` các item KHÔNG đổi
+  (scan lại BOM Equipment, Pos vẫn đúng như trước); Ctrl/Shift-click multi-select → verify tô nền +
+  Grid union + right-click áp dụng đúng cho cả nhóm; verify tên Sub Folder đúng format mới; Insert
+  Fitting Table → verify Title xanh + to hơn Header rõ rệt, chữ mọi ô cùng cỡ, cột đủ rộng không tràn lưới.
+
+### Ghi chú API
+- `Autodesk.AutoCAD.Colors.Color` là REFERENCE TYPE (class) — dùng `Color color = null` cho tham số
+  optional, KHÔNG dùng `Color? color = null` (cú pháp nullable-reference-type C# 8, gây warning CS8632
+  vì project chưa bật `#nullable` context; với reference type chỉ cần `= null` là đủ).
+- WPF `HierarchicalDataTemplate.Triggers` hỗ trợ `DataTrigger` y hệt `Style.Triggers` — dùng
+  `TargetName` trỏ vào 1 named element bên trong template (vd `Border x:Name="RowBorder"`) để đổi
+  Background theo 1 property trên data item (`IsMultiSelected`), không cần custom control/converter.
+
+---
+
+## Session 2026-07-14L — Fitting Table: text size theo hàng, đổi cột CAD table, kéo-thả Pos Num, Table Title
+
+### Bối cảnh
+User góp ý 4 điểm sau khi dùng thử "Insert Fitting Table" + Fitting Table window:
+1. Text trên bảng CAD vẫn nhỏ so với fitting có kích thước lớn.
+2. Đổi thứ tự + tên cột bảng CAD: Views/Pos./Vault name/Part ID/X.Class/Description/Weight/Designer.
+3. Category Sub Folder (dưới "Fitting In Equipment"/"Fitting In Hull") cần hiện số Pos ở đầu tên +
+   kéo-thả sắp xếp lại thứ tự — 1 cách khác để sửa Pos Num.
+4. 1 bản vẽ có thể chứa nhiều Fitting Table — thêm 1 dòng Title phía trên mỗi bảng = tên Project Folder.
+
+Đã lập kế hoạch qua Plan Mode, khảo sát code (xác nhận "XClass" trong BOM harvest = `CatalogItem.Title`)
++ chốt qua AskUserQuestion: "Vault name" = `BlockName`, "Part ID" = `PartNumber`; Sub Folder đổi từ
+group-theo-Title sang **group-theo-PartNumber** (1 Sub Folder = ĐÚNG 1 PartNumber, theo yêu cầu riêng
+của user) để kéo-thả không mập mờ.
+
+### Đã làm
+
+**1+2+4 — `Services/FittingManagement/Library/FittingManagementService.FittingTable.cs`** (`InsertFittingTable`):
+- Text mỗi hàng SCALE LÊN (không bao giờ xuống) so với `textHeight` chung khi fitting hàng đó lớn hơn
+  trung vị (`refHeight`) cả bảng — `rowTextHeights[r] = maxH > refHeight ? Min(textHeight * maxH/refHeight, textHeight*3) : textHeight`
+  (cap 3× tránh phóng đại quá mức với outlier). Fitting nhỏ/trung bình giữ nguyên cỡ chữ cũ — không
+  regression. `cellPad`/`colWidths`/`headerHeight` vẫn giữ nguyên baseline (không scale theo hàng).
+- Đổi `headersUpper` + thứ tự cột: `VIEWS` chuyển thành cột ĐẦU TIÊN (logic chèn view di chuyển lên đầu
+  vòng lặp mỗi hàng); cột mới `VAULT NAME` (BlockName), `PART ID` (PartNumber), `X.CLASS` (Title —
+  khớp đúng ý nghĩa "XClass" đang dùng trong BOM harvest), `WEIGHT` (Mass, nối thêm " kg" vào giá trị);
+  cột mới hoàn toàn `DESIGNER`. Bỏ `MATERIAL`/`UOM` khỏi bảng.
+- Thêm Table Title phía trên header row = `"FITTING TABLE — {ActiveProjectContext.Instance.ProjectDisplayName}"`
+  (đọc singleton trực tiếp, không cần thêm tham số/plumbing — đã có tiền lệ ở `MasterLibrary.cs`). Toàn
+  bộ bảng dịch xuống 1 khoảng = `titleHeight` để nhường chỗ. Title cũng được gắn Table ID (XData) như
+  mọi entity khác — update-in-place xóa/vẽ lại đúng luôn cả Title.
+- `BuildDiagnosticReport`: cập nhật label cột "Column widths" khớp thứ tự/tên mới.
+
+**3 — Category Sub Folder = 1 PartNumber, hiện Pos Num, kéo-thả reorder**:
+- **`Views/FittingManagement/Library/Shared/CategoryNode.cs`**: thêm `Level` (0=root, 1=BomType,
+  2=Sub Folder) và `Parent` (dùng giới hạn kéo-thả trong cùng BomType category).
+- **`Views/FittingManagement/Library/Shared/CatalogTreeBuilder.cs`**: đổi grouping con từ
+  `GroupBy(Title)` → `GroupBy(PartNumber)` (1 Sub Folder = đúng 1 PartNumber); sort theo `ProjectPosNum`
+  dạng số (rỗng/không parse được xếp cuối, tie-break alphabet PartNumber) thay vì alphabet theo Title;
+  `CategoryName` hiển thị dạng `"{PosNum} — {PartNumber} — {Title}"`.
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml(.cs)`**: thêm `AllowDrop` + 3 EventSetter
+  (`PreviewMouseLeftButtonDown`/`PreviewMouseMove`/`Drop`) trên `TreeView.ItemContainerStyle`. Kéo-thả
+  chỉ cho phép node Level 2 (Sub Folder), cùng `Parent` (không kéo chéo Equipment/Hull) — dùng lại
+  `FindAncestorTreeViewItem` đã có (từ tính năng right-click Category) để xác định đúng node dưới
+  chuột. Thả xong → reorder trong `parent.Children` → `RenumberPosNumInCategory(parent)`: gán Pos Num
+  tuần tự "D3" theo thứ tự MỚI cho mọi item trong từng Sub Folder (mirror công thức `AutoAssignPositions`
+  đã có, khác ở chỗ thứ tự lấy từ kéo-thả thay vì alphabet) → `_masterService.MergeIntoMaster(...)` →
+  `LoadCatalog()` refresh (tree build lại từ dữ liệu vừa ghi, tự sort đúng theo Pos Num mới).
+  **MVP**: không vẽ insertion-line adorner khi kéo, chỉ dựa vào con trỏ mặc định của Windows.
+- Build `dotnet build -c Debug` — 0 error.
+
+### Trạng thái
+- Phase hiện tại: cả 4 điểm đã build thành công. Cần test lại trong AutoCAD thật (không thể build-test
+  UI kéo-thả/layout bảng CAD qua `dotnet build`).
+
+### Bước tiếp theo
+- Test Insert Fitting Table: verify text hàng fitting lớn to hơn rõ rệt; verify đúng 8 cột mới, Vault
+  name ≠ Part ID; verify Title hiện đúng tên Project Folder, update-in-place xóa/vẽ lại đúng cả Title.
+- Test Fitting Table window: verify Sub Folder hiện "PosNum — PartNumber — Title", sort đúng theo Pos
+  Num; kéo 1 Sub Folder lên/xuống trong cùng BomType category → verify Pos Num renumber đúng tuần tự;
+  verify KHÔNG kéo được chéo giữa Equipment/Hull; verify Insert Fitting Table dùng đúng Pos Num mới.
+
+### Ghi chú API
+- WPF drag-drop TreeView: `PreviewMouseLeftButtonDown` (ghi điểm bắt đầu) → `PreviewMouseMove` (kiểm
+  tra vượt `SystemParameters.MinimumHorizontalDragDistance`/`...VerticalDragDistance` → gọi
+  `DragDrop.DoDragDrop(item, data, DragDropEffects.Move)`) → `Drop` (đọc `e.Data.GetData(typeof(T))`).
+  Cả 3 event đều tunnel/route qua mọi `TreeViewItem` cha lồng nhau — phải tự walk `VisualTreeHelper` từ
+  `e.OriginalSource` để xác định đúng node dưới chuột (không dùng `sender` trực tiếp).
+
+---
+
+## Session 2026-07-14K — Right-click Category (mirror Grid) + fix thiếu nét khi import IDW
+
+### Bối cảnh
+User báo 2 vấn đề:
+1. Right-click thao tác (Edit Properties/Pos Num/View Type/Sync/Remove) hiện chỉ có trên từng dòng
+   Grid — cần áp dụng tương tự khi right-click vào 1 Category trên TreeCategories (áp dụng cho TOÀN
+   BỘ fitting trong category đó).
+2. 1 số View xuất ra khi import IDW bị thiếu nét — nghi ngờ do khung bao (bbox) dùng để clip entity
+   vào từng view chưa đủ lớn.
+
+### Đã làm
+
+**1. Right-click Category** (`Views/FittingManagement/Library/FittingTableWindow.xaml(.cs)`):
+- Thêm `EventSetter PreviewMouseRightButtonDown` vào `TreeView.ItemContainerStyle` (trước đây
+  TreeViewItem không có bất kỳ mouse-event nào).
+- `TreeViewItem_PreviewMouseRightButtonDown` — vì event TUNNEL qua node cha trước khi tới node con
+  dưới chuột (EventSetter áp cho MỌI cấp), dùng `FindAncestorTreeViewItem(e.OriginalSource)` để chỉ
+  xử lý ở ĐÚNG node dưới chuột, bỏ qua các lần gọi trên node cha lồng ngoài.
+- Cơ chế TÁI SỬ DỤNG (không viết lại business logic): chọn category (`item.IsSelected = true`) trigger
+  `TreeCategories_SelectedItemChanged` → `ApplyFilters()` (đồng bộ) lọc Grid theo đúng category → gọi
+  `GridCatalog.SelectAll()` → 5 `MenuItem` trong menu mới gọi THẲNG đúng handler đã có của Grid
+  (`BtnEditProperties_Click`, `BtnEditPosNum_Click`, `BtnEditViewType_Click`, `BtnSyncToDrawing_Click`,
+  `BtnRemoveFromMaster_Click`) — các handler này vốn chỉ đọc `GridCatalog.SelectedItems`, không cần
+  sửa gì ở chúng.
+- `BuildCategoryContextMenu(categoryName, itemCount)` — dựng động (giống `BuildCustomizeGridMenu` đã
+  có), header hiện tên category + số lượng fitting đang chọn.
+
+**2. Fix thiếu nét khi import IDW** (`Services/FittingManagement/Import/FittingManagementService.JsonImport.cs`):
+- Root cause tìm được: phép test "entity thuộc view nào" cũ CHỈ so sánh **tâm (centroid) extents** của
+  entity với bbox (đã tolerance 50mm) của view — KHÔNG xét kích thước/độ trải rộng thật của chính
+  entity đó. Hệ quả: 1 entity to (đường thẳng dài, arc rộng...) có tâm extents nằm ngoài bbox dù phần
+  lớn thân nó vẫn nằm trong view → bị loại HẲN, không phải lỗi tolerance quá nhỏ mà là lỗi thuật toán
+  (centroid-only, không phải overlap thật).
+- Fix: thêm `AssignEntitiesToViews` — đổi từ "centroid trong bbox" sang **test OVERLAP thật** giữa
+  `Extents3d` đầy đủ (Min/Max X/Y) của entity với bbox (đã tolerance) của view. Xử lý TRƯỚC khi loop
+  dựng block (1 pass gán entity → view, thay vì mỗi view tự lọc riêng như cũ).
+- Vì overlap thật có thể khiến 1 entity match NHIỀU view (2 view kề sát nhau trên cùng sheet), thêm
+  tie-break: chọn view có TÂM gần centroid entity NHẤT — tránh nhân đôi entity sang view lân cận (giữ
+  đúng tinh thần "1 entity thuộc đúng 1 view" như thiết kế cũ, chỉ sửa lại CÁCH xác định view nào).
+  `BBOX_TOLERANCE_MM = 50.0` giữ nguyên giá trị, chỉ đổi vai trò (pad bbox trước khi test overlap, thay
+  vì pad quanh centroid).
+- Build `dotnet build -c Debug` — 0 error.
+
+### Trạng thái
+- Phase hiện tại: cả 2 fix đã build thành công. Right-click Category hoạt động độc lập, không phụ
+  thuộc thay đổi khác. Fix clip-view cần test lại với IDW thật để xác nhận hết thiếu nét.
+
+### Bước tiếp theo
+- **Cần test với IDW thật** (không thể build-test AutoCAD DB clip logic qua `dotnet build`) — import
+  lại vài file .idw đã từng bị báo thiếu nét, so sánh trước/sau fix; kiểm tra thêm trường hợp 2 view
+  đặt sát nhau trên cùng sheet để xác nhận tie-break "gần tâm nhất" không gây lẫn entity giữa 2 view.
+- Test right-click Category trong AutoCAD: right-click 1 category bất kỳ (kể cả "All Fittings",
+  "Recently", category lồng nhau theo Title) → verify menu hiện đúng tên+số lượng, mỗi thao tác áp
+  dụng đúng cho TOÀN BỘ fitting trong category (không chỉ 1 item), không bị chọn nhầm category cha khi
+  right-click category con.
+
+### Ghi chú API
+- `EventSetter` trên `TreeView.ItemContainerStyle` áp dụng cho MỌI `TreeViewItem` ở MỌI cấp lồng nhau
+  (không chỉ cấp gốc) — sự kiện `PreviewMouseRightButtonDown` (tunneling) sẽ chạy qua handler này ở
+  TỪNG node cha trước khi tới node con dưới chuột. Muốn chỉ xử lý ở node THẬT SỰ dưới chuột, phải tự
+  walk `VisualTreeHelper` từ `e.OriginalSource` lên tìm `TreeViewItem` gần nhất rồi so sánh với `sender`.
+- `TreeViewItem.IsSelected = true` (set qua code) trigger `TreeView.SelectedItemChanged` ĐỒNG BỘ (cùng
+  call stack) — có thể dựa vào side-effect này (vd `ApplyFilters()`) đã chạy xong ngay sau dòng set,
+  không cần `Dispatcher.Invoke`/chờ thêm.
+
+---
+
+## Session 2026-07-14J — Dynamic Properties Bag + Customize Grid (mọi field Vault/iProperty)
+
+### Bối cảnh
+User hỏi: Vault có rất nhiều field cho Fitting (ngoài 7 field đang trích: PartNumber/Description/
+Material/Designer/Mass/Title/Revision) — muốn xuất được HẾT ra, và cho phép user tự chọn field nào
+hiện trên Grid bằng click chuột phải vào Header ("Customize Grid"). Khảo sát xác nhận kiến trúc cũ là
+fixed-schema toàn tuyến (không có dictionary/cột động ở bất kỳ đâu). Đã lập kế hoạch qua Plan Mode,
+chốt qua AskUserQuestion: cấu hình cột dùng CHUNG mọi Project (không riêng từng project); cột field
+động mặc định ẨN, user tự bật.
+
+### Đã làm
+- **`Services/FittingManagement/Import/FittingManagementService.IdwImport.Metadata.cs`**:
+  - Thêm `ExtractAllPropertiesGeneric` — duyệt TOÀN BỘ `doc.PropertySets` (kể cả "User Defined
+    Properties", nơi Vault UDP thường map vào) qua `foreach (dynamic propSet in propSets) foreach
+    (dynamic prop in propSet)`, mỗi property đọc riêng trong try/catch (1 property lỗi không hỏng cả
+    vòng lặp). Field trùng với 7 field đã hardcode (`KNOWN_IPROPERTY_NAMES`) bị skip; field trùng tên
+    giữa các PropertySet khác nhau giữ giá trị ĐẦU TIÊN gặp. Gom vào `metadata.ExtraProperties`.
+  - `ExtractIProperties` gọi hàm mới này sau khi trích 7 field chính như cũ (không đổi hành vi cũ).
+- **`Models/FittingManagement/FittingManagementModel.cs`**: thêm `Dictionary<string,string>
+  ExtraProperties` trên cả `FittingMetadata` và `CatalogItem` — Newtonsoft serialize Dictionary tự
+  nhiên, không cần sửa `CatalogJsonStore`.
+- **`Services/FittingManagement/Import/FittingManagementService.JsonImport.cs`**: gán
+  `ExtraProperties` (copy riêng) khi tạo `CatalogItem` trong `ImportSingleDwgWithSplit`. Item "Add
+  from CAD" giữ `ExtraProperties` rỗng mặc định (không qua Inventor).
+  - **Ngoài phạm vi (cố ý)**: KHÔNG đẩy `ExtraProperties` vào block attribute AutoCAD — 10 attribute
+    chuẩn theo CLAUDE.md giữ nguyên, tách riêng khỏi yêu cầu hiển thị Grid.
+- **`Services/FittingManagement/Library/GridColumnSettingsStore.cs`** (mới) — mirror
+  `LastProjectSettingsStore`: persist cấu hình cột (Dictionary<string,bool>, key = Header text) qua
+  `%APPDATA%\MCG_FittingManagement\gridcolumns.json`, dùng chung mọi Project.
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml`**: thêm `EventSetter
+  PreviewMouseRightButtonDown` vào `Style TargetType="DataGridColumnHeader"` đã có sẵn (trước đây
+  chưa có ContextMenu nào trên Header).
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml.cs`**:
+  - `RebuildDynamicColumns()` — gọi trong `LoadCatalog()`: tính union `ExtraProperties.Keys` của toàn
+    bộ `_fullCatalog`, thêm `DataGridTextColumn` MỚI (Binding indexer `ExtraProperties[key]`) cho key
+    CHƯA có cột — cột cũ giữ nguyên, không tạo trùng mỗi lần reload.
+  - `ApplyColumnVisibility()`/`ResolveVisibility()` — cột tĩnh (11 cột, liệt kê trong
+    `FixedColumnHeaders`) mặc định HIỆN, cột động mặc định ẨN; override đã lưu (nếu có) luôn thắng.
+  - `ColumnHeader_PreviewMouseRightButtonDown`/`BuildCustomizeGridMenu()` — build `ContextMenu` MỚI
+    mỗi lần mở (phản ánh đúng cột hiện có), 1 `MenuItem IsCheckable` cho MỖI cột (tĩnh lẫn động),
+    toggle `Visibility` + persist qua `GridColumnSettingsStore.SaveVisibility(...)` ngay khi click.
+- Build `dotnet build -c Debug` — 0 error (10 warning MSB3061 khoá file .dll cũ, không liên quan code).
+
+### Trạng thái
+- Phase hiện tại: Fitting Table hỗ trợ đầy đủ field động từ Vault/iProperty — user tự chọn cột hiện
+  qua right-click Header "Customize Grid", cấu hình dùng chung mọi Project, persist qua %APPDATA%.
+
+### Bước tiếp theo
+- **Cần test với Inventor thật + IDW có nhiều iProperty/Vault UDP** — không thể build-test phần đọc
+  `doc.PropertySets` qua `dotnet build` vì đây là COM automation runtime, chỉ chạy được khi có
+  Inventor cài trên máy. Sau khi import 1 file .idw thật: verify `metadata.ExtraProperties` có đủ
+  field ngoài 7 field cũ (xem log), mở Fitting Table verify 11 cột cũ vẫn hiện đúng (cột động ẩn mặc
+  định), click phải Header verify menu "Customize Grid" liệt kê đủ, tick 1 cột động verify hiện đúng
+  dữ liệu, đóng/mở lại AutoCAD verify cấu hình cột vẫn giữ.
+
+### Ghi chú API
+- Inventor COM `PropertySets`/`PropertySet` là collection hỗ trợ `foreach` qua `dynamic` (late-bound
+  `IEnumVARIANT`) — pattern chuẩn cho automation, không cần cast `IEnumerable` tường minh.
+- WPF `Binding` hỗ trợ path indexer trực tiếp vào `Dictionary<string,string>`:
+  `new Binding($"ExtraProperties[{key}]")` — không cần value converter hay wrapper class nào.
+- `DataGridColumn.Visibility` (enum `Visibility`, không phải `bool`) — dùng để ẩn/hiện cột mà KHÔNG
+  cần thêm/xoá khỏi `DataGrid.Columns` (giữ nguyên thứ tự/index cột giữa các lần toggle).
+
+---
+
+## Session 2026-07-14I — Fitting Table: chèn view ở tỉ lệ THẬT 1:1 (bỏ scale block)
+
+### Bối cảnh
+User hỏi "Tại sao scale của Block lại bị Scale?" — xác nhận qua AskUserQuestion đây là feature
+**Insert Fitting Table**: thiết kế cũ (từ nhiều session trước) chủ động scale block view theo tỉ lệ
+để vừa khít `rowHeight` cố định (`scale = (rowHeight - cellPad*2) / maxH`), khiến Properties palette
+hiển thị Scale X/Y/Z ≠ 1 — user muốn Block LUÔN giữ Scale 1:1 thật.
+
+### Đã làm
+- **`Services/FittingManagement/Library/FittingManagementService.FittingTable.cs`**:
+  - Bỏ hoàn toàn biến `rowScale`/`scale` khi chèn view — gọi `FittingBlockUtility.InsertBlockReference`
+    KHÔNG truyền tham số scale (mặc định `1.0`), đảm bảo Block Scale luôn = 1 trong Properties palette.
+  - Đảo ngược quan hệ rowHeight ↔ scale: trước đây rowHeight CỐ ĐỊNH (theo `refHeight*1.25`) rồi scale
+    block để vừa khít; giờ **rowHeight[r] biến thiên theo từng hàng** = chiều cao view lớn nhất TRONG
+    hàng đó (kích thước gốc, không scale) + padding — mỗi fitting cao thấp khác nhau tuỳ kích thước
+    thật, không còn ép về 1 giá trị chung.
+  - Tách biến `textBasis` (= `Math.Max(refHeight*1.25, 30)`, giữ nguyên công thức cũ) CHỈ dùng để tính
+    cỡ chữ/độ rộng cột (`textHeight`, `headerTextHeight`, `cellPad`, `charW`, `colWidths`) — không còn
+    liên quan đến rowHeight/scale block nữa, tránh lặp lại bug "block bị scale ngoài ý muốn".
+  - `viewGap` (khoảng cách giữa các view trong 1 ô Views) đổi từ `rowHeight * VIEW_GAP_RATIO` (phụ
+    thuộc rowHeight, giờ đã biến thiên) sang hằng số `cellPad * 2` — nhất quán giữa các hàng. Xoá hằng
+    số `VIEW_GAP_RATIO` không còn dùng.
+  - `DrawScheduleGrid` đổi tham số `double rowHeight, int rowCount` → `double[] rowHeights` — vẽ lưới
+    với chiều cao từng hàng riêng biệt thay vì lặp 1 giá trị cố định.
+  - `BuildDiagnosticReport` đổi tham số tương tự — báo cáo in ra min/max row height thay vì 1 giá trị,
+    và ghi rõ "row height={rowHeights[r]:F2} mm" cho từng hàng để user verify.
+- Build `dotnet build -c Debug` — 0 error.
+
+### Trạng thái
+- Phase hiện tại: Insert Fitting Table giờ chèn view ở đúng tỉ lệ thật (Scale=1 trong Properties),
+  bảng tự thích ứng chiều cao từng hàng theo kích thước thật của từng fitting.
+
+### Bước tiếp theo
+- Chờ user test lại trong AutoCAD thật: chọn 1 fitting bất kỳ trong bảng vừa chèn → mở Properties →
+  verify Scale X/Y/Z = 1. Verify các hàng có chiều cao khác nhau hợp lý theo kích thước fitting thật,
+  không bị chồng lấn lên lưới (xem file diagnostic .txt để confirm).
+
+### Ghi chú API
+- `FittingBlockUtility.InsertBlockReference(db, tr, btrId, pos, scale = 1.0)` — tham số `scale` có
+  default `1.0`, chỉ set `ScaleFactors` nếu `scale != 1.0` — nên đơn giản nhất để đảm bảo Scale=1 là
+  KHÔNG truyền tham số này, không phải truyền `1.0` tường minh (dù kết quả như nhau, nhưng caller nào
+  lỡ tính sai `scale` trong tương lai sẽ không vô tình làm hỏng lại behavior này).
+
+---
+
+## Session 2026-07-14H — Bỏ Master Library global, chuyển sang mô hình "1 Project = 1 Folder"
+
+### Bối cảnh
+User hỏi tác dụng của `MasterCatalog.json`/`MasterCatalog.recent.json`/project JSON, rồi xác nhận:
+tool chỉ phục vụ 1 project tại 1 thời điểm, KHÔNG cần Master Library toàn công ty nữa. Yêu cầu:
+1. Sau IDW import, hỏi user vị trí lưu fitting và ghi nhớ cho các lần import sau.
+2. "Load Project"/"Create Project" trong Fitting Table → gộp thành 1 nút "Load Folder" (bỏ Create).
+Đã lập kế hoạch qua Plan Mode (khảo sát bằng 2 Explore agent song song) và chốt qua AskUserQuestion:
+folder active tự động load lại mỗi khi mở AutoCAD (persist qua %APPDATA%); tên file catalog cố định
+`FittingCatalog.json`. Kế hoạch lưu tại `C:\Users\truonph\.claude\plans\mellow-whistling-flask.md`.
+
+### Đã làm — kiến trúc mới "1 Project = 1 Folder"
+- **`Services/FittingManagement/Library/LastProjectSettingsStore.cs`** (mới) — persist Project Folder
+  gần nhất qua `%APPDATA%\MCG_FittingManagement\lastproject.json`, cùng convention thư mục với
+  `Utilities/FileLogger.cs`.
+- **`Services/FittingManagement/Library/ActiveProjectContext.cs`** — đổi `ProjectFilePath` (trỏ tới 1
+  file JSON tuỳ ý) → `ProjectFolderPath` (trỏ tới 1 folder); thêm `CatalogFilePath` (nguồn chân lý
+  DUY NHẤT cho tên `FittingCatalog.json`); `HasActiveProject` đổi từ `File.Exists` → `Directory.Exists`;
+  constructor tự restore folder gần nhất từ `LastProjectSettingsStore`; setter tự persist khi đổi.
+- **`Services/FittingManagement/Library/FittingManagementService.MasterLibrary.cs`** — `_libraryFolderPath`
+  đổi từ `private readonly string = @"C:\Temp_BIM_Library"` (hardcode) → computed property đọc từ
+  `ActiveProjectContext.Instance.ProjectFolderPath` — nhờ mọi nơi dùng `_libraryFolderPath` chỉ ĐỌC
+  (không setter, không gán lại) nên đây là thay đổi drop-in, không cần sửa thêm chỗ khác. Đổi tên file
+  catalog `MasterCatalog.json` → `FittingCatalog.json`. `GetMasterCatalogItems()` trả rỗng (không throw)
+  khi chưa có Project Folder active. Các method GHI (`MergeIntoMaster`, `RemoveFromMaster`,
+  `PublishToCentralLibrary`, `PushBlocksFromCurrentDrawing`) thêm guard `EnsureActiveProjectFolder()` —
+  throw thông báo tiếng Việt rõ ràng nếu chưa Load Folder. Thêm `AutoAssignPositions()` (chuyển từ
+  `IProjectLibraryService` cũ, bỏ tham số path).
+- **Xoá hẳn tầng "Project overlay"** (dư thừa khi chỉ còn 1 catalog/project): xoá
+  `IProjectLibraryService.cs`, `FittingManagementService.ProjectLibrary.cs`, `ProjectCatalogItem.cs`.
+  Xoá `CatalogItem.IsInActiveProject` (transient, hết ý nghĩa vì chỉ còn 1 tầng dữ liệu).
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml(.cs)`**:
+  - Gộp "Load Project" + "Create Project" → 1 nút **"Load Folder"** (`System.Windows.Forms.FolderBrowserDialog`
+    — đã có sẵn reference `System.Windows.Forms` trong `.csproj`, không cần sửa). Không cần tạo file
+    catalog rỗng eagerly — `GetMasterCatalogItems()` tự trả `[]` nếu file chưa tồn tại.
+  - Xoá `OverlayProjectData()`/`OverlayKey()` — `LoadCatalog()` rút gọn còn gọi thẳng
+    `_masterService.GetMasterCatalogItems()`.
+  - Xoá `BtnAddToProject_Click`/`BtnRemoveFromProject_Click` + 2 context-menu item tương ứng — mọi item
+    trong grid nghiễm nhiên "thuộc project" (chỉ 1 tầng dữ liệu).
+  - `BtnEditPosNum_Click`/`BtnEditViewType_Click` ghi thẳng qua `_masterService.MergeIntoMaster(...)`
+    (bỏ logic "auto-add vào project" vì không còn 2 tầng).
+  - `BtnInsertFittingTable_Click`/`BtnSyncToDrawing_Click` bỏ điều kiện lọc `IsInActiveProject`.
+  - `BtnAutoAssignPos_Click` gọi `_masterService.AutoAssignPositions()` (bỏ tham số path).
+  - Đổi text "Remove from Master Library" → "Remove from Project"; xoá cột grid "In Project".
+  - `_recentTracker` (đổi tên file `MasterCatalog.recent.json` → `RecentItems.json`, nằm TRONG Project
+    Folder) giờ tạo lại mỗi khi `OnActiveProjectChanged` fire, thay vì cố định 1 lần ở constructor.
+- **`Views/FittingManagement/TemplateView.xaml.cs`** — `BtnBatchImportInventor_Click`: trước khi
+  import, nếu chưa có Active Project thì hiện `FolderBrowserDialog` hỏi chọn Project Folder (dùng lại
+  `FittingTableWindow.PromptSelectProjectFolder()`); nếu đã có, dùng luôn, không hỏi lại (đúng yêu cầu
+  "ghi nhớ vị trí cho mỗi lần import"). Cập nhật `ShowOrActivate(...)` bỏ tham số `IProjectLibraryService`.
+- **BOM Harvest** — `FittingManagementService.BomInterface.cs`: xoá `OverlayViewTypeFromProjectCatalog`
+  (đã trở thành no-op toán học — đọc lại đúng file `GetMasterCatalogItems()` vừa lấy rồi overlay lên
+  chính nó, do giờ chỉ còn 1 catalog). `BomPreviewWindow.xaml.cs`: **giữ nguyên** `OverlayHullPositions`/
+  `FilterByProjectCatalog` (vẫn còn ý nghĩa thật — lọc block chưa có trong catalog khỏi BOM Hull), chỉ
+  đổi nguồn đọc từ `ProjectCatalogItem`/`ctx.ProjectFilePath` (đã xoá) sang `CatalogItem`/`ctx.CatalogFilePath`.
+- Cập nhật doc-comment stale nhắc `IProjectLibraryService`/`ProjectCatalogItem`/"Item Library" tại
+  `IFittingManagementService.cs`, `CatalogTreeBuilder.cs`, `BomPreviewWindow.xaml.cs`.
+- Build `dotnet build -c Debug` — 0 error (8 warning MSB3061 khoá file .dll cũ do AutoCAD đang chạy,
+  không liên quan code).
+
+### Trạng thái
+- Phase hiện tại: kiến trúc "1 Project = 1 Folder" đã hoàn thành — không còn Master Library toàn công
+  ty, mỗi Project Folder tự chứa `FittingCatalog.json` + block `.dwg` + `RecentItems.json` riêng.
+  Folder active tự động restore khi mở AutoCAD lại (không cần Load Folder mỗi phiên).
+
+### Bước tiếp theo
+- Chờ user test lại trong AutoCAD thật theo đúng checklist đã ghi trong plan file: mở lần đầu (grid
+  rỗng, không lỗi) → Load Folder → Add from CAD → verify `FittingCatalog.json` đúng vị trí → đóng/mở
+  lại AutoCAD → verify tự restore folder → Import IDW lần đầu (hỏi folder) rồi lần 2 (không hỏi lại) →
+  Edit Pos Num/View Type/Auto-Assign/Push Update/Sync/Remove/Accessories → Scan Hull BOM (không
+  regression Qty/Pos) → Insert Fitting Table.
+
+### Ghi chú API
+- `_libraryFolderPath` chuyển từ field `private readonly` sang property `private string ... => ...;`
+  (expression-bodied) là thay đổi drop-in an toàn khi field đó chỉ ĐỌC ở mọi nơi (không setter, không
+  gán lại) — mọi `Path.Combine(_libraryFolderPath, ...)`/`Directory.Exists(_libraryFolderPath)` hiện có
+  tiếp tục compile y nguyên, không cần sửa từng chỗ gọi.
+- `System.Windows.Forms.FolderBrowserDialog` dùng được ngay (không cần sửa `.csproj`) vì
+  `UseWindowsForms=true` + `<Reference Include="System.Windows.Forms" />` đã có sẵn — chỉ cần fully-
+  qualify tên (`System.Windows.Forms.FolderBrowserDialog`) để tránh đụng `MessageBox`/`Application` của
+  WPF đã `using System.Windows;` trong cùng file.
+
+---
+
+## Session 2026-07-14G — Fitting Table: update-in-place (thêm/sửa fitting không cần xóa-vẽ-lại tay)
+
+### Bối cảnh
+User hỏi: nếu có thêm fitting mới vào Active Project, hoặc fitting đã có được sửa (View, Description...),
+mà trong bản vẽ đã có sẵn 1 Fitting Table — thay vì user phải tự xóa bảng cũ rồi insert lại, cần có
+cơ chế "update" bảng tại chỗ. Đã trao đổi phương án qua AskUserQuestion — user chọn: **KHÔNG tự động
+quét/đoán bảng cũ trong bản vẽ**, mà **user tự click chọn 1 entity của bảng cũ** để tool xóa giúp
+(tránh rủi ro tool tự nhận nhầm 1 bảng khác nếu bản vẽ có nhiều Fitting Table).
+
+### Đã làm
+- **`Services/FittingManagement/Library/FittingManagementService.FittingTable.cs`**:
+  - Thêm cơ chế "Table ID" — mỗi lần `InsertFittingTable` vẽ 1 bảng, sinh 1 `Guid.NewGuid()` và gắn
+    lên **MỌI** entity vừa tạo (Solid nền header, MText header, MText ô dữ liệu, BlockReference view,
+    Line lưới) qua **XData** (RegApp riêng `"MCG_FITTING_TABLE"`).
+  - Thêm bước tương tác MỚI ngay trước khi hỏi điểm chèn: `ed.GetEntity(...)` với
+    `AllowNone = true` — prompt "Select an entity of the EXISTING Fitting Table to update (or press
+    ENTER to insert a NEW table)". User Enter/bỏ qua → hành vi y hệt cũ (chèn bảng mới). User click 1
+    entity → đọc Table ID cũ từ XData (`TryGetTableGuid`); nếu entity không thuộc Fitting Table nào
+    (không có XData) thì báo qua `ed.WriteMessage` và tự động coi như bỏ qua (chèn mới, không lỗi).
+    User ESC ở bước này → hủy toàn bộ lệnh (return null), giống hệt hành vi hủy ở bước chọn điểm chèn.
+  - Trong transaction vẽ chính: nếu có Table ID cũ, gọi `EraseEntitiesByTableGuid` xóa toàn bộ entity
+    cùng Table ID đó **TRƯỚC** khi vẽ bảng mới — cùng 1 transaction với thao tác vẽ (nếu lỗi giữa
+    chừng, rollback cả xóa lẫn vẽ, bảng cũ không bị mất).
+  - Hàm mới: `EnsureRegApp` (đăng ký RegApp trước khi set XData), `TagWithTableGuid`, `TryGetTableGuid`,
+    `EraseEntitiesByTableGuid`.
+  - Đổi `AddCellText`/`AddHeaderText`/`AddLine`/`DrawScheduleGrid` từ `void` sang trả về `ObjectId`
+    (hoặc `List<ObjectId>`) để `InsertFittingTable` gom đủ danh sách entity vừa tạo rồi gắn Table ID
+    hàng loạt ở cuối (1 vòng lặp duy nhất, sau khi vẽ xong toàn bộ, trước khi ghi diagnostic report).
+  - `BuildDiagnosticReport` thêm 2 dòng đầu: `Table ID` của bảng vừa vẽ + `Mode: INSERT new table` hay
+    `Mode: UPDATE existing table (old Table ID=..., erased N entity/entities)` — để user xác nhận đúng
+    hành vi update/insert qua file .txt thay vì đoán.
+- **`Services/FittingManagement/IFittingManagementService.cs`**: cập nhật doc-comment `InsertFittingTable`
+  mô tả bước update-in-place mới (không đổi signature).
+- Build `dotnet build -c Debug` — 0 error.
+
+### Trạng thái
+- Phase hiện tại: Fitting Table đã hỗ trợ đầy đủ update-in-place — thêm/sửa fitting trong Active
+  Project rồi chạy lại "Insert Fitting Table", click chọn 1 entity bất kỳ của bảng cũ, bảng sẽ được
+  vẽ lại tại điểm chèn mới (user vẫn luôn được hỏi điểm chèn, không tự động dùng lại điểm cũ).
+
+### Bước tiếp theo
+- Chờ user test lại trong AutoCAD thật: (1) insert 1 bảng lần đầu, (2) sửa/add fitting trong Active
+  Project, (3) chạy lại "Insert Fitting Table", click chọn 1 dòng text/line của bảng cũ, xác nhận bảng
+  cũ bị xóa sạch (không sót entity nào) và bảng mới vẽ đúng dữ liệu mới nhất.
+- Cân nhắc thêm (nếu user muốn sau này): xử lý trường hợp bản vẽ có NHIỀU Fitting Table độc lập (hiện
+  tại mỗi Table ID độc lập, update đúng bảng nào user chọn — nên đã an toàn với multi-table, chưa cần
+  sửa thêm).
+
+### Ghi chú API
+- `Entity.XData` cần RegApp đã được đăng ký trong `RegAppTable` trước, nếu không sẽ lỗi khi set —
+  dùng `EnsureRegApp` (check `RegAppTable.Has(name)`, add `RegAppTableRecord` nếu chưa có) trước khi
+  gọi `TagWithTableGuid`.
+- `PromptEntityOptions.AllowNone = true` cho phép user nhấn Enter ở bước `ed.GetEntity(...)` để bỏ qua
+  lựa chọn (trả về `PromptStatus.None`) thay vì bắt buộc phải pick — dùng cho các bước "tùy chọn, có
+  thể bỏ qua" tương tự lựa chọn điểm chèn.
+- Xóa entity (`Erase()`) trong lúc đang `foreach` qua `BlockTableRecord` (bằng `ObjectId`) vẫn an toàn —
+  enumerator không bị invalidate vì entity bị đánh dấu Erased chứ không bị gỡ khỏi bảng.
+
+---
+
+## Session 2026-07-14F — Fix Fitting Table: header highlight thật + column width an toàn + chọn theo Category
+
+### Bối cảnh
+User báo tiếp 5 vấn đề sau khi dùng thử "Insert Fitting Table" (session E):
+1. Header chưa thực sự nổi bật (text không canh giữa ô, text height không đủ lớn hơn text thường, không viết hoa).
+2. Trước mỗi header luôn xuất hiện artifact "1;**".
+3. Header "Mass (kg)" bị xuống dòng, chèn lên đường lưới (cột quá hẹp so với chính label của nó).
+4. Muốn chọn fitting để insert theo Category trên TreeCategories thay vì luôn lấy toàn bộ Active Project.
+5. Hỏi "Edit View Type" (Is Plan View / Count Plan View Only) có bị mất không — đã trả lời trực tiếp: KHÔNG mất, chỉ chuyển từ button rời (Item Library cũ) thành context-menu item "Edit View Type" trong `FittingTableWindow` sau khi gộp Master+Item Library — không cần sửa code.
+
+### Đã làm
+- **`Services/FittingManagement/Library/FittingManagementService.FittingTable.cs`**:
+  - Bug #2 root cause: `AddCellText` dùng `$"{{\\b1;{text}}}"` để giả lập bold — `\b1;` KHÔNG phải mã định dạng MText hợp lệ khi đứng một mình (cần syntax font-switch `\fFont|b1;...;`), gây hiển thị literal "1;**" trước mỗi header. Đã bỏ hoàn toàn tham số `bold` khỏi `AddCellText` (giờ chỉ dùng cho ô dữ liệu, canh top-left).
+  - Bug #1: thêm entity `Solid` (4 điểm đúng thứ tự Z-pattern: bottom-left, bottom-right, top-left, top-right) tô nền xám nhạt (ACI 9) phủ toàn bộ hàng header — highlight thật bằng nền thay vì mã định dạng giả bold. Thêm hàm mới `AddHeaderText` — canh `MiddleCenter` (giữa ô theo cả 2 chiều), màu chữ đen tuyệt đối (TrueColor `Color.FromRgb(0,0,0)`) để luôn tương phản với nền xám bất kể layer đang màu gì. `headerTextHeight` tăng từ `textHeight * 1.15` lên `* 1.4` để tương phản rõ hơn với text thường. Header text đổi hết sang chữ HOA (`headersUpper`).
+  - Bug #3: thêm helper `ColWidthFor(headerUpper, dataCharEstimate, charW, cellPad)` — lấy `Max(dataCharEstimate, header.Length * 1.3)` ký tự (biên an toàn 30%) để tính độ rộng cột, đảm bảo KHÔNG cột nào hẹp hơn chính label header của nó (trước đây `colMass = charW * 9 + cellPad*2` vừa khít đúng 9 ký tự "Mass (kg)", không có biên an toàn nào → chắc chắn xuống dòng).
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml.cs`** (`BtnInsertFittingTable_Click`):
+  - Bug #4: thêm bước lọc theo `TreeCategories.SelectedItem` (mirror đúng logic `ApplyFilters()`) TRƯỚC khi áp `IsInActiveProject && EntityType == "Block"` — nếu user đang chọn 1 category cụ thể (khác "All Fittings"), chỉ insert fitting trong category đó. Nếu chọn "All Fittings" hoặc không chọn gì, giữ nguyên hành vi cũ (toàn bộ Active Project). Xác nhận với user: Category là bộ lọc THU HẸP THÊM, KHÔNG thay thế điều kiện bắt buộc phải Add to Active Project trước.
+- Build `dotnet build -c Debug` — 0 error (chỉ có warning MSB3061 khoá file .dll cũ do AutoCAD đang chạy, không liên quan code).
+
+### Trạng thái
+- Phase hiện tại: Fitting Table (Views/FittingManagement/Library/FittingTableWindow + FittingManagementService.FittingTable.cs) — tính năng insert bảng đã ổn định qua nhiều vòng fix (sizing tỉ lệ, canh view chính xác, header highlight, column width an toàn, chọn theo category).
+
+### Bước tiếp theo
+- Chờ user test lại trong AutoCAD thật: kiểm tra header có nổi bật rõ + không còn artifact "1;**" + cột Mass/Material không xuống dòng + chọn Category đúng lọc được fitting mong muốn.
+- Nếu cần tinh chỉnh thêm màu nền header (ACI 9) hoặc tỷ lệ `headerTextHeight`/`ColWidthFor` margin (hiện 30%) theo phản hồi thực tế.
+
+### Ghi chú API
+- MText formatting code `\b1;` KHÔNG hợp lệ khi đứng một mình để bật bold — cần syntax font-switch (`\fFontName|b1;...;`). Muốn "highlight" 1 vùng MText, cách an toàn/đơn giản hơn nhiều là dùng entity `Solid` làm nền + tăng `TextHeight` + `Color` riêng, không cần đụng vào cú pháp định dạng MText.
+- `Solid` 4 điểm PHẢI theo thứ tự "Z-pattern" (p1=bottom-left, p2=bottom-right, p3=top-left, p4=top-right) — sai thứ tự sẽ ra hình bowtie thay vì hình chữ nhật.
+
+---
+
+## Session 2026-07-14E — Fix Fitting Table: cỡ chữ tỉ lệ + canh view chính xác + gộp thành 1 tính năng + báo cáo chẩn đoán .txt
+
+### Bối cảnh
+User báo 2 bug từ Fitting Schedule (session trước) + 2 yêu cầu thay đổi:
+1. Chữ quá bé, không tương thích tỉ lệ với hình chiếu — do dùng hằng số mm cố định (TEXT_HEIGHT=3mm, ROW_HEIGHT=55mm...) không liên quan gì tới kích thước thật của fitting.
+2. Hình chiếu chồng lấn lên đường lưới — do đặt điểm chèn theo giả định "gốc block nằm ở đáy hình học", sai với block có origin không nằm ở góc.
+3. Bỏ "Insert Fitting Table" cũ (1 fitting, chọn tay), đổi tên "Insert Fitting Schedule" (bảng N fitting) thành "Insert Fitting Table".
+4. Cần cơ chế đánh giá chất lượng bảng qua file .txt thay vì ảnh chụp màn hình.
+
+### Đã làm
+- **`Services/FittingManagement/Library/FittingManagementService.FittingTable.cs`** — viết lại hoàn toàn:
+  - **Fix #1 (cỡ chữ)**: mọi kích thước (row height, text height, cell padding, độ rộng cột) giờ tính theo `refHeight` = MEDIAN chiều cao thật của toàn bộ view trong bảng — không còn hằng số mm cố định. `rowHeight = refHeight * 1.25`, `textHeight = Clamp(rowHeight * 0.07, 2.5, rowHeight * 0.18)`, độ rộng cột text = `textHeight * 0.65 * số-ký-tự-ước-lượng`
+  - **Fix #2 (chồng lấn)**: Phase 1 giờ tính thêm `minX`/`minY` LOCAL (toạ độ riêng của block, chưa transform) qua `TryComputeLocalExtents`, không chỉ width/height. Lúc chèn, `insertX = desiredLeft - minX*scale`, `insertY = desiredBottom - minY*scale` — canh CHÍNH XÁC biên trái/dưới thật của hình học vào đúng vị trí mong muốn trong ô, không phụ thuộc origin block nằm ở đâu
+  - **Đổi tên**: xoá `InsertFittingTable` cũ (1 fitting, dùng `MergeExtents`/`MergeTwoExtents` — cũng xoá luôn vì hết chỗ dùng), `InsertFittingSchedule` đổi tên thành `InsertFittingTable`
+  - **Fix #4 (chẩn đoán)**: method giờ trả về `string` (đường dẫn file) thay vì `void`. Thêm `BuildDiagnosticReport` — ghi `C:\Temp_BIM_Library\FittingTableDiagnostics.txt` liệt kê: kích thước mọi thành phần (row/text/column/table bounds), và với TỪNG view đã chèn — đọc lại `GeometricExtents` THẬT (trong transaction, trước commit) so với ranh giới ô Views (`cellBoundsByRow`), đánh dấu `⚠ OVERLAP` nếu tràn ra ngoài (kèm hướng tràn L/R/B/T) — user gửi file này thay vì screenshot để đánh giá
+- **`Services/FittingManagement/IFittingManagementService.cs`** — 1 method `string InsertFittingTable(IList<CatalogItem> projectItems)` duy nhất (thay 2 method cũ `void InsertFittingTable`/`void InsertFittingSchedule`)
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml` + `.xaml.cs`** — 1 nút "Insert Fitting Table" duy nhất (gộp 2 nút cũ), handler hiện MessageBox báo đường dẫn file diagnostic sau khi chèn thành công
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+
+### Bước tiếp theo
+- Test trong AutoCAD: chèn Fitting Table → mở `C:\Temp_BIM_Library\FittingTableDiagnostics.txt` → verify không còn dòng nào `⚠ OVERLAP`, tỉ lệ text-to-row-height nằm trong khoảng khuyến nghị (7%-18%)
+- User có thể gửi thẳng nội dung file `FittingTableDiagnostics.txt` (không cần ảnh chụp màn hình) để đánh giá tiếp nếu vẫn còn vấn đề
+
+---
+
+## Session 2026-07-14D — Insert Fitting Schedule (bảng N fitting x cột view/mô tả)
+
+### Bối cảnh
+Tiếp nối "Insert Fitting Table" (1 fitting, session trước): user muốn 1 dạng **bảng thật** — mỗi HÀNG là 1 fitting, cột gồm view + các trường mô tả. Đã confirm 3 quyết định qua AskUserQuestion:
+1. Vẫn **vẽ tay** (không dùng AutoCAD Table entity — dù Table hỗ trợ block-trong-cell, user chọn giữ cách thủ công đã quen)
+2. **Chỉ 1 cột "Views"** — gộp TẤT CẢ hình chiếu của 1 fitting vào chung 1 ô (không phải N cột view riêng, vì số view mỗi fitting khác nhau)
+3. Lấy **TOÀN BỘ fitting đã Add to Active Project** tự động (không cần chọn tay dòng nào trong grid)
+
+### Đã làm
+- **`Utilities/FittingManagement/FittingManagementUtility.cs`**
+  - `InsertBlockReference` thêm tham số `scale = 1.0` (áp `ScaleFactors` đều 3 trục) — cần để co giãn view vừa chiều cao hàng
+  - Thêm `ResolveOrLoadBlockDefinition(db, tr, bt, blockName, filePath)` — gom logic "block đã có trong drawing thì dùng, chưa có thì load từ file .dwg phụ" đang bị lặp lại 2 chỗ (`InsertMultipleBlocksFromLibrary`, `InsertFittingTable`) thành 1 helper dùng chung, tránh lặp lần 3 cho tính năng mới
+- **`Services/FittingManagement/Library/FittingManagementService.MasterLibrary.cs`**
+  - `InsertMultipleBlocksFromLibrary` refactor dùng `ResolveOrLoadBlockDefinition` thay vì logic inline
+  - Thêm `ComputeBlockHeight` (mirror `ComputeBlockWidth`, trục Y) — dùng để scale view vừa `ROW_HEIGHT`
+- **`Services/FittingManagement/Library/FittingManagementService.FittingTable.cs`**
+  - `InsertFittingTable` (session trước) refactor Phase 1 dùng `ResolveOrLoadBlockDefinition`
+  - Thêm `InsertFittingSchedule(IList<CatalogItem> projectItems)`: gom theo PartNumber → 1 hàng/fitting, sort theo `ProjectPosNum` (số) rồi PartNumber; cột cố định Pos./Part Number/Title/**Views**/Description/Material/Mass/UoM; mỗi fitting's view được scale ĐỀU theo chiều cao view cao nhất của chính fitting đó để vừa khít `ROW_HEIGHT` (55mm) — cột Views width = max tổng-width-view-đã-scale trong tất cả hàng; vẽ lưới Polyline/Line ngăn hàng+cột bằng `DrawScheduleGrid`
+- **`Services/FittingManagement/IFittingManagementService.cs`** — thêm `InsertFittingSchedule`
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml` + `.xaml.cs`** — thêm nút footer "Insert Fitting Schedule" + handler: lọc `_fullCatalog.Where(i => i.IsInActiveProject && EntityType=="Block")`, không cần chọn dòng nào, báo lỗi rõ nếu chưa có Active Project hoặc project chưa có fitting nào
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+- Giữ nguyên "Insert Fitting Table" (session trước, chọn tay 1 fitting bất kỳ trong Master Catalog, không cần thuộc Active Project) — 2 tính năng song song, phục vụ 2 mục đích khác nhau
+
+### Bước tiếp theo
+- Test trong AutoCAD: Active Project có 3-5 fitting với số view khác nhau (1-3 view mỗi cái) → "Insert Fitting Schedule" → verify: mỗi hàng cao bằng nhau, view trong ô Views scale đều không tràn ra ngoài lưới, cột Views đủ rộng cho fitting nhiều view nhất, text các cột khác không bị cắt
+- Kiểm tra sort theo Pos Num — fitting chưa có Pos Num nên rơi xuống cuối bảng (dùng `int.MaxValue` khi parse fail)
+- Lưu ý hạn chế đã biết: "View 1" trong ô Views không có nghĩa cố định giống nhau giữa các fitting (thứ tự chỉ theo BlockName, không phải theo hướng nhìn Front/Side/Plan)
+
+---
+
+## Session 2026-07-14C — Tính năng mới: Insert Fitting Table (hình chiếu + mô tả) vào bản vẽ
+
+### Bối cảnh
+User muốn chèn 1 "bảng fitting" vào bản vẽ CAD gồm tất cả hình chiếu của 1 fitting + description. Đã confirm 3 quyết định thiết kế qua AskUserQuestion trước khi code:
+1. Cơ chế: **block sống + MText + khung Polyline vẽ tay** (không dùng AutoCAD Table entity — API nhúng block vào cell phức tạp hơn nhiều, không có tiền lệ trong codebase)
+2. Trigger: **nút riêng ở footer** (không phải context menu)
+3. Fitting chỉ có 1 view: **vẫn cho phép**, chỉ hiện 1 hình + mô tả (không chặn)
+
+### Đã làm
+- **`Utilities/FittingManagement/FittingManagementUtility.cs`** — `InsertBlockReference` đổi return type từ `void` → `ObjectId` (trả về block reference vừa tạo, cần để đọc lại `GeometricExtents` chính xác sau khi chèn — không phá vỡ 2 call site cũ vì chúng chỉ gọi như statement, không dùng giá trị trả về)
+- **`Services/FittingManagement/IFittingManagementService.cs`** — thêm `void InsertFittingTable(IList<CatalogItem> views)`
+- **`Services/FittingManagement/Library/FittingManagementService.FittingTable.cs`** (mới) — implement `InsertFittingTable`:
+  - Phase 1: load tất cả block definition (từ FilePath hoặc drawing hiện tại) + tính width — tái dùng đúng pattern `InsertMultipleBlocksFromLibrary`/`ComputeBlockWidth` đã có
+  - Phase 2: 1 lần hỏi điểm chèn
+  - Phase 3: chèn hàng hình chiếu dàn theo trục X (gap theo tỉ lệ width) → đọc lại `GeometricExtents` thật của các block vừa chèn (không đoán dựa vào origin từng block, robust hơn) → chèn MText mô tả (Part Number/Title/Description/Material/Mass/UoM, từ item đại diện — metadata giống nhau ở mọi view) bên dưới, rộng bằng cả hàng → gộp extents (hàng + MText) → vẽ khung Polyline bao quanh
+  - Layer riêng **"Mechanical-FittingTable"** (màu xanh lá, code 3) cho MText + khung viền — tách biệt khỏi layer "Mechanical-AM_9" (dành riêng cho nhãn tên block, theo quy ước `AddNameLabelText`)
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml` + `.xaml.cs`** — thêm nút footer "Insert Fitting Table" + handler `BtnInsertFittingTable_Click`: gom TẤT CẢ Block-type item cùng PartNumber từ `_fullCatalog` (không chỉ item đang chọn) cho mỗi PartNumber riêng biệt trong lựa chọn, gọi `InsertFittingTable` tuần tự từng cái
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+
+### Bước tiếp theo
+- Test trong AutoCAD: chọn 1 view của fitting có ≥2 hình chiếu (import từ Inventor) → "Insert Fitting Table" → verify tất cả hình chiếu chèn thẳng hàng, không chồng lấn, MText mô tả đọc đúng, khung viền bao trọn
+- Test fitting chỉ 1 view (item Add from CAD) → verify vẫn chèn được (1 hình + mô tả)
+- Test chọn nhiều fitting khác PartNumber cùng lúc → verify prompt điểm chèn tuần tự, không lẫn lộn giữa các bảng
+
+---
+
+## Session 2026-07-14B — Bỏ tab "Project Config", đổi "Template" thành "Fitting Table"
+
+### Đã làm
+- **`Commands/PaletteManager.cs`** — PaletteSet còn **3 tab**: Fitting Handle / Fitting Table (tên cũ "Template") / Block Utilities. Bỏ hẳn `AddVisual("Project Config", ...)`.
+- **Xoá**: `Views/FittingManagement/ProjectConfigView.xaml` + `.xaml.cs` (không còn tab nào dùng — chức năng "Open Fitting Table" của nó đã trùng với nút cùng tên đã có sẵn trong `TemplateView` từ session trước)
+- **`CLAUDE.md`** — cập nhật mục 9 (PaletteSet Singleton) từ "4 tab" → "3 tab", sửa tên/đường dẫn file cho khớp thực tế
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+- `TemplateView` class KHÔNG đổi tên (chỉ đổi label tab hiển thị "Fitting Table" trong PaletteManager + GroupBox nội dung) — tránh rủi ro sửa tràn lan không cần thiết
+
+### Bước tiếp theo
+- Test trong AutoCAD: mở palette → verify chỉ còn 3 tab, tab thứ 2 tên "Fitting Table" chứa cả Import .idw lẫn nút "Open Fitting Table"
+- Lưu ý: user cũ đã pin/dock palette trước đây có thể thấy tab active bị lệch 1 lần khi mở lại (do đổi số lượng AddVisual) — không phải lỗi, chỉ cần chọn lại tab
+
+---
+
+## Session 2026-07-14 — Gộp Master Library + Item Library thành 1 "Fitting Table"
+
+### Bối cảnh
+User yêu cầu gộp `MasterLibraryWindow` + `ProjectLibraryWindow` thành 1 cửa sổ "Fitting Table" duy nhất, bỏ việc phải mở 2 cửa sổ riêng. Đã dùng Plan Mode để xác nhận 3 quyết định kiến trúc trước khi code (xem `~/.claude/plans/mellow-whistling-flask.md`):
+1. Chỉ gộp GIAO DIỆN — Active Project (project JSON riêng, quản lý qua `ActiveProjectContext`) vẫn tồn tại ngầm bên dưới, vì cùng 1 fitting có thể mang Pos Num khác nhau ở các dự án khác nhau.
+2. Fitting Table mặc định hiển thị TOÀN BỘ Master Catalog (không chỉ fitting thuộc Active Project).
+3. Sửa Pos Num/View Type cho fitting chưa thuộc Active Project → tự động add luôn vào Active Project (không bắt buộc "Add to Active Project" trước).
+
+**KHÔNG đổi** cấu trúc 4-tab PaletteSet (quy tắc cứng CLAUDE.md) — cả tab "Template" và "Project Config" vẫn có nút riêng, chỉ đổi tên "Open Fitting Table" và cùng mở 1 cửa sổ.
+
+### Đã làm
+- **`Models/FittingManagement/FittingManagementModel.cs`** — thêm `CatalogItem.IsInActiveProject` (`[JsonIgnore]`, transient — không ghi xuống MasterCatalog.json hay project JSON, chỉ tính lại mỗi lần LoadCatalog())
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml` + `.xaml.cs`** (mới) — gộp toàn bộ 2 window cũ:
+  - Grid nguồn dữ liệu LUÔN là Master Catalog (`GetMasterCatalogItems()`), overlay `ProjectPosNum`/`IsPlanView`/`CountPlanViewOnly`/`IsInActiveProject` từ project catalog của Active Project (nếu có) — in-memory, không ghi lại MasterCatalog.json
+  - **Phát hiện quan trọng lúc thiết kế**: overlay không thể chỉ key theo BlockName như `OverlayViewTypeFromProjectCatalog` cũ — Accessory-type item có `BlockName = ""`, nhiều accessory khác nhau sẽ đụng key rỗng. Thêm helper `OverlayKey()`: BlockName nếu có, fallback PartNumber nếu rỗng (Accessory)
+  - Thêm cột "In Project" (checkbox read-only) + cột "Project Pos." (giữ từ Item Library cũ)
+  - Context menu gộp có phân nhóm: Edit Properties / Edit Pos Num / Edit View Type / Sync — Add to Active Project / Remove from Active Project — Remove from Master Library (tách rõ khỏi "Remove from Active Project" để tránh xoá nhầm)
+  - Edit Pos Num / Edit View Type giờ lưu qua `_projectService.MergeIntoProject(...)` thay vì `MergeIntoMaster` — tự động add fitting vào Active Project nếu chưa có (upsert semantics có sẵn)
+  - Sync: cảnh báo + bỏ qua item chưa thuộc Active Project (trước đây không check)
+  - Refresh đơn giản hơn hẳn — không cần giữ `RefreshPropertiesFromMaster` phức tạp của Item Library cũ nữa (vì grid đọc thẳng Master Catalog, không còn "bản copy" cần đồng bộ lại)
+  - `FittingTableWindow.ShowOrActivate(...)` — static factory encapsulate logic "chỉ 1 instance", dùng chung từ cả 2 entry point
+- **Xoá**: `MasterLibraryWindow.xaml`/`.xaml.cs`, `ProjectLibraryWindow.xaml`/`.xaml.cs`
+- **`Views/FittingManagement/TemplateView.xaml`/`.xaml.cs`** — nút "Open Master Library" → "Open Fitting Table", gọi `FittingTableWindow.ShowOrActivate(...)`
+- **`Views/FittingManagement/ProjectConfigView.xaml`/`.xaml.cs`** — nút "Open Item Library" → "Open Fitting Table", gọi `FittingTableWindow.ShowOrActivate(...)` (cùng instance với Template)
+- **`Services/FittingManagement/BOM/FittingManagementService.BomInterface.cs`** — cập nhật doc-comment (nói "Fitting Table" thay vì "Item Library"), không đổi logic `OverlayViewTypeFromProjectCatalog`
+- **`Views/FittingManagement/Library/Shared/FittingPreviewPane.xaml.cs`, `CategoryNode.cs`** — cập nhật doc-comment (không còn nhắc 2 window cũ)
+
+### Trạng thái
+- Build: SUCCEEDED (`dotnet build -c Debug`), 0 error
+- Hạn chế đã biết, KHÔNG fix (ngoài phạm vi, hành vi có từ trước): `RemoveFromProject`/`RemoveFromMaster` vẫn key theo `BlockName` — nếu chọn nhiều Accessory (đều `BlockName=""`) cùng lúc để Remove, có thể xoá nhầm accessory khác cùng lúc. Bug này đã tồn tại ở `ProjectLibraryWindow` cũ, không phải lỗi mới.
+
+### Bước tiếp theo (theo checklist plan)
+1. Build AutoCAD, mở từ tab "Template" → verify "Open Fitting Table" hiển thị đúng toàn bộ Master Catalog
+2. Mở lại từ tab "Project Config" → verify KHÔNG mở cửa sổ thứ 2
+3. Chọn fitting chưa thuộc Active Project → "Edit Pos Num" → Save → verify ghi đúng vào project JSON, cột "In Project" chuyển true, KHÔNG ghi nhầm vào MasterCatalog.json
+4. Test "Remove from Active Project" vs "Remove from Master Library" — đúng phạm vi xoá
+5. Test Accessory: Add to Active Project → Edit Pos Num → verify overlay-key theo PartNumber không đụng accessory khác
+6. Scan Hull BOM sau khi sửa Pos Num/View Type qua Fitting Table → verify vẫn nhận đúng qua overlay
+
+---
+
 ## Session 2026-07-09M — Chuyển "Edit View Type" từ Master Library sang Item Library
 
 ### Bối cảnh

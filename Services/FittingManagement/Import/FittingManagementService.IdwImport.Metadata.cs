@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using MCG_FittingManagement.Models.FittingManagement;
@@ -8,10 +9,18 @@ namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// IDW Import — phần trích xuất iProperties (Part Number/Description/Material/Mass/Revision/Designer/Title)
-    /// từ Inventor document, kèm helper an toàn đọc property và format Mass.
+    /// từ Inventor document, kèm helper an toàn đọc property và format Mass. Ngoài 7 field "chính" này,
+    /// còn duyệt TOÀN BỘ PropertySet khác (bao gồm "User Defined Properties" — nơi Vault UDP thường map
+    /// vào) để gom vào <see cref="FittingMetadata.ExtraProperties"/>, phục vụ Customize Grid ở Fitting Table.
     /// </summary>
     public partial class FittingManagementService
     {
+        /// <summary>Tên các field đã trích riêng ở trên — bỏ qua khi duyệt generic để tránh trùng cột.</summary>
+        private static readonly HashSet<string> KNOWN_IPROPERTY_NAMES = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Part Number", "Description", "Material", "Designer", "Mass", "Title", "Revision Number", "Author"
+        };
+
         /// <summary>
         /// Trích xuất iProperties từ document (ưu tiên model IPT/IAM, fallback drawing).
         /// Áp dụng FormatAndRoundMass cho Mass để ra dạng "24 kg" thay vì "24.532".
@@ -47,6 +56,12 @@ namespace MCG_FittingManagement.Services.FittingManagement
                 // Fallback: nếu Designer rỗng, dùng Author
                 if (string.IsNullOrWhiteSpace(metadata.Designer))
                     metadata.Designer = SafeGetProperty(summaryProps, "Author");
+
+                // Duyệt TOÀN BỘ PropertySet (Design Tracking, Summary, Document Summary, User Defined
+                // Properties — nơi Vault UDP thường map vào...) để gom mọi field CÒN LẠI vào
+                // ExtraProperties, phục vụ Customize Grid ở Fitting Table (xem yêu cầu user). Field đã
+                // trích riêng ở trên (KNOWN_IPROPERTY_NAMES) bị bỏ qua để tránh hiện trùng 2 cột.
+                ExtractAllPropertiesGeneric(propSets, metadata.ExtraProperties);
             }
             catch (System.Exception ex)
             {
@@ -54,8 +69,53 @@ namespace MCG_FittingManagement.Services.FittingManagement
             }
 
             FileLogger.Log(LOG_PREFIX,
-                $"  iProperties: PartNumber='{metadata.PartNumber}', Title='{metadata.Title}', Mass='{metadata.Mass}'");
+                $"  iProperties: PartNumber='{metadata.PartNumber}', Title='{metadata.Title}', Mass='{metadata.Mass}', ExtraProperties={metadata.ExtraProperties.Count}");
             return metadata;
+        }
+
+        /// <summary>
+        /// Duyệt mọi PropertySet + mọi Property bên trong (COM collection — enumerable qua dynamic/foreach)
+        /// gom vào <paramref name="bag"/>. Mỗi property đọc riêng trong try/catch — 1 property lỗi (vd cần
+        /// prompt, hoặc kiểu dữ liệu lạ) không được làm hỏng cả vòng lặp. Field trùng tên giữa các
+        /// PropertySet khác nhau: giữ giá trị ĐẦU TIÊN gặp (bỏ qua nếu key đã có trong bag).
+        /// </summary>
+        private void ExtractAllPropertiesGeneric(dynamic propSets, Dictionary<string, string> bag)
+        {
+            try
+            {
+                foreach (dynamic propSet in propSets)
+                {
+                    try
+                    {
+                        foreach (dynamic prop in propSet)
+                        {
+                            try
+                            {
+                                string name = prop.DisplayName ?? prop.PropertyName ?? "";
+                                if (string.IsNullOrWhiteSpace(name)) continue;
+                                if (KNOWN_IPROPERTY_NAMES.Contains(name)) continue;
+                                if (bag.ContainsKey(name)) continue; // giữ giá trị đầu tiên gặp
+
+                                object val = prop.Value;
+                                string strVal = val == null ? "" : (val is double dVal ? dVal.ToString(CultureInfo.InvariantCulture) : val.ToString());
+                                bag[name] = strVal;
+                            }
+                            catch
+                            {
+                                // 1 property lỗi (vd cần prompt/kiểu dữ liệu lạ) — bỏ qua, không hỏng cả vòng lặp
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // 1 PropertySet lỗi (hiếm) — bỏ qua, thử PropertySet tiếp theo
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                FileLogger.LogException(LOG_PREFIX, "duyệt generic PropertySets", ex);
+            }
         }
 
         /// <summary>

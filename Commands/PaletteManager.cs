@@ -120,8 +120,8 @@ namespace MCG_FittingManagement.Commands
         #region Private Methods
 
         /// <summary>
-        /// Khởi tạo PaletteSet "Fitting Management" với 4 tab:
-        /// Fitting Handle / Project Config / Template / Block Utilities.
+        /// Khởi tạo PaletteSet "Fitting Management" với 3 tab:
+        /// Fitting Handle / Fitting Table / Block Utilities.
         /// Chỉ chạy 1 lần duy nhất trong vòng đời plugin.
         /// </summary>
         private void Initialize()
@@ -131,11 +131,11 @@ namespace MCG_FittingManagement.Commands
             // 1. Tạo PaletteSet với GUID cố định
             _paletteSet = new PaletteSet("Fitting Management", PaletteGuid);
 
-            // 2. Nạp 4 tab — PHẢI thực hiện TRƯỚC khi set Dock/Size
-            //    Thứ tự tab đã cố định sau deploy, không đổi sau này (AutoCAD nhớ theo GUID).
+            // 2. Nạp 3 tab — PHẢI thực hiện TRƯỚC khi set Dock/Size
+            //    Tab "Project Config" đã bỏ (chức năng "Open Fitting Table" đã gộp sang tab
+            //    "Fitting Table" — trước đây là "Template" — cùng mở FittingTableWindow).
             _paletteSet.AddVisual("Fitting Handle", new FittingHandleView());
-            _paletteSet.AddVisual("Project Config", new ProjectConfigView());
-            _paletteSet.AddVisual("Template", new TemplateView());
+            _paletteSet.AddVisual("Fitting Table", new TemplateView());
             _paletteSet.AddVisual("Block Utilities", new BlockUtilitiesView());
 
             // 3. Thiết lập thuộc tính — SAU AddVisual
@@ -144,7 +144,7 @@ namespace MCG_FittingManagement.Commands
             _paletteSet.Size = new Size(400, 600);
             _paletteSet.KeepFocus = true;
 
-            Debug.WriteLine($"{LOG_PREFIX} PaletteSet khởi tạo THÀNH CÔNG — 4 tab đã đăng ký.");
+            Debug.WriteLine($"{LOG_PREFIX} PaletteSet khởi tạo THÀNH CÔNG — 3 tab đã đăng ký.");
         }
 
         #endregion

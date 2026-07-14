@@ -6,12 +6,14 @@ using MCG_FittingManagement.Models.FittingManagement;
 namespace MCG_FittingManagement.Views.FittingManagement
 {
     /// <summary>
-    /// Build TreeView nodes + filter logic dùng chung cho Master/Project Library window.
-    /// Nhận <see cref="CatalogItem"/> base nên 2 window đều dùng được (ProjectCatalogItem kế thừa CatalogItem).
+    /// Build TreeView nodes + filter logic dùng cho Fitting Table window (catalog của Project Folder
+    /// đang active — xem <see cref="MCG_FittingManagement.Services.FittingManagement.ActiveProjectContext"/>).
     /// </summary>
     public static class CatalogTreeBuilder
     {
-        /// <summary>Build cây Categories: root "All" + group BomType → Title.</summary>
+        /// <summary>Build cây Categories: root "All" + group BomType → PartNumber (1 Sub Folder = đúng
+        /// 1 PartNumber, sort theo CategorySortOrder — thứ tự hiển thị do user tự kéo-thả, KHÔNG PHẢI
+        /// ProjectPosNum thật của BOM/bản vẽ).</summary>
         public static List<CategoryNode> Build(IList<CatalogItem> catalog, string allLabel = "All Fittings")
         {
             return Build(catalog, null, allLabel);
@@ -26,7 +28,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
         {
             var roots = new List<CategoryNode>
             {
-                new CategoryNode { CategoryName = allLabel, CountLabel = $"({catalog.Count})", Items = catalog.ToList() }
+                new CategoryNode { CategoryName = allLabel, CountLabel = $"({catalog.Count})", Items = catalog.ToList(), Level = 0 }
             };
 
             // Chèn node "Recently" ngay sau "All Fittings"
@@ -50,7 +52,8 @@ namespace MCG_FittingManagement.Views.FittingManagement
                     {
                         CategoryName = "Recently",
                         CountLabel = $"({recentItems.Count})",
-                        Items = recentItems
+                        Items = recentItems,
+                        Level = 0
                     });
                 }
             }
@@ -70,17 +73,34 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 {
                     CategoryName = bg.Key,
                     CountLabel = $"({bg.Count()})",
-                    Items = bg.ToList()
+                    Items = bg.ToList(),
+                    Level = 1
                 };
-                var catGroups = bg.GroupBy(x => string.IsNullOrWhiteSpace(x.Title) ? "Uncategorized" : x.Title.Trim())
-                                  .OrderBy(g => g.Key);
+
+                // Sub Folder = ĐÚNG 1 PartNumber (không group theo Title nữa — 1 Title có thể chứa
+                // nhiều PartNumber khác nhau, gây mập mờ khi kéo-thả sắp xếp thứ tự, xem yêu cầu user).
+                // Sort theo CategorySortOrder (thứ tự HIỂN THỊ do user tự kéo-thả — KHÔNG PHẢI
+                // ProjectPosNum, vì 1 PartNumber có thể có nhiều ProjectPosNum khác nhau ở Equipment).
+                // Chưa từng sắp xếp (null) → xếp CUỐI, tie-break alphabet theo PartNumber.
+                var catGroups = bg.Where(x => !string.IsNullOrWhiteSpace(x.PartNumber))
+                                  .GroupBy(x => x.PartNumber, StringComparer.OrdinalIgnoreCase)
+                                  .OrderBy(g => g.First().CategorySortOrder ?? int.MaxValue)
+                                  .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
                 foreach (var cg in catGroups)
                 {
+                    string partNumber = cg.Key;
+                    string title = cg.First().Title;
+                    int? sortOrder = cg.First().CategorySortOrder;
+                    string orderLabel = sortOrder.HasValue ? sortOrder.Value.ToString("D3") : "—";
+                    string displayTitle = string.IsNullOrWhiteSpace(title) ? "Uncategorized" : title.Trim();
+
                     bomNode.Children.Add(new CategoryNode
                     {
-                        CategoryName = cg.Key,
+                        CategoryName = $"{orderLabel}-{displayTitle} ({partNumber})",
                         CountLabel = $"({cg.Count()})",
-                        Items = cg.ToList()
+                        Items = cg.ToList(),
+                        Level = 2,
+                        Parent = bomNode
                     });
                 }
                 roots.Add(bomNode);

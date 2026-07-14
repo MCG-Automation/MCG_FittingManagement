@@ -8,7 +8,7 @@ namespace MCG_FittingManagement.Views.FittingManagement
 {
     /// <summary>
     /// Pane hiển thị preview thumbnail + properties cho 1 <see cref="CatalogItem"/>.
-    /// Dùng chung cho MasterLibraryWindow + ProjectLibraryWindow.
+    /// Dùng trong FittingTableWindow.
     /// Item type không phải "Block" → ẩn pane (parent điều khiển Visibility).
     /// </summary>
     public partial class FittingPreviewPane : UserControl
