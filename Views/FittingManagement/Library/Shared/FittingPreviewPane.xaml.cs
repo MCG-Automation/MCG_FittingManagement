@@ -56,6 +56,8 @@ namespace MCG_FittingManagement.Views.FittingManagement
             TxtUoM.Text        = string.IsNullOrEmpty(item.UoM) ? "—" : item.UoM;
             TxtBlockName.Text  = item.BlockName ?? "";
 
+            BindExtraProperties(item, ExtraPropsList, ExtraPropsDivider);
+
             var bmp = _previewService?.GetPreview(item);
             if (bmp != null)
             {
@@ -101,6 +103,18 @@ namespace MCG_FittingManagement.Views.FittingManagement
             CardMass.Text        = string.IsNullOrEmpty(item.Mass) ? "—" : $"{item.Mass} kg/m";
             CardBomType.Text     = string.IsNullOrEmpty(item.BomType) ? "—" : item.BomType;
             CardDesigner.Text    = string.IsNullOrEmpty(item.Designer) ? "—" : item.Designer;
+
+            BindExtraProperties(item, CardExtraPropsList, CardExtraPropsDivider);
+        }
+
+        /// <summary>Hiện toàn bộ <see cref="CatalogItem.ExtraProperties"/> (field động Vault/iProperty
+        /// ngoài các field cố định) ở CUỐI panel — rỗng/null thì ItemsControl tự nhiên không hiện gì và
+        /// ẩn luôn divider phía trên nó.</summary>
+        private static void BindExtraProperties(CatalogItem item, ItemsControl list, UIElement divider)
+        {
+            bool hasExtra = item.ExtraProperties != null && item.ExtraProperties.Count > 0;
+            list.ItemsSource = hasExtra ? item.ExtraProperties : null;
+            divider.Visibility = hasExtra ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private static string GetEntityLabel(string entityType)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -9,6 +10,7 @@ using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using Newtonsoft.Json;
 using MCG_FittingManagement.Models.FittingManagement;
 using MCG_FittingManagement.Utilities.FittingManagement;
 
@@ -16,42 +18,51 @@ namespace MCG_FittingManagement.Services.FittingManagement
 {
     /// <summary>
     /// Chèn "Fitting Table" — bảng lưới N hàng (1 hàng = 1 fitting) x cột (Views/Pos./Vault Name/
-    /// Part ID/X.Class/Description/Weight/Designer) vẽ tay, có 1 dòng Title phía trên = tên Project
-    /// Folder đang active (1 bản vẽ có thể chứa nhiều Fitting Table của nhiều project khác nhau).
+    /// Part ID/X.Class/Description/Weight/Designer) vẽ tay, có 1 dòng Title phía trên = tên Category
+    /// user đang chọn lúc Insert (1 bản vẽ có thể chứa nhiều Fitting Table, mỗi bảng ứng với 1
+    /// category khác nhau) + 1 dòng "Created" phía dưới đáy bảng.
     /// Views luôn chèn ở TỈ LỆ THẬT 1:1 (Block Scale luôn = 1 trong Properties palette — KHÔNG scale
     /// block để "vừa khít" ô như thiết kế cũ) — mỗi hàng cao thấp khác nhau tuỳ kích thước thật của
     /// fitting đó (rowHeight biến thiên, không cố định). Cỡ chữ ĐỒNG NHẤT cho cả bảng (1 textHeight
-    /// chung, tính theo trung vị "median" kích thước view thật — "textBasis") — tránh tình trạng chữ
-    /// không đều/tràn lưới khi từng hàng có cỡ chữ khác nhau. Độ rộng cột tính theo ĐỘ DÀI THẬT của dữ
-    /// liệu từng cột (không phải hằng số ước lượng cố định) để luôn đủ chỗ chứa hết chữ. Vị trí từng
-    /// view canh chính xác theo local extents của block (không giả định origin nằm ở góc nào) — tránh
-    /// chồng lấn lên đường lưới.
+    /// chung, tính theo trung vị "median" kích thước view thật — "textBasis"). Độ rộng cột tính theo
+    /// ĐỘ DÀI THẬT của dữ liệu từng cột (không phải hằng số ước lượng cố định) để luôn đủ chỗ chứa hết
+    /// chữ. Vị trí từng view canh chính xác theo local extents của block (không giả định origin nằm ở
+    /// góc nào) — tránh chồng lấn lên đường lưới.
     /// Layer riêng "Mechanical-FittingTable" cho text + lưới (không dùng chung layer
     /// "Mechanical-AM_9" — layer đó dành riêng cho nhãn tên block, xem FittingBlockUtility.AddNameLabelText).
-    /// Hỗ trợ UPDATE-IN-PLACE: mỗi entity của 1 lần vẽ (kể cả Title) được gắn 1 Table ID (XData, RegApp
-    /// "MCG_FITTING_TABLE") — user có thể click chọn 1 entity của bảng cũ để tool tự xóa đúng bảng đó
-    /// trước khi vẽ bảng mới (thay vì phải tự xóa tay + tránh nguy cơ tool tự đoán/xóa nhầm bảng khác).
+    /// Hỗ trợ UPDATE-IN-PLACE CHỈ 1 CLICK: mỗi entity của 1 lần vẽ (kể cả Title + dòng Created) được
+    /// gắn metadata (XData, RegApp "MCG_FITTING_TABLE") gồm Table ID + ngày Created GỐC + điểm chèn
+    /// GỐC — user click chọn Title (hoặc bất kỳ entity nào) của bảng cũ để tool tự xóa đúng bảng đó
+    /// VÀ vẽ lại NGAY TẠI VỊ TRÍ CŨ (không hỏi lại điểm chèn), giữ nguyên ngày Created, đồng thời tô
+    /// ĐỎ những hàng có dữ liệu thay đổi so với snapshot lần trước (lưu qua Xrecord trong Extension
+    /// Dictionary của header background).
     /// </summary>
     public partial class FittingManagementService
     {
         private const string FITTING_TABLE_LAYER = "Mechanical-FittingTable";
         private const short FITTING_TABLE_LAYER_COLOR = 3; // Green — phân biệt với hidden(6)/center(4)/label(7)
 
-        // RegApp dùng để gắn XData (Table ID — 1 GUID riêng mỗi lần vẽ bảng) lên MỌI entity của 1
-        // Fitting Table. Mục đích: khi user muốn UPDATE 1 bảng đã có sẵn (thêm/sửa fitting), tool cần
-        // xóa đúng bảng cũ trước khi vẽ bảng mới — nhận diện qua entity user CLICK CHỌN THỦ CÔNG (không
-        // tự động quét/đoán cả bản vẽ — tránh xóa nhầm bảng khác nếu có nhiều Fitting Table).
+        // RegApp dùng để gắn XData (Table ID + Created + điểm chèn GỐC) lên MỌI entity của 1 Fitting
+        // Table. Mục đích: khi user muốn UPDATE 1 bảng đã có sẵn (thêm/sửa fitting), tool cần xóa đúng
+        // bảng cũ + biết vẽ lại ở đâu — nhận diện qua entity user CLICK CHỌN THỦ CÔNG (không tự động
+        // quét/đoán cả bản vẽ — tránh xóa nhầm bảng khác nếu có nhiều Fitting Table).
         private const string FITTING_TABLE_XDATA_APP = "MCG_FITTING_TABLE";
+
+        // Key Xrecord (Extension Dictionary của header background) lưu snapshot dữ liệu từng hàng —
+        // dùng để so sánh phát hiện hàng nào thay đổi khi Update (tô đỏ).
+        private const string ROW_SNAPSHOT_DICT_KEY = "MCG_FITTING_TABLE_ROWS";
 
         /// <summary>
         /// Chèn bảng lưới TẤT CẢ fitting trong <paramref name="projectItems"/> (gom theo PartNumber,
-        /// mỗi group = 1 hàng). Trước khi vẽ, hỏi user chọn (tùy chọn) 1 entity của bảng CŨ để UPDATE —
-        /// nếu chọn đúng, xóa toàn bộ bảng cũ đó trước khi vẽ bảng mới; nếu Enter/bỏ qua, chèn bảng MỚI
-        /// như bình thường. Trả về đường dẫn file báo cáo chẩn đoán (.txt) — liệt kê kích thước
+        /// mỗi group = 1 hàng). <paramref name="tableTitle"/> hiện trên dòng Title phía trên bảng.
+        /// Trước khi vẽ, hỏi user chọn (tùy chọn) Title/1 entity của bảng CŨ để UPDATE — nếu chọn
+        /// đúng, xóa toàn bộ bảng cũ đó rồi vẽ bảng mới NGAY TẠI VỊ TRÍ CŨ (không hỏi lại điểm chèn),
+        /// giữ nguyên ngày Created gốc, tô đỏ hàng thay đổi; nếu Enter/bỏ qua, chèn bảng MỚI như bình
+        /// thường (hỏi điểm chèn). Trả về đường dẫn file báo cáo chẩn đoán (.txt) — liệt kê kích thước
         /// từng thành phần + kiểm tra overlap của từng view với ranh giới ô/lưới, dùng để đánh giá
         /// chất lượng bảng vừa chèn mà không cần gửi ảnh chụp màn hình. Trả về null nếu user hủy chọn điểm chèn.
         /// </summary>
-        public string InsertFittingTable(IList<CatalogItem> projectItems)
+        public string InsertFittingTable(IList<CatalogItem> projectItems, string tableTitle = null)
         {
             var blockItems = projectItems?
                 .Where(i => i != null && i.EntityType == "Block" && !string.IsNullOrEmpty(i.BlockName) && !string.IsNullOrEmpty(i.PartNumber))
@@ -115,11 +126,12 @@ namespace MCG_FittingManagement.Services.FittingManagement
                 if (viewSizes.Count == 0)
                     throw new InvalidOperationException("Không load được view nào cho Fitting Table (kiểm tra file .dwg trong Master Library).");
 
-                // Update-in-place: hỏi user có muốn UPDATE 1 Fitting Table đã có sẵn trong bản vẽ không
-                // — bằng cách CLICK CHỌN 1 entity của bảng đó (không tự động quét/đoán cả bản vẽ, tránh
-                // xóa nhầm bảng khác). Enter/không chọn gì -> coi như chèn bảng MỚI (giữ nguyên hành vi cũ).
+                // Update-in-place (CHỈ 1 CLICK): hỏi user có muốn UPDATE 1 Fitting Table đã có sẵn
+                // không — bằng cách CLICK CHỌN Title (hoặc bất kỳ entity nào) của bảng đó (không tự
+                // động quét/đoán cả bản vẽ, tránh xóa nhầm bảng khác). Enter/không chọn gì -> coi như
+                // chèn bảng MỚI (vẫn hỏi điểm chèn như cũ, xem bên dưới).
                 PromptEntityOptions peo = new PromptEntityOptions(
-                    "\nSelect an entity of the EXISTING Fitting Table to update (or press ENTER to insert a NEW table): ");
+                    "\nSelect the Fitting Table's Title to update it in place (or press ENTER to insert a new table): ");
                 peo.AllowNone = true;
                 PromptEntityResult per = ed.GetEntity(peo);
                 if (per.Status == PromptStatus.Cancel)
@@ -129,12 +141,19 @@ namespace MCG_FittingManagement.Services.FittingManagement
                 }
 
                 string oldTableGuid = null;
+                string oldCreatedIso = null;
+                Point3d? oldInsertPoint = null;
                 if (per.Status == PromptStatus.OK)
                 {
                     using (var trPeek = db.TransactionManager.StartTransaction())
                     {
                         if (trPeek.GetObject(per.ObjectId, OpenMode.ForRead) is Entity pickedEnt)
-                            oldTableGuid = TryGetTableGuid(pickedEnt);
+                        {
+                            var meta = TryGetTableMetadata(pickedEnt);
+                            oldTableGuid = meta.guid;
+                            oldCreatedIso = meta.createdIso;
+                            oldInsertPoint = meta.point;
+                        }
                         trPeek.Commit();
                     }
                     if (oldTableGuid == null)
@@ -143,13 +162,26 @@ namespace MCG_FittingManagement.Services.FittingManagement
                         Debug.WriteLine($"{LOG_PREFIX} Sẽ update bảng cũ (Table ID={oldTableGuid}).");
                 }
 
-                PromptPointOptions ppo = new PromptPointOptions(
-                    $"\nSelect insertion point for Fitting Table ({rows.Count} fitting(s)) (or press ESC to cancel): ");
-                PromptPointResult ppr = ed.GetPoint(ppo);
-                if (ppr.Status != PromptStatus.OK)
+                // 1-CLICK UPDATE: nếu đã xác định được bảng cũ VÀ nó có lưu điểm chèn gốc, dùng LUÔN vị
+                // trí đó — KHÔNG hỏi lại điểm chèn mới. Chỉ hỏi điểm chèn khi chèn bảng MỚI hoàn toàn
+                // (hoặc bảng cũ tạo trước khi có tính năng lưu điểm chèn, thiếu dữ liệu này).
+                Point3d insertPoint;
+                if (oldTableGuid != null && oldInsertPoint.HasValue)
                 {
-                    Debug.WriteLine($"{LOG_PREFIX} InsertFittingTable bị hủy.");
-                    return null;
+                    insertPoint = oldInsertPoint.Value;
+                    Debug.WriteLine($"{LOG_PREFIX} Update-in-place: dùng lại điểm chèn gốc ({insertPoint.X:F2}, {insertPoint.Y:F2}) — không hỏi lại.");
+                }
+                else
+                {
+                    PromptPointOptions ppo = new PromptPointOptions(
+                        $"\nSelect insertion point for Fitting Table ({rows.Count} fitting(s)) (or press ESC to cancel): ");
+                    PromptPointResult ppr = ed.GetPoint(ppo);
+                    if (ppr.Status != PromptStatus.OK)
+                    {
+                        Debug.WriteLine($"{LOG_PREFIX} InsertFittingTable bị hủy.");
+                        return null;
+                    }
+                    insertPoint = ppr.Value;
                 }
 
                 // ==== Views luôn chèn ở TỈ LỆ THẬT 1:1 (không scale block) — theo yêu cầu user, Scale
@@ -169,9 +201,11 @@ namespace MCG_FittingManagement.Services.FittingManagement
                 double headerHeight = headerTextHeight + cellPad * 2.4;
                 double charW = textHeight * 0.65; // xấp xỉ độ rộng 1 ký tự MText font Standard
                 double viewGap = cellPad * 2; // khoảng cách giữa các view trong cùng 1 ô Views — cố định, không phụ thuộc rowHeight (giờ rowHeight biến thiên theo từng hàng)
-                double titleTextHeight = headerTextHeight * 1.8; // Table Title (tên Project Folder) — nổi bật rõ rệt so với header
+                double titleTextHeight = headerTextHeight * 2.4; // Table Title — nổi bật RÕ RỆT so với header
                 double titlePad = cellPad * 2;
                 double titleHeight = titleTextHeight + titlePad * 2;
+                double createdTextHeight = textHeight * 0.85; // dòng "Created" cuối bảng — nhỏ, không cần nổi bật
+                double createdPad = cellPad * 0.6;
 
                 // rowHeights[r]: chiều cao THẬT của hàng r = chiều cao view lớn nhất (kích thước gốc,
                 // KHÔNG scale) + padding — mỗi hàng cao thấp khác nhau tuỳ kích thước fitting thật.
@@ -219,46 +253,49 @@ namespace MCG_FittingManagement.Services.FittingManagement
                         EnsureRegApp(db, tr, FITTING_TABLE_XDATA_APP);
                         BlockTableRecord ms = (BlockTableRecord)tr.GetObject(SymbolUtilityServices.GetBlockModelSpaceId(db), OpenMode.ForWrite);
 
-                        // Update-in-place: nếu user đã chọn 1 entity thuộc bảng cũ ở bước trên, xóa TOÀN
-                        // BỘ entity mang cùng Table ID (XData) đó trước khi vẽ bảng mới — cùng transaction
-                        // với thao tác vẽ nên nếu có lỗi giữa chừng, bảng cũ KHÔNG bị mất (rollback cả 2).
+                        // Update-in-place: nếu user đã chọn 1 entity thuộc bảng cũ ở bước trên, ĐỌC
+                        // snapshot dữ liệu từng hàng của bảng cũ (nếu có) TRƯỚC khi xóa — dùng để so
+                        // sánh phát hiện hàng thay đổi (tô đỏ) — rồi xóa TOÀN BỘ entity mang cùng Table
+                        // ID đó. Cùng transaction với thao tác vẽ nên nếu có lỗi giữa chừng, bảng cũ
+                        // KHÔNG bị mất (rollback cả 2).
+                        Dictionary<string, string> oldSnapshot = null;
                         int erasedOldCount = 0;
                         if (oldTableGuid != null)
                         {
+                            oldSnapshot = TryReadOldSnapshot(tr, ms, oldTableGuid);
                             erasedOldCount = EraseEntitiesByTableGuid(tr, ms, oldTableGuid);
-                            Debug.WriteLine($"{LOG_PREFIX} Đã xóa {erasedOldCount} entity của Fitting Table cũ (Table ID={oldTableGuid}) trước khi vẽ bảng mới.");
+                            Debug.WriteLine($"{LOG_PREFIX} Đã xóa {erasedOldCount} entity của Fitting Table cũ (Table ID={oldTableGuid}) trước khi vẽ bảng mới. Snapshot cũ: {(oldSnapshot == null ? "không có" : $"{oldSnapshot.Count} hàng")}.");
                         }
 
                         string tableGuid = Guid.NewGuid().ToString();
+                        string createdDateIso = oldCreatedIso ?? DateTime.Now.ToString("o", CultureInfo.InvariantCulture);
                         var allTableEntityIds = new List<ObjectId>();
 
-                        double left = ppr.Value.X;
-                        double tableTop = ppr.Value.Y;
+                        double left = insertPoint.X;
+                        double tableTop = insertPoint.Y;
                         double top = tableTop - titleHeight; // header row dịch xuống, nhường chỗ cho Title
-                        double z = ppr.Value.Z;
+                        double z = insertPoint.Z;
 
-                        // Table Title — tên Project Folder đang active lúc insert, vì 1 bản vẽ có thể
-                        // chứa NHIỀU Fitting Table (mỗi bảng ứng với 1 project khác nhau).
-                        string projectName = ActiveProjectContext.Instance.ProjectDisplayName;
-                        string titleText = string.IsNullOrEmpty(projectName) ? "FITTING TABLE" : $"FITTING TABLE — {projectName}";
+                        // Table Title — tên Category user đang chọn lúc Insert (vì 1 bản vẽ có thể
+                        // chứa NHIỀU Fitting Table, mỗi bảng ứng với 1 category khác nhau). Chữ trắng
+                        // (theo yêu cầu user — không thêm nền).
+                        string titleText = string.IsNullOrEmpty(tableTitle) ? "FITTING TABLE" : $"FITTING TABLE — {tableTitle}";
                         allTableEntityIds.Add(AddHeaderText(tr, ms, titleText, left, top, tableWidth, titleHeight, titleTextHeight, z,
-                            color: Color.FromRgb(0, 0x55, 0xA5))); // xanh brand #FF0055A5 — nổi bật, không dùng đen như header
+                            color: Color.FromRgb(255, 255, 255)));
 
                         // Header row — nền tô xám nhạt (Solid) để "highlight" thật sự thay vì dựa vào
                         // mã định dạng MText \b1; (KHÔNG hợp lệ khi đứng một mình, gây hiển thị lỗi
                         // "1;**" trước mỗi header — bug đã báo). Chữ HOA + to hơn + canh giữa ô.
-                        using (Solid headerBg = new Solid(
+                        Solid headerBg = new Solid(
                             new Point3d(left, top - headerHeight, z),               // p1: bottom-left
                             new Point3d(left + tableWidth, top - headerHeight, z),  // p2: bottom-right
                             new Point3d(left, top, z),                             // p3: top-left
-                            new Point3d(left + tableWidth, top, z)))               // p4: top-right
-                        {
-                            headerBg.Color = Color.FromColorIndex(ColorMethod.ByAci, 9); // ACI 9 — xám nhạt chuẩn
-                            headerBg.Layer = FITTING_TABLE_LAYER;
-                            ms.AppendEntity(headerBg);
-                            tr.AddNewlyCreatedDBObject(headerBg, true);
-                            allTableEntityIds.Add(headerBg.ObjectId);
-                        }
+                            new Point3d(left + tableWidth, top, z));               // p4: top-right
+                        headerBg.Color = Color.FromColorIndex(ColorMethod.ByAci, 9); // ACI 9 — xám nhạt chuẩn
+                        headerBg.Layer = FITTING_TABLE_LAYER;
+                        ms.AppendEntity(headerBg);
+                        tr.AddNewlyCreatedDBObject(headerBg, true);
+                        allTableEntityIds.Add(headerBg.ObjectId);
 
                         double curX = left;
                         foreach (int c in Enumerable.Range(0, headersUpper.Length))
@@ -272,12 +309,23 @@ namespace MCG_FittingManagement.Services.FittingManagement
                         // Ghi lại: ranh giới ô Views thật (dùng cho báo cáo chẩn đoán) + view vừa chèn từng hàng
                         var cellBoundsByRow = new (double left, double right, double top, double bottom)[rows.Count];
                         var createdViewsByRow = new List<(string blockName, ObjectId id)>[rows.Count];
+                        var newSnapshot = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                        var changedPartNumbers = new List<string>();
 
                         for (int r = 0; r < rows.Count; r++)
                         {
                             CatalogItem rep = rows[r][0];
                             double rowBottom = rowTop - rowHeights[r];
                             curX = left;
+
+                            // So sánh với snapshot bảng cũ (nếu có) — hàng MỚI hoặc dữ liệu KHÁC so với
+                            // lần trước sẽ được tô ĐỎ để user biết ngay chỗ nào vừa Update.
+                            string rowValue = BuildRowSnapshotValue(rep, rows[r]);
+                            newSnapshot[rep.PartNumber] = rowValue;
+                            bool isChanged = oldSnapshot != null &&
+                                (!oldSnapshot.TryGetValue(rep.PartNumber, out string oldValue) || oldValue != rowValue);
+                            if (isChanged) changedPartNumbers.Add(rep.PartNumber);
+                            Color rowColor = isChanged ? Color.FromColorIndex(ColorMethod.ByAci, 1) : null; // ACI 1 = đỏ
 
                             // Ô "Views" — CỘT ĐẦU TIÊN theo yêu cầu user. Canh CHÍNH XÁC theo local extents
                             // từng view (minX/minY), không phải đoán origin nằm ở góc nào — tránh chồng lấn
@@ -303,19 +351,19 @@ namespace MCG_FittingManagement.Services.FittingManagement
                             }
                             curX += colWidths[0];
 
-                            allTableEntityIds.Add(AddCellText(tr, ms, rep.ProjectPosNum ?? "", curX + cellPad, rowTop - cellPad, colWidths[1] - cellPad * 2, textHeight, z));
+                            allTableEntityIds.Add(AddCellText(tr, ms, rep.ProjectPosNum ?? "", curX + cellPad, rowTop - cellPad, colWidths[1] - cellPad * 2, textHeight, z, rowColor));
                             curX += colWidths[1];
-                            allTableEntityIds.Add(AddCellText(tr, ms, rep.BlockName ?? "", curX + cellPad, rowTop - cellPad, colWidths[2] - cellPad * 2, textHeight, z));
+                            allTableEntityIds.Add(AddCellText(tr, ms, rep.BlockName ?? "", curX + cellPad, rowTop - cellPad, colWidths[2] - cellPad * 2, textHeight, z, rowColor));
                             curX += colWidths[2];
-                            allTableEntityIds.Add(AddCellText(tr, ms, rep.PartNumber ?? "", curX + cellPad, rowTop - cellPad, colWidths[3] - cellPad * 2, textHeight, z));
+                            allTableEntityIds.Add(AddCellText(tr, ms, rep.PartNumber ?? "", curX + cellPad, rowTop - cellPad, colWidths[3] - cellPad * 2, textHeight, z, rowColor));
                             curX += colWidths[3];
-                            allTableEntityIds.Add(AddCellText(tr, ms, rep.Title ?? "", curX + cellPad, rowTop - cellPad, colWidths[4] - cellPad * 2, textHeight, z));
+                            allTableEntityIds.Add(AddCellText(tr, ms, rep.Title ?? "", curX + cellPad, rowTop - cellPad, colWidths[4] - cellPad * 2, textHeight, z, rowColor));
                             curX += colWidths[4];
-                            allTableEntityIds.Add(AddCellText(tr, ms, rep.Description ?? "", curX + cellPad, rowTop - cellPad, colWidths[5] - cellPad * 2, textHeight, z));
+                            allTableEntityIds.Add(AddCellText(tr, ms, rep.Description ?? "", curX + cellPad, rowTop - cellPad, colWidths[5] - cellPad * 2, textHeight, z, rowColor));
                             curX += colWidths[5];
-                            allTableEntityIds.Add(AddCellText(tr, ms, (rep.Mass ?? "0") + " kg", curX + cellPad, rowTop - cellPad, colWidths[6] - cellPad * 2, textHeight, z));
+                            allTableEntityIds.Add(AddCellText(tr, ms, (rep.Mass ?? "0") + " kg", curX + cellPad, rowTop - cellPad, colWidths[6] - cellPad * 2, textHeight, z, rowColor));
                             curX += colWidths[6];
-                            allTableEntityIds.Add(AddCellText(tr, ms, rep.Designer ?? "", curX + cellPad, rowTop - cellPad, colWidths[7] - cellPad * 2, textHeight, z));
+                            allTableEntityIds.Add(AddCellText(tr, ms, rep.Designer ?? "", curX + cellPad, rowTop - cellPad, colWidths[7] - cellPad * 2, textHeight, z, rowColor));
 
                             rowTop = rowBottom;
                         }
@@ -323,20 +371,35 @@ namespace MCG_FittingManagement.Services.FittingManagement
                         double bottom = rowTop;
                         allTableEntityIds.AddRange(DrawScheduleGrid(tr, ms, left, top, bottom, colWidths, headerHeight, rowHeights, z));
 
-                        // Gắn Table ID (XData) lên MỌI entity vừa vẽ — dùng để nhận diện + xóa đúng bảng
-                        // này khi user muốn UPDATE ở lần chạy sau (xem bước chọn entity bảng cũ phía trên).
+                        // Dòng "Created" — cuối bảng, nhỏ + xám, giữ nguyên ngày tạo GỐC qua các lần Update.
+                        DateTime createdDisplay = DateTime.TryParse(createdDateIso, CultureInfo.InvariantCulture,
+                            DateTimeStyles.RoundtripKind, out DateTime parsedCreated) ? parsedCreated : DateTime.Now;
+                        string createdLabel = $"Created: {createdDisplay:yyyy-MM-dd HH:mm}";
+                        allTableEntityIds.Add(AddCellText(tr, ms, createdLabel, left, bottom - createdPad, tableWidth, createdTextHeight, z,
+                            Color.FromColorIndex(ColorMethod.ByAci, 8))); // ACI 8 — xám đậm, không nổi bật
+
+                        // Gắn metadata (Table ID + Created GỐC + điểm chèn GỐC) lên MỌI entity vừa vẽ —
+                        // dùng để nhận diện + xóa đúng bảng này VÀ vẽ lại đúng vị trí khi user Update ở
+                        // lần chạy sau (xem bước chọn entity bảng cũ phía trên — chỉ 1 click).
                         foreach (ObjectId id in allTableEntityIds)
                         {
                             if (tr.GetObject(id, OpenMode.ForWrite) is Entity taggedEnt)
-                                TagWithTableGuid(taggedEnt, tableGuid);
+                                TagTableMetadata(taggedEnt, tableGuid, createdDateIso, insertPoint);
                         }
+
+                        // Lưu snapshot dữ liệu từng hàng (Xrecord trong Extension Dictionary của
+                        // headerBg) — dùng để so sánh tô đỏ ở lần Update TIẾP THEO.
+                        SaveRowSnapshot(tr, headerBg, newSnapshot);
 
                         // Báo cáo chẩn đoán — đọc lại GeometricExtents THẬT của từng view vừa chèn (còn
                         // trong transaction, trước commit) để kiểm tra có tràn ra khỏi ô/lưới không.
+                        var removedPartNumbers = oldSnapshot != null
+                            ? oldSnapshot.Keys.Except(newSnapshot.Keys, StringComparer.OrdinalIgnoreCase).ToList()
+                            : new List<string>();
                         string reportPath = BuildDiagnosticReport(
-                            tr, ppr.Value, refHeight, rowHeights, headerHeight, textHeight, headerTextHeight, cellPad,
+                            tr, insertPoint, refHeight, rowHeights, headerHeight, textHeight, headerTextHeight, cellPad,
                             colWidths, tableWidth, left, top, bottom, rows, cellBoundsByRow, createdViewsByRow,
-                            tableGuid, oldTableGuid, erasedOldCount);
+                            tableGuid, oldTableGuid, erasedOldCount, tableTitle, createdDisplay, changedPartNumbers, removedPartNumbers);
 
                         tr.Commit();
                         Debug.WriteLine($"{LOG_PREFIX} InsertFittingTable THÀNH CÔNG ({rows.Count} fitting(s)). Report: {reportPath}");
@@ -378,9 +441,11 @@ namespace MCG_FittingManagement.Services.FittingManagement
             return minX < double.MaxValue && maxX > double.MinValue;
         }
 
-        /// <summary>Chèn 1 ô text (MText) thường — canh top-left, dùng cho các ô dữ liệu.</summary>
+        /// <summary>Chèn 1 ô text (MText) thường — canh top-left, dùng cho các ô dữ liệu.
+        /// <paramref name="color"/> null = giữ màu mặc định (ByLayer); truyền màu cụ thể để tô nổi bật
+        /// (vd đỏ cho hàng vừa thay đổi khi Update).</summary>
         private static ObjectId AddCellText(Transaction tr, BlockTableRecord ms, string text, double x, double yTop,
-            double width, double textHeight, double z)
+            double width, double textHeight, double z, Color color = null)
         {
             MText mt = new MText();
             mt.SetDatabaseDefaults();
@@ -390,15 +455,16 @@ namespace MCG_FittingManagement.Services.FittingManagement
             mt.Contents = EscapeMText(text);
             mt.Attachment = AttachmentPoint.TopLeft;
             mt.Layer = FITTING_TABLE_LAYER;
+            if (color != null) mt.Color = color;
             ms.AppendEntity(mt);
             tr.AddNewlyCreatedDBObject(mt, true);
             return mt.ObjectId;
         }
 
-        /// <summary>Chèn text HEADER — canh GIỮA ô (ngang + dọc), màu đen tuyệt đối (TrueColor) để luôn
-        /// tương phản với nền xám nhạt bất kể layer đang dùng màu gì. KHÔNG dùng mã định dạng MText
+        /// <summary>Chèn text HEADER/TITLE — canh GIỮA ô (ngang + dọc). KHÔNG dùng mã định dạng MText
         /// \b1; (không hợp lệ khi đứng một mình, gây hiển thị lỗi "1;**" — bug đã báo) — "nổi bật" hoàn
-        /// toàn nhờ nền Solid (xem InsertFittingTable) + cỡ chữ lớn hơn + viết hoa.</summary>
+        /// toàn nhờ nền Solid (header, xem InsertFittingTable) + cỡ chữ lớn hơn + viết hoa + màu riêng.
+        /// <paramref name="color"/> null = đen tuyệt đối (mặc định cho Header); Title truyền màu trắng riêng.</summary>
         private static ObjectId AddHeaderText(Transaction tr, BlockTableRecord ms, string text, double cellLeft, double cellBottom,
             double cellWidth, double cellHeight, double textHeight, double z, Color color = null)
         {
@@ -410,7 +476,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
             mt.Contents = EscapeMText(text);
             mt.Attachment = AttachmentPoint.MiddleCenter;
             mt.Layer = FITTING_TABLE_LAYER;
-            mt.Color = color ?? Color.FromRgb(0, 0, 0); // mặc định đen (header) — Title truyền màu riêng để nổi bật
+            mt.Color = color ?? Color.FromRgb(0, 0, 0); // mặc định đen (header) — Title truyền màu riêng
             ms.AppendEntity(mt);
             tr.AddNewlyCreatedDBObject(mt, true);
             return mt.ObjectId;
@@ -432,32 +498,56 @@ namespace MCG_FittingManagement.Services.FittingManagement
             tr.AddNewlyCreatedDBObject(ratr, true);
         }
 
-        /// <summary>Gắn Table ID (GUID dạng string) lên 1 entity qua XData — dùng để nhận diện toàn bộ
-        /// entity thuộc CÙNG 1 lần vẽ Fitting Table (phục vụ update-in-place ở lần chạy sau).</summary>
-        private static void TagWithTableGuid(Entity ent, string tableGuid)
+        /// <summary>Gắn metadata (Table ID GUID + ngày Created GỐC ISO + điểm chèn GỐC) lên 1 entity
+        /// qua XData — 3 chuỗi có prefix ("GUID=", "CREATED=", "POINT=") để đọc lại KHÔNG phụ thuộc thứ
+        /// tự. Dùng để nhận diện toàn bộ entity thuộc CÙNG 1 lần vẽ Fitting Table (update-in-place) VÀ
+        /// biết vẽ lại đúng vị trí/giữ nguyên ngày tạo khi Update (chỉ 1 click, không hỏi lại điểm chèn).</summary>
+        private static void TagTableMetadata(Entity ent, string tableGuid, string createdDateIso, Point3d insertPoint)
         {
+            string pointStr = string.Join(",",
+                insertPoint.X.ToString(CultureInfo.InvariantCulture),
+                insertPoint.Y.ToString(CultureInfo.InvariantCulture),
+                insertPoint.Z.ToString(CultureInfo.InvariantCulture));
             using (ResultBuffer rb = new ResultBuffer(
                 new TypedValue((int)DxfCode.ExtendedDataRegAppName, FITTING_TABLE_XDATA_APP),
-                new TypedValue((int)DxfCode.ExtendedDataAsciiString, tableGuid)))
+                new TypedValue((int)DxfCode.ExtendedDataAsciiString, "GUID=" + tableGuid),
+                new TypedValue((int)DxfCode.ExtendedDataAsciiString, "CREATED=" + createdDateIso),
+                new TypedValue((int)DxfCode.ExtendedDataAsciiString, "POINT=" + pointStr)))
             {
                 ent.XData = rb;
             }
         }
 
-        /// <summary>Đọc lại Table ID đã gắn (nếu có) từ XData của 1 entity — trả về null nếu entity
-        /// không thuộc Fitting Table nào (dùng khi user click chọn entity của bảng cũ để update).</summary>
-        private static string TryGetTableGuid(Entity ent)
+        /// <summary>Đọc lại metadata (Table ID/Created/điểm chèn) từ XData của 1 entity — mọi giá trị
+        /// null nếu entity không thuộc Fitting Table nào (dùng khi user click chọn entity của bảng cũ
+        /// để update).</summary>
+        private static (string guid, string createdIso, Point3d? point) TryGetTableMetadata(Entity ent)
         {
+            string guid = null, createdIso = null;
+            Point3d? point = null;
             using (ResultBuffer rb = ent.GetXDataForApplication(FITTING_TABLE_XDATA_APP))
             {
-                if (rb == null) return null;
+                if (rb == null) return (null, null, null);
                 foreach (TypedValue tv in rb.AsArray())
                 {
-                    if (tv.TypeCode == (int)DxfCode.ExtendedDataAsciiString)
-                        return tv.Value as string;
+                    if (tv.TypeCode != (int)DxfCode.ExtendedDataAsciiString) continue;
+                    string s = tv.Value as string;
+                    if (string.IsNullOrEmpty(s)) continue;
+
+                    if (s.StartsWith("GUID=", StringComparison.Ordinal)) guid = s.Substring(5);
+                    else if (s.StartsWith("CREATED=", StringComparison.Ordinal)) createdIso = s.Substring(8);
+                    else if (s.StartsWith("POINT=", StringComparison.Ordinal))
+                    {
+                        var parts = s.Substring(6).Split(',');
+                        if (parts.Length == 3
+                            && double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double px)
+                            && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double py)
+                            && double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out double pz))
+                            point = new Point3d(px, py, pz);
+                    }
                 }
             }
-            return null;
+            return (guid, createdIso, point);
         }
 
         /// <summary>Xóa toàn bộ entity trong <paramref name="ms"/> mang cùng Table ID
@@ -469,12 +559,75 @@ namespace MCG_FittingManagement.Services.FittingManagement
             foreach (ObjectId id in ms)
             {
                 if (!(tr.GetObject(id, OpenMode.ForRead) is Entity ent)) continue;
-                if (TryGetTableGuid(ent) != tableGuid) continue;
+                if (TryGetTableMetadata(ent).guid != tableGuid) continue;
                 ent.UpgradeOpen();
                 ent.Erase();
                 count++;
             }
             return count;
+        }
+
+        /// <summary>Duyệt <paramref name="ms"/> tìm entity đầu tiên mang <paramref name="tableGuid"/> có
+        /// lưu snapshot dữ liệu hàng (thường là headerBg cũ) — đọc TRƯỚC khi xóa bảng cũ, dùng để so
+        /// sánh phát hiện hàng thay đổi (tô đỏ). Trả về null nếu bảng cũ chưa từng lưu snapshot (vd tạo
+        /// trước khi có tính năng này).</summary>
+        private static Dictionary<string, string> TryReadOldSnapshot(Transaction tr, BlockTableRecord ms, string tableGuid)
+        {
+            foreach (ObjectId id in ms)
+            {
+                if (!(tr.GetObject(id, OpenMode.ForRead) is Entity ent)) continue;
+                if (TryGetTableMetadata(ent).guid != tableGuid) continue;
+                var snapshot = TryReadRowSnapshot(tr, ent);
+                if (snapshot != null) return snapshot;
+            }
+            return null;
+        }
+
+        /// <summary>Ghép dữ liệu 1 hàng thành 1 chuỗi để so sánh phát hiện thay đổi — gồm mọi field
+        /// hiển thị trên bảng CAD (Pos/BlockName/PartNumber/Title/Description/Mass/Designer) + danh
+        /// sách BlockName của mọi view trong hàng (đã sort, phát hiện được cả trường hợp thêm/bớt view).</summary>
+        private static string BuildRowSnapshotValue(CatalogItem rep, List<CatalogItem> viewsInRow)
+        {
+            string viewNames = string.Join(",", viewsInRow.Select(v => v.BlockName).OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
+            return string.Join("|", rep.ProjectPosNum, rep.BlockName, rep.PartNumber, rep.Title, rep.Description, rep.Mass, rep.Designer, viewNames);
+        }
+
+        /// <summary>Lưu snapshot dữ liệu từng hàng (JSON qua Newtonsoft) vào Xrecord trong Extension
+        /// Dictionary của <paramref name="ent"/> — dùng Xrecord (không phải XData) vì không giới hạn
+        /// 255 ký tự/chuỗi, phù hợp lưu JSON cho nhiều hàng. <paramref name="ent"/> phải đang mở
+        /// ForWrite (đúng ngay sau khi tạo mới, xem InsertFittingTable).</summary>
+        private static void SaveRowSnapshot(Transaction tr, Entity ent, Dictionary<string, string> snapshot)
+        {
+            string json = JsonConvert.SerializeObject(snapshot);
+            if (ent.ExtensionDictionary == ObjectId.Null)
+                ent.CreateExtensionDictionary();
+            DBDictionary extDict = (DBDictionary)tr.GetObject(ent.ExtensionDictionary, OpenMode.ForWrite);
+            if (extDict.Contains(ROW_SNAPSHOT_DICT_KEY))
+            {
+                var existing = (Xrecord)tr.GetObject(extDict.GetAt(ROW_SNAPSHOT_DICT_KEY), OpenMode.ForWrite);
+                existing.Data = new ResultBuffer(new TypedValue((int)DxfCode.Text, json));
+            }
+            else
+            {
+                var xrec = new Xrecord { Data = new ResultBuffer(new TypedValue((int)DxfCode.Text, json)) };
+                extDict.SetAt(ROW_SNAPSHOT_DICT_KEY, xrec);
+                tr.AddNewlyCreatedDBObject(xrec, true);
+            }
+        }
+
+        /// <summary>Đọc lại snapshot dữ liệu từng hàng đã lưu (nếu có) — trả về null nếu entity không
+        /// có Extension Dictionary hoặc không có key snapshot (bảng cũ tạo trước khi có tính năng này).</summary>
+        private static Dictionary<string, string> TryReadRowSnapshot(Transaction tr, Entity ent)
+        {
+            if (ent.ExtensionDictionary == ObjectId.Null) return null;
+            DBDictionary extDict = (DBDictionary)tr.GetObject(ent.ExtensionDictionary, OpenMode.ForRead);
+            if (!extDict.Contains(ROW_SNAPSHOT_DICT_KEY)) return null;
+            if (!(tr.GetObject(extDict.GetAt(ROW_SNAPSHOT_DICT_KEY), OpenMode.ForRead) is Xrecord xrec)) return null;
+            var tv = xrec.Data?.AsArray()?.FirstOrDefault();
+            string json = tv?.Value as string;
+            if (string.IsNullOrEmpty(json)) return null;
+            try { return JsonConvert.DeserializeObject<Dictionary<string, string>>(json); }
+            catch { return null; }
         }
 
         /// <summary>Tính độ rộng cột đủ cho CẢ header (chữ HOA, biên an toàn 30% vì charW chỉ là ước
@@ -529,8 +682,9 @@ namespace MCG_FittingManagement.Services.FittingManagement
 
         /// <summary>
         /// Ghi file .txt chẩn đoán bảng vừa chèn — kích thước từng thành phần + kiểm tra overlap
-        /// của từng view thật (GeometricExtents đọc lại từ DB) với ranh giới ô Views/lưới. Mục đích:
-        /// user gửi lại file này thay vì ảnh chụp màn hình để đánh giá chất lượng bảng.
+        /// của từng view thật (GeometricExtents đọc lại từ DB) với ranh giới ô Views/lưới + danh sách
+        /// hàng vừa thay đổi/hàng bị xóa (nếu là Update). Mục đích: user gửi lại file này thay vì ảnh
+        /// chụp màn hình để đánh giá chất lượng bảng.
         /// </summary>
         private string BuildDiagnosticReport(
             Transaction tr, Point3d insertPoint, double refHeight, double[] rowHeights, double headerHeight,
@@ -539,15 +693,26 @@ namespace MCG_FittingManagement.Services.FittingManagement
             List<List<CatalogItem>> rows,
             (double left, double right, double top, double bottom)[] cellBoundsByRow,
             List<(string blockName, ObjectId id)>[] createdViewsByRow,
-            string tableGuid, string oldTableGuid, int erasedOldCount)
+            string tableGuid, string oldTableGuid, int erasedOldCount,
+            string tableTitle, DateTime created, List<string> changedPartNumbers, List<string> removedPartNumbers)
         {
             var sb = new StringBuilder();
             sb.AppendLine("=== MCG Fitting Table — Diagnostic Report ===");
             sb.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
             sb.AppendLine($"Table ID: {tableGuid}");
+            sb.AppendLine($"Title: {(string.IsNullOrEmpty(tableTitle) ? "(none)" : tableTitle)}");
+            sb.AppendLine($"Created: {created:yyyy-MM-dd HH:mm}");
             sb.AppendLine(oldTableGuid != null
                 ? $"Mode: UPDATE existing table (old Table ID={oldTableGuid}, erased {erasedOldCount} old entity/entities)"
                 : "Mode: INSERT new table");
+            if (oldTableGuid != null)
+            {
+                sb.AppendLine(changedPartNumbers.Count > 0
+                    ? $"Changed rows (tô đỏ): {string.Join(", ", changedPartNumbers)}"
+                    : "Changed rows: none");
+                if (removedPartNumbers.Count > 0)
+                    sb.AppendLine($"Removed since last update (không còn trong bảng mới): {string.Join(", ", removedPartNumbers)}");
+            }
             sb.AppendLine($"Insertion point: ({insertPoint.X:F2}, {insertPoint.Y:F2}, {insertPoint.Z:F2})");
             sb.AppendLine($"Reference view height (median): {refHeight:F2} mm");
             sb.AppendLine($"Views inserted at TRUE 1:1 scale (Block Scale luôn = 1 trong Properties palette) — row height BIẾN THIÊN theo kích thước view thật: min={rowHeights.Min():F2} mm, max={rowHeights.Max():F2} mm");

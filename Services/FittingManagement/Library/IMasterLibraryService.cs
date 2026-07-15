@@ -29,10 +29,11 @@ namespace MCG_FittingManagement.Services.FittingManagement
         int RemoveFromMaster(IEnumerable<string> blockNames);
 
         /// <summary>
-        /// Gán tự động Position Number cho các fitting DETAIL/HULL trong catalog (gom theo PartNumber).
+        /// Gán tự động Position Number cho các fitting DETAIL/HULL trong catalog (gom theo PartNumber),
+        /// bắt đầu từ <paramref name="startFrom"/> (mặc định 1, do user chọn qua AutoAssignStartDialog).
         /// Trả về số nhóm đã gán.
         /// </summary>
-        int AutoAssignPositions();
+        int AutoAssignPositions(int startFrom = 1);
 
         /// <summary>Wblock từng block trong AutoCAD ra file .dwg và ghi metadata vào FittingCatalog.json.</summary>
         Tuple<int, int> PublishToCentralLibrary(List<Tuple<ObjectId, CatalogItem>> itemsToPublish);

@@ -29,17 +29,20 @@ namespace MCG_FittingManagement.Services.FittingManagement
 
         /// <summary>
         /// Chèn "Fitting Table" — bảng lưới N hàng (mỗi hàng 1 fitting, gom theo PartNumber từ
-        /// <paramref name="projectItems"/>) x cột (Pos./Part Number/Title/Views/Description/Material/
-        /// Mass/UoM). Cột "Views" gộp tất cả hình chiếu của fitting đó vào chung 1 ô, scale tỉ lệ theo
-        /// kích thước thật của hình chiếu (không dùng cỡ chữ/hàng cố định). <paramref name="projectItems"/>
-        /// do caller truyền vào (toàn bộ catalog hoặc theo Category đang chọn — xem FittingTableWindow).
-        /// Hỗ trợ UPDATE-IN-PLACE: trước khi vẽ, hỏi user click chọn (tùy chọn) 1 entity của Fitting
-        /// Table cũ trong bản vẽ — nếu chọn đúng, xóa bảng cũ đó rồi vẽ bảng mới thay thế; nếu bỏ qua
-        /// (Enter), chèn bảng mới như bình thường.
+        /// <paramref name="projectItems"/>) x cột (Views/Pos./Vault Name/Part ID/X.Class/Description/
+        /// Weight/Designer). Cột "Views" gộp tất cả hình chiếu của fitting đó vào chung 1 ô, chèn ở tỉ
+        /// lệ THẬT 1:1. <paramref name="tableTitle"/> hiện trên dòng Title phía trên bảng (thường là
+        /// tên Category user đang chọn khi bấm Insert — xem FittingTableWindow); null/rỗng thì chỉ hiện
+        /// "FITTING TABLE" trơn.
+        /// Hỗ trợ UPDATE-IN-PLACE (CHỈ 1 CLICK): trước khi vẽ, hỏi user click chọn (tùy chọn) Title/1
+        /// entity của Fitting Table cũ trong bản vẽ — nếu chọn đúng, xóa bảng cũ rồi vẽ bảng mới NGAY
+        /// TẠI VỊ TRÍ CŨ (không hỏi lại điểm chèn), giữ nguyên ngày Created gốc, và tô ĐỎ những hàng có
+        /// dữ liệu thay đổi so với lần trước; nếu bỏ qua (Enter), chèn bảng mới như bình thường (hỏi
+        /// điểm chèn).
         /// Trả về đường dẫn file báo cáo chẩn đoán (.txt) để đánh giá chất lượng bảng vừa chèn mà
         /// không cần gửi ảnh chụp màn hình; trả về null nếu user hủy chọn điểm chèn.
         /// </summary>
-        string InsertFittingTable(IList<CatalogItem> projectItems);
+        string InsertFittingTable(IList<CatalogItem> projectItems, string tableTitle = null);
 
         // --- Giai đoạn 3.2: BOM Harvester & Ballooning ---
         List<BomHarvestRecord> HarvestStructureBom();

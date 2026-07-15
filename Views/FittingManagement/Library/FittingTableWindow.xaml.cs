@@ -173,10 +173,18 @@ namespace MCG_FittingManagement.Views.FittingManagement
             ApplyFilters();
             GridCatalog.SelectAll(); // chọn TOÀN BỘ fitting đang hiện trên Grid (union của các node đang chọn)
 
-            string label = _selectedCategoryNodes.Count > 1
-                ? $"{_selectedCategoryNodes.Count} Sub Folders selected"
-                : node.CategoryName;
-            var menu = BuildCategoryContextMenu(label, GridCatalog.SelectedItems.Count);
+            int itemCount = GridCatalog.SelectedItems.Count;
+            // Level 2 (Sub Folder) = ĐÚNG 1 fitting, bên trong là các VIEW (không phải "fitting(s)") —
+            // Level 0/1 vẫn là category tổng hợp NHIỀU fitting thật nên giữ nguyên "fitting(s)".
+            string label;
+            if (_selectedCategoryNodes.Count > 1)
+                label = $"{_selectedCategoryNodes.Count} Sub Folders — {itemCount} view(s) total";
+            else if (node.Level == 2)
+                label = $"{node.CategoryName} — {itemCount} view(s)";
+            else
+                label = $"{node.CategoryName} — {itemCount} fitting(s)";
+
+            var menu = BuildCategoryContextMenu(label);
             item.ContextMenu = menu;
             menu.IsOpen = true;
         }
@@ -188,13 +196,14 @@ namespace MCG_FittingManagement.Views.FittingManagement
             return source as TreeViewItem;
         }
 
-        /// <summary>Menu right-click Category — dựng động (giống BuildCustomizeGridMenu) để hiện được
-        /// tên + số lượng fitting của category ngay trên header. Mỗi MenuItem gọi THẲNG handler y hệt
-        /// Grid — không trùng lặp business logic.</summary>
-        private ContextMenu BuildCategoryContextMenu(string categoryName, int itemCount)
+        /// <summary>Menu right-click Category — dựng động (giống BuildCustomizeGridMenu), header hiện
+        /// đúng <paramref name="label"/> đã format sẵn (xem TreeViewItem_PreviewMouseRightButtonDown —
+        /// wording "fitting(s)" vs "view(s)" tuỳ Level). Mỗi MenuItem gọi THẲNG handler y hệt Grid —
+        /// không trùng lặp business logic.</summary>
+        private ContextMenu BuildCategoryContextMenu(string label)
         {
             var menu = new ContextMenu();
-            menu.Items.Add(new MenuItem { Header = $"{categoryName} — {itemCount} fitting(s)", IsEnabled = false, FontWeight = FontWeights.Bold });
+            menu.Items.Add(new MenuItem { Header = label, IsEnabled = false, FontWeight = FontWeights.Bold });
             menu.Items.Add(new Separator());
 
             var editProps = new MenuItem { Header = "Edit Properties" };
@@ -212,6 +221,10 @@ namespace MCG_FittingManagement.Views.FittingManagement
             var sync = new MenuItem { Header = "Sync", ToolTip = "Update block AttributeDefinitions and all INSERT instances in the current drawing." };
             sync.Click += BtnSyncToDrawing_Click;
             menu.Items.Add(sync);
+
+            var accessory = new MenuItem { Header = "Sub-BOM / Accessories", ToolTip = "Manage accessories attached to this fitting." };
+            accessory.Click += BtnManageAccessory_Click;
+            menu.Items.Add(accessory);
 
             menu.Items.Add(new Separator());
 
@@ -597,16 +610,25 @@ namespace MCG_FittingManagement.Views.FittingManagement
             }
         }
 
+        /// <summary>Sub-BOM / Accessories — dùng chung cho Grid row context menu VÀ Category Sub
+        /// Folder/Views context menu. Khi nhiều item đang chọn (multi-view của cùng 1 fitting, hoặc
+        /// union nhiều Sub Folder), dùng item ĐẦU TIÊN làm representative (mirror pattern
+        /// <c>rep = rows[r][0]</c> của InsertFittingTable cho trường hợp multi-view/fitting).</summary>
         private void BtnManageAccessory_Click(object sender, RoutedEventArgs e)
         {
             var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().ToList();
-            if (selected.Count != 1) return;
+            var rep = selected.FirstOrDefault();
+            if (rep == null)
+            {
+                MessageBox.Show("Select item(s) first.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
             try
             {
-                var accWin = new AccessoryManagerWindow(_masterService, selected[0]) { Owner = this };
+                var accWin = new AccessoryManagerWindow(_masterService, rep) { Owner = this };
                 if (accWin.ShowDialog() == true)
                 {
-                    _recentTracker?.Track(selected[0].BlockName);
+                    _recentTracker?.Track(rep.BlockName);
                     LoadCatalog();
                 }
             }
@@ -678,10 +700,17 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 return;
             }
 
+            // Title bảng = tên Category user đang chọn (vì 1 bản vẽ có thể chứa nhiều Fitting Table,
+            // mỗi bảng ứng với 1 category khác nhau); "All Fittings" (không chọn category cụ thể) ->
+            // fallback tên Project Folder.
+            string tableTitle = (TreeCategories.SelectedItem is CategoryNode titleNode && titleNode.CategoryName != "All Fittings")
+                ? titleNode.CategoryName
+                : _projectContext.ProjectDisplayName;
+
             Autodesk.AutoCAD.Internal.Utils.SetFocusToDwgView();
             try
             {
-                string reportPath = _fittingService.InsertFittingTable(projectItems);
+                string reportPath = _fittingService.InsertFittingTable(projectItems, tableTitle);
                 if (!string.IsNullOrEmpty(reportPath))
                 {
                     MessageBox.Show($"Fitting Table inserted.\n\nDiagnostic report: {reportPath}",
@@ -905,9 +934,12 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 MessageBox.Show("Load a folder first.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            var dlg = new AutoAssignStartDialog { Owner = this };
+            if (dlg.ShowDialog() != true) return;
+
             try
             {
-                int groups = _masterService.AutoAssignPositions();
+                int groups = _masterService.AutoAssignPositions(dlg.StartNumber);
                 LoadCatalog();
                 MessageBox.Show($"Auto-assigned {groups} position group(s).", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
             }

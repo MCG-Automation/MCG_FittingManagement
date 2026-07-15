@@ -97,7 +97,9 @@ namespace MCG_FittingManagement.Views.FittingManagement
                     bomNode.Children.Add(new CategoryNode
                     {
                         CategoryName = $"{orderLabel}-{displayTitle} ({partNumber})",
-                        CountLabel = $"({cg.Count()})",
+                        // Sub Folder = ĐÚNG 1 fitting; bên trong là các VIEW của fitting đó, không phải
+                        // "fitting(s)" khác nhau — wording phải phản ánh đúng ý nghĩa này.
+                        CountLabel = $"({cg.Count()} view(s))",
                         Items = cg.ToList(),
                         Level = 2,
                         Parent = bomNode

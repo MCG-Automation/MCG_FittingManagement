@@ -156,6 +156,8 @@
                                   ToolTip="Đánh dấu Plan View / quy tắc đếm Qty theo Plan View cho Hull BOM khi 1 fitting có nhiều mặt cắt trong cùng 1 khung A1."/>
                         <MenuItem Header="Sync" Click="BtnSyncToDrawing_Click"
                                   ToolTip="Update block AttributeDefinitions and all INSERT instances in the current drawing."/>
+                        <MenuItem Header="Sub-BOM / Accessories" Click="BtnManageAccessory_Click"
+                                  ToolTip="Manage accessories attached to this fitting."/>
                         <Separator/>
                         <MenuItem Header="Remove from Project" Click="BtnRemoveFromMaster_Click" Foreground="#FFD32F2F"/>
                     </ContextMenu>
@@ -247,7 +249,6 @@
 
             <StackPanel Grid.Column="0" Orientation="Horizontal">
                 <Button x:Name="BtnAddFromCad" Content="➕ Add from CAD" Width="130" Margin="0,0,10,0" Click="BtnAddFromCad_Click" Background="#FF28A745" Foreground="White" FontWeight="Bold" Height="28"/>
-                <Button x:Name="BtnManageAccessory" Content="🔗 Sub-BOM / Accessories" Width="180" Margin="0,0,10,0" Click="BtnManageAccessory_Click" FontWeight="SemiBold" Background="#FFE1E1E1" Height="28"/>
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">

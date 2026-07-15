@@ -105,11 +105,11 @@ namespace MCG_FittingManagement.Services.FittingManagement
         }
 
         /// <summary>
-        /// Gán tự động Position Number (D3, tăng dần) cho các fitting DETAIL/HULL trong catalog của
-        /// Project Folder đang active — gom nhóm theo PartNumber (mỗi PartNumber 1 số). Trả về số
-        /// nhóm đã gán.
+        /// Gán tự động Position Number (D3, tăng dần từ <paramref name="startFrom"/>) cho các fitting
+        /// DETAIL/HULL trong catalog của Project Folder đang active — gom nhóm theo PartNumber (mỗi
+        /// PartNumber 1 số). Trả về số nhóm đã gán.
         /// </summary>
-        public int AutoAssignPositions()
+        public int AutoAssignPositions(int startFrom = 1)
         {
             Debug.WriteLine($"{LOG_PREFIX} Bắt đầu AutoAssignPositions...");
             try
@@ -131,7 +131,7 @@ namespace MCG_FittingManagement.Services.FittingManagement
                     .OrderBy(g => g.Key)
                     .ToList();
 
-                int posCounter = 1;
+                int posCounter = startFrom;
                 foreach (var group in groupedByPartId)
                 {
                     string posString = posCounter.ToString("D3");

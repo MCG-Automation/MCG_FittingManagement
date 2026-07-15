@@ -4,6 +4,95 @@
 
 ---
 
+## Session 2026-07-15 — 7 cải tiến Fitting Table (Title/Update 1-click/tô đỏ/wording/Accessories/Preview/Auto-Assign)
+
+### Bối cảnh
+User phản hồi tiếp sau session trước, 7 điểm:
+1. Title (CAD) đổi nội dung = tên Category user đang chọn (không phải Project Folder), chữ trắng, to
+   hơn nữa; thêm dòng "Created" cuối bảng.
+2. Update Fitting Table rút gọn còn 1 click (chọn Title/entity bảng cũ → tự vẽ lại ĐÚNG vị trí cũ,
+   không hỏi điểm chèn mới).
+3. Khi Update, tô ĐỎ chữ cả hàng có thay đổi (Description/View/...) so với lần trước.
+4. Sub Folder = 1 fitting, bên trong là các VIEW — sửa wording đang nhầm "fitting(s)" thành "view(s)".
+5. Gộp "Sub-BOM / Accessories" vào right-click (Grid row + Category Sub Folder/Views), bỏ nút riêng.
+6. Preview Pane hiện TOÀN BỘ Properties (bao gồm `ExtraProperties` — field động Vault/iProperty).
+7. Auto-Assign Pos: cho user chọn số bắt đầu (trước hardcode từ "001").
+
+Quyết định qua AskUserQuestion: Title chữ trắng KHÔNG thêm nền (user chọn, dù đã cảnh báo rủi ro
+trắng-trên-trắng); đánh dấu thay đổi = tô CHỮ ĐỎ cả hàng (không vẽ Rev Cloud). Kế hoạch đầy đủ lưu tại
+plan mode trước khi triển khai.
+
+### Đã làm
+- **`Services/FittingManagement/IFittingManagementService.cs`**: `InsertFittingTable` thêm tham số
+  `string tableTitle = null`.
+- **`Services/FittingManagement/Library/FittingManagementService.FittingTable.cs`** (viết lại toàn bộ):
+  - XData RegApp `MCG_FITTING_TABLE` mở rộng từ 1 chuỗi GUID → 3 chuỗi prefix (`GUID=`, `CREATED=`,
+    `POINT=`), đọc bằng `StartsWith` (không phụ thuộc thứ tự). `TagWithTableGuid`/`TryGetTableGuid` đổi
+    thành `TagTableMetadata`/`TryGetTableMetadata` (trả về tuple guid/createdIso/point).
+  - Update-in-place CHỈ 1 CLICK: chọn entity bảng cũ → đọc luôn `oldCreatedIso`/`oldInsertPoint` từ
+    CHÍNH entity đó, bỏ qua hoàn toàn `ed.GetPoint()` khi có đủ dữ liệu — vẽ lại đúng vị trí cũ.
+  - Title = `tableTitle` (tên Category), màu trắng (`Color.FromRgb(255,255,255)`, KHÔNG thêm nền),
+    `titleTextHeight` tăng `headerTextHeight * 1.8` → `* 2.4`. Thêm dòng "Created: yyyy-MM-dd HH:mm" ở
+    cuối bảng (xám ACI 8), ngày giữ nguyên qua các lần Update (`createdDateIso = oldCreatedIso ?? Now`).
+  - Tô đỏ hàng thay đổi: snapshot dữ liệu từng hàng (JSON qua Newtonsoft) lưu vào Xrecord trong
+    Extension Dictionary của `headerBg` (`SaveRowSnapshot`/`TryReadRowSnapshot`/`TryReadOldSnapshot`) —
+    so sánh khi Update, hàng mới/khác → 7 cột text màu đỏ (ACI 1). `AddCellText` thêm tham số
+    `Color color = null`. `BuildDiagnosticReport` thêm dòng Changed rows / Removed since last update.
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml.cs`**:
+  - `BtnInsertFittingTable_Click` truyền `tableTitle` = tên Category đang chọn (fallback tên Project
+    Folder nếu "All Fittings").
+  - `BtnManageAccessory_Click`: bỏ `if (selected.Count != 1) return;` im lặng → dùng
+    `selected.FirstOrDefault()` làm representative, thông báo rõ nếu rỗng.
+  - `TreeViewItem_PreviewMouseRightButtonDown` + `BuildCategoryContextMenu`: đổi signature nhận 1
+    `label` đã format sẵn ("N view(s)" cho Level 2, giữ "N fitting(s)" cho Level 0/1); thêm MenuItem
+    "Sub-BOM / Accessories" vào menu Category.
+  - `BtnAutoAssignPos_Click`: mở `AutoAssignStartDialog` trước, truyền `dlg.StartNumber` vào
+    `AutoAssignPositions`.
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml`**: xoá nút `BtnManageAccessory` khỏi
+  footer; thêm MenuItem "Sub-BOM / Accessories" vào `DataGrid.ContextMenu`.
+- **`Views/FittingManagement/Library/Shared/CatalogTreeBuilder.cs`**: `CountLabel` Level 2 đổi
+  `"({count})"` → `"({count} view(s))"`.
+- **`Views/FittingManagement/Library/Shared/FittingPreviewPane.xaml(.cs)`**: thêm `ItemsControl`
+  (template Key: Value) cuối StackPanel của cả 2 nhánh (Block-type + `MetadataCard`), bind trực tiếp
+  `item.ExtraProperties` (Dictionary<string,string>) — rỗng/null tự ẩn (kèm divider).
+- **`Views/FittingManagement/Library/AutoAssignStartDialog.xaml(.cs)`** — MỚI: dialog nhỏ (mirror style
+  `EditPosNumDialog`) hỏi số bắt đầu (default "1"), validate `int.TryParse` + `>= 1`, property
+  `int StartNumber`.
+- **`Services/FittingManagement/Library/IMasterLibraryService.cs`** +
+  **`FittingManagementService.MasterLibrary.cs`**: `AutoAssignPositions(int startFrom = 1)` —
+  `posCounter = startFrom` thay vì hardcode 1; giữ nguyên phạm vi DETAIL/HULL + group theo PartNumber.
+- `dotnet build -c Debug` — Build succeeded, 0 Error (chỉ warning MSB3061 khoá file DLL cũ do AutoCAD
+  đang chạy, không liên quan code).
+
+### Trạng thái
+- Phase hiện tại: Fitting Table window — vừa hoàn thành vòng 7 cải tiến trên. Build sạch, CHƯA test
+  thủ công trong AutoCAD (cần load lại plugin — DLL cũ đang bị khoá bởi AutoCAD process hiện tại).
+
+### Bước tiếp theo
+- Đóng/reload AutoCAD để nạp DLL mới, test theo checklist 8 bước trong plan:
+  1. Insert Fitting Table (chọn 1 category cụ thể) → verify Title = tên category, chữ trắng, to hơn
+     Header rõ rệt; dòng "Created" xuất hiện cuối bảng.
+  2. Click Title bảng vừa chèn → verify KHÔNG hỏi điểm chèn mới, vẽ lại ĐÚNG vị trí cũ, "Created" GIỮ
+     NGUYÊN ngày ban đầu.
+  3. Sửa Description 1 fitting rồi Update lại → verify ĐÚNG hàng đó hiện chữ đỏ, hàng khác bình thường.
+  4. Fitting Table window: Sub Folder hiện "(N view(s))"; right-click 1 Sub Folder nhiều view → label
+     đúng "N view(s)".
+  5. Right-click Grid row / Sub Folder → có "Sub-BOM / Accessories"; nút footer cũ đã biến mất.
+  6. Chọn fitting có ExtraProperties thật (import IDW) → Preview Pane hiện đủ key/value.
+  7. Auto-Assign Pos → dialog hỏi số bắt đầu, nhập "50" → Pos đầu tiên "050", tăng dần.
+- Nếu OK hết, không còn việc tồn đọng của vòng này.
+
+### Ghi chú API
+- `Entity.ExtensionDictionary` + `DBDictionary`/`Xrecord` dùng để lưu payload KHÔNG giới hạn 255
+  ký tự (khác XData — mỗi chuỗi `ExtendedDataAsciiString` cap 255 ký tự) — phù hợp lưu JSON nhiều hàng.
+  Entity phải đang mở `ForWrite` khi gọi `CreateExtensionDictionary()`; ngay sau
+  `AppendEntity`+`AddNewlyCreatedDBObject(ent, true)` entity đã ở trạng thái này (không cần
+  `UpgradeOpen()` thêm).
+- `Autodesk.AutoCAD.Colors.Color` là REFERENCE TYPE (class) — optional param phải viết
+  `Color color = null`, KHÔNG viết `Color? color = null` (gây warning CS8632).
+
+---
+
 ## Session 2026-07-14M — Sửa 5 phản hồi Fitting Table + audit Fitting Handle
 
 ### Bối cảnh
