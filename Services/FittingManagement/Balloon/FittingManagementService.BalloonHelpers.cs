@@ -102,9 +102,10 @@ namespace MCG_FittingManagement.Services.FittingManagement
                 mleader.BlockContentId = tagCircleId;
                 mleader.BlockConnectionType = BlockConnectionType.ConnectExtents;
                 mleader.BlockPosition = balloonPt;
-                // BlockScale = 1 (Properties → Block → Scale). Visual size cuối = blockRadius × mleader.Scale × BlockScale
-                // = 1 × A1 × 1 = A1mm. Drive size qua mleader.Scale ở trên (=scale=A1).
-                mleader.BlockScale = new Scale3d(1.0);
+                // BlockScale = Scale (không hardcode 1.0) — khớp với stackedBlk bên dưới (đã dùng
+                // ScaleFactors = new Scale3d(scale) từ trước), đảm bảo circle của balloon chính
+                // (leaderIndex đầu) thật sự phóng theo tỉ lệ A1 giống các circle phụ khi có nhiều Pos Num.
+                mleader.BlockScale = new Scale3d(mleader.Scale);
                 mleader.BlockColor = Color.FromColorIndex(ColorMethod.ByLayer, 256);
 
                 btrSpace.AppendEntity(mleader);
