@@ -1,0 +1,34 @@
+<Window x:Class="MCG_FittingManagement.Views.FittingManagement.ImportBomTypeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Add from Inventor" Height="200" Width="340"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#FFF0F0F0" FontFamily="Segoe UI" FontSize="13">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Choose the target BOM type for the fitting(s) imported from .idw:"
+                   FontWeight="SemiBold" Foreground="#FF333333" TextWrapping="Wrap"/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal">
+            <RadioButton x:Name="RadioEquipment" Content="Equipment" IsChecked="True" Margin="0,0,20,0" VerticalContentAlignment="Center"/>
+            <RadioButton x:Name="RadioHull" Content="Hull" VerticalContentAlignment="Center"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" Width="80" Height="28" Margin="0,0,8,0"
+                    Click="BtnCancel_Click" Background="#FFE0E0E0"/>
+            <Button x:Name="BtnOk" Content="Select .idw..." Width="130" Height="28"
+                    Background="#FF0055A5" Foreground="White" FontWeight="Bold"
+                    Click="BtnOk_Click" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

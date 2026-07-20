@@ -11,28 +11,9 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,5,0,0">
         <StackPanel TextElement.FontWeight="Normal" Margin="4">
 
-            <GroupBox Header="IMPORT TEMPLATE FROM IDW">
-                <StackPanel>
-                    <TextBlock Text="Extract geometry/properties from .idw, split each drawing view into its own block, map layer, and inject attributes." Style="{StaticResource HelperTextStyle}"/>
-
-                    <Border Background="Transparent" BorderBrush="#FFDDDDDD" BorderThickness="1" Padding="6" Margin="0,0,0,8" CornerRadius="2">
-                        <StackPanel>
-                            <TextBlock Text="Target BOM Type:" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="#FF444444"/>
-                            <StackPanel Orientation="Horizontal">
-                                <RadioButton x:Name="RadioPanelFitting" Content="Equipment" IsChecked="True" Margin="0,0,15,0"/>
-                                <RadioButton x:Name="RadioDetailFitting" Content="Hull"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <Button x:Name="BtnBatchImportInventor" Content="Import .idw" Style="{StaticResource PrimaryButtonStyle}" Click="BtnBatchImportInventor_Click"/>
-                    <TextBlock x:Name="TxtImportStatus" Text="" Foreground="#FF005E9E" FontStyle="Italic" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                </StackPanel>
-            </GroupBox>
-
             <GroupBox Header="FITTING TABLE">
                 <StackPanel>
-                    <TextBlock Text="Browse and manage all imported fittings (Master Library + Active Project in one table)." Style="{StaticResource HelperTextStyle}"/>
+                    <TextBlock Text="Open the Fitting Table window to browse, import, and manage all fittings of the current Project Folder." Style="{StaticResource HelperTextStyle}"/>
                     <Button x:Name="BtnOpenMasterLibrary" Content="Open Fitting Table" Style="{StaticResource PrimaryButtonStyle}" Click="BtnOpenMasterLibrary_Click"/>
                 </StackPanel>
             </GroupBox>

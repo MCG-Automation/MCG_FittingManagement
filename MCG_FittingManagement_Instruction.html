@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCG Fitting Management — Hướng dẫn sử dụng</title>
+<style>
+  :root{
+    --blue:#0055A5; --blue-dark:#004080; --accent:#005E9E;
+    --bg:#f4f6f9; --surface:#ffffff; --border:#dfe3e8;
+    --text:#25303b; --muted:#697586; --code-bg:#1e1e1e; --code-fg:#e6e6e6;
+    --green:#28A745; --purple:#6F42C1; --red:#D32F2F; --yellow:#FFF9C4; --amber:#8a6d00;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; font-family:'Segoe UI',Tahoma,Arial,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.6; font-size:15px;
+  }
+  a{color:var(--accent); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  .wrap{display:flex; max-width:1400px; margin:0 auto; gap:0}
+  nav.toc{
+    position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+    width:290px; flex:0 0 290px; padding:24px 18px;
+    background:var(--surface); border-right:1px solid var(--border);
+  }
+  nav.toc h2{font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin:18px 0 8px}
+  nav.toc a{display:block; padding:5px 10px; border-radius:6px; color:var(--text); font-size:14px}
+  nav.toc a:hover{background:#eef3f9; text-decoration:none}
+  nav.toc a.sub{padding-left:22px; font-size:13px; color:var(--muted)}
+  nav.toc a.main{font-weight:700; color:var(--blue)}
+  main{flex:1; min-width:0; padding:32px 40px 80px}
+
+  header.hero{
+    background:linear-gradient(135deg,var(--blue) 0%, #003a63 100%);
+    color:#fff; border-radius:14px; padding:34px 38px; margin-bottom:30px;
+    box-shadow:0 8px 24px rgba(0,60,120,.18);
+  }
+  header.hero .badge{display:inline-block; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.35);
+    padding:3px 12px; border-radius:20px; font-size:12px; font-weight:600; letter-spacing:.5px; margin-bottom:14px}
+  header.hero h1{margin:0 0 6px; font-size:30px; letter-spacing:-.5px}
+  header.hero p{margin:0; opacity:.92; font-size:15px}
+  header.hero .meta{margin-top:18px; display:flex; flex-wrap:wrap; gap:10px}
+  header.hero .meta span{background:rgba(255,255,255,.12); padding:5px 12px; border-radius:8px; font-size:13px}
+
+  section{margin-bottom:38px; scroll-margin-top:20px}
+  h2.sec{font-size:23px; color:var(--blue); border-bottom:2px solid var(--border); padding-bottom:8px; margin:0 0 18px}
+  h2.sec .star{color:#f0a500}
+  h3{font-size:18px; color:var(--accent); margin:26px 0 10px; scroll-margin-top:20px}
+  h4{font-size:15px; margin:18px 0 6px; color:var(--text)}
+  p{margin:8px 0}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin:14px 0;
+    box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px}
+
+  code, .cmd{font-family:'Cascadia Code','Consolas',monospace}
+  .cmd{background:#eef3f9; color:var(--blue-dark); border:1px solid #d5e2f0; padding:2px 8px; border-radius:6px; font-weight:600; font-size:13px}
+  code:not(.block){background:#eef1f5; padding:1px 6px; border-radius:4px; font-size:13px; color:#b5384f}
+
+  ol.steps{counter-reset:s; list-style:none; padding:0; margin:10px 0}
+  ol.steps>li{position:relative; padding:6px 0 6px 44px; margin-bottom:4px}
+  ol.steps>li::before{counter-increment:s; content:counter(s);
+    position:absolute; left:0; top:6px; width:28px; height:28px; border-radius:50%;
+    background:var(--blue); color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center}
+
+  .btnrow{display:flex; align-items:flex-start; gap:14px; padding:14px 0; border-bottom:1px solid #eef1f5}
+  .btnrow:last-child{border-bottom:none}
+  .btnpill{flex:0 0 auto; min-width:155px; text-align:center; background:var(--blue); color:#fff;
+    padding:8px 14px; border-radius:8px; font-weight:600; font-size:13px}
+  .btnpill.green{background:var(--green)}
+  .btnpill.purple{background:var(--purple)}
+  .btnpill.grey{background:#5b6675}
+  .btnpill.accent{background:var(--accent)}
+  .btnrow .desc{flex:1}
+  .btnrow .desc b{color:var(--text)}
+  .new{display:inline-block; background:#fff3cd; color:#8a6d00; border:1px solid #ffe08a; font-size:11px; font-weight:700;
+    padding:1px 7px; border-radius:10px; margin-left:6px; vertical-align:middle}
+
+  .tabbar{display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 4px}
+  .tabchip{background:#eef3f9; border:1px solid #d5e2f0; padding:6px 14px; border-radius:8px 8px 0 0; font-weight:600; color:var(--blue-dark); font-size:13px}
+  .tabchip.primary{background:var(--blue); color:#fff; border-color:var(--blue)}
+
+  table{width:100%; border-collapse:collapse; margin:12px 0; font-size:14px}
+  th,td{border:1px solid var(--border); padding:8px 12px; text-align:left; vertical-align:top}
+  th{background:#eef3f9; color:var(--blue-dark); font-weight:600}
+  tr:nth-child(even) td{background:#fafbfc}
+
+  .note{border-left:4px solid var(--accent); background:#eef6fc; padding:12px 16px; border-radius:0 8px 8px 0; margin:12px 0}
+  .warn{border-left:4px solid var(--amber); background:#fff8e1; padding:12px 16px; border-radius:0 8px 8px 0; margin:12px 0}
+  .tip{border-left:4px solid var(--green); background:#eefaf1; padding:12px 16px; border-radius:0 8px 8px 0; margin:12px 0}
+  .note b,.warn b,.tip b{display:block; margin-bottom:2px}
+
+  footer{border-top:1px solid var(--border); margin-top:50px; padding-top:18px; color:var(--muted); font-size:13px}
+
+  @media (max-width:900px){
+    nav.toc{display:none}
+    main{padding:22px}
+    header.hero{padding:24px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="toc">
+    <div style="font-weight:700; color:var(--blue); font-size:16px; padding:0 10px 8px">📘 Mục lục</div>
+    <a href="#gioithieu">Giới thiệu</a>
+    <a href="#khoidong">1. Khởi động plugin</a>
+    <a href="#tongquan">2. Tổng quan 3 Tab</a>
+    <h2>Tab chính · Fitting Table</h2>
+    <a href="#ft-open" class="main sub">3.1 Mở &amp; chọn Project</a>
+    <a href="#ft-layout" class="main sub">3.2 Bố cục cửa sổ</a>
+    <a href="#ft-inventor" class="main sub">3.3 Add from Inventor</a>
+    <a href="#ft-cad" class="main sub">3.4 Add from CAD</a>
+    <a href="#ft-menu" class="main sub">3.5 Menu chuột phải</a>
+    <a href="#ft-copyto" class="main sub">3.6 Copy to…</a>
+    <a href="#ft-tree" class="main sub">3.7 Cây Category</a>
+    <a href="#ft-columns" class="main sub">3.8 Tùy biến cột</a>
+    <a href="#ft-footer" class="main sub">3.9 Thanh nút dưới</a>
+    <a href="#ft-inserttable" class="main sub">3.10 Chèn bảng vào CAD</a>
+    <h2>Tab · Fitting Handle</h2>
+    <a href="#bom" class="sub">4.1 Xuất BOM</a>
+    <a href="#balloon" class="sub">4.2 Đánh Balloon</a>
+    <h2>Tab · Block Utilities</h2>
+    <a href="#blockutil" class="sub">5.1 Công cụ Block</a>
+    <h2>Khác</h2>
+    <a href="#quytrinh">Quy trình đề xuất</a>
+    <a href="#loi">Xử lý sự cố</a>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <span class="badge">AutoCAD 2023 Plugin</span>
+      <h1>MCG Fitting Management</h1>
+      <p>Công cụ bóc tách hình học, quản lý catalog fitting theo dự án, xuất BOM và đánh balloon cho bản vẽ AutoCAD.</p>
+      <div class="meta">
+        <span>Lệnh gọi: <b>MCG_Fitting</b></span>
+        <span>Tab chính: <b>Fitting Table</b></span>
+        <span>.NET 4.8 · WPF</span>
+      </div>
+    </header>
+
+    <section id="gioithieu">
+      <h2 class="sec">Giới thiệu</h2>
+      <p>MCG Fitting Management hỗ trợ toàn bộ vòng đời quản lý fitting của một dự án. Mỗi dự án tương ứng <b>1 Project Folder</b> chứa file catalog <code>FittingCatalog.json</code> và các block <code>.dwg</code>. Trung tâm của plugin là tab <b>Fitting Table</b> — nơi import, quản lý, sao chép và chèn fitting.</p>
+      <div class="grid2">
+        <div class="card">
+          <h4>📋 Fitting Table <span class="new">TAB CHÍNH</span></h4>
+          Import từ Inventor, thêm từ CAD, quản lý catalog theo cây Category, sao chép fitting sang dự án khác, chèn bảng tổng hợp.
+        </div>
+        <div class="card">
+          <h4>📊 Fitting Handle</h4>
+          Quét bản vẽ, đếm fitting, gán số Position, đồng bộ vào CAD, xuất ma trận BOM ra Excel và đánh balloon.
+        </div>
+        <div class="card">
+          <h4>🧱 Block Utilities</h4>
+          Đổi tên, định nghĩa lại, thay thế, đổi điểm chèn, thêm/tách đối tượng khỏi block, gom nhiều bản vẽ.
+        </div>
+      </div>
+    </section>
+
+    <section id="khoidong">
+      <h2 class="sec">1. Khởi động plugin</h2>
+      <ol class="steps">
+        <li>Gõ lệnh <span class="cmd">MCG_Fitting</span> vào dòng lệnh AutoCAD rồi nhấn <b>Enter</b>.</li>
+        <li>Bảng công cụ (PaletteSet) <b>“Fitting Management”</b> hiện ra — có thể neo (dock) sang trái/phải màn hình.</li>
+        <li>Tab <b>Fitting Table</b> nằm ở vị trí đầu tiên — bắt đầu làm việc từ đây.</li>
+      </ol>
+      <div class="note"><b>Mẹo</b>Palette ghi nhớ vị trí và thứ tự tab theo phiên làm việc. Sau khi bấm một nút trên Palette, focus tự trả về bản vẽ để bạn pick điểm / chọn đối tượng ngay.</div>
+    </section>
+
+    <section id="tongquan">
+      <h2 class="sec">2. Tổng quan — 3 Tab</h2>
+      <div class="tabbar">
+        <span class="tabchip primary">Fitting Table</span>
+        <span class="tabchip">Fitting Handle</span>
+        <span class="tabchip">Block Utilities</span>
+      </div>
+      <table>
+        <tr><th>Tab</th><th>Mục đích</th><th>Dùng khi nào</th></tr>
+        <tr><td><b>Fitting Table</b> ⭐</td><td>Trung tâm quản lý: import (Inventor/CAD), catalog theo Category, Copy to, chèn bảng tổng hợp.</td><td>Xuyên suốt — xây dựng &amp; quản lý thư viện fitting của dự án.</td></tr>
+        <tr><td><b>Fitting Handle</b></td><td>Thao tác với fitting đã có trong bản vẽ: xuất BOM &amp; đánh balloon.</td><td>Giai đoạn hoàn thiện bản vẽ, lập BOM.</td></tr>
+        <tr><td><b>Block Utilities</b></td><td>Tiện ích chỉnh sửa block &amp; gom bản vẽ.</td><td>Bất kỳ lúc nào cần chỉnh sửa block / gom file.</td></tr>
+      </table>
+    </section>
+
+    <!-- ==================== TAB CHÍNH: FITTING TABLE ==================== -->
+    <section>
+      <h2 class="sec"><span class="star">⭐</span> 3. Tab chính — Fitting Table</h2>
+      <p>Tab <b>Fitting Table</b> chỉ có 1 nút <span class="cmd">Open Fitting Table</span> để mở <b>cửa sổ Fitting Table</b> — nơi tập trung toàn bộ thao tác quản lý fitting của Project Folder đang mở. Tất cả các mục 3.1 → 3.10 dưới đây đều nằm trong cửa sổ này.</p>
+
+      <h3 id="ft-open">3.1 — Mở cửa sổ &amp; chọn Project Folder</h3>
+      <ol class="steps">
+        <li>Ở tab <b>Fitting Table</b>, bấm <span class="cmd">Open Fitting Table</span>.</li>
+        <li>Góc trên phải cửa sổ: ô <b>Project</b> hiển thị dự án đang mở. Bấm <span class="cmd">Load Folder</span> để chọn Project Folder.</li>
+        <li>Chọn (hoặc tạo mới) thư mục dự án.</li>
+      </ol>
+
+      <h3 id="ft-layout">3.2 — Bố cục cửa sổ</h3>
+      <table>
+        <tr><th>Khu vực</th><th>Chức năng</th></tr>
+        <tr><td>Thanh trên</td><td>Tiêu đề <b>FITTING TABLE</b>; bên phải là ô <b>Project</b> + nút <b>Load Folder</b>.</td></tr>
+        <tr><td>Global Search</td><td>Tìm đa từ khóa theo Part ID, Name, Description, Originator, View — gõ nhiều từ cách nhau bằng dấu cách (ví dụ <code>sheave 22</code>).</td></tr>
+        <tr><td>Cột trái — Categories</td><td>Cây nhóm fitting theo Name. Kéo-thả sắp xếp, multi-select (Ctrl/Shift), chuột phải thao tác cả nhóm (xem 3.5, 3.7).</td></tr>
+        <tr><td>Giữa — Grid</td><td>Bảng fitting: Type, Source, View/File, Part Complete ID, Name, Description, <b>Project Pos.</b> (ô vàng), UoM, Weight, Originator, Created + các cột động (xem 3.8).</td></tr>
+        <tr><td>Phải — Preview</td><td>Xem trước hình + toàn bộ thuộc tính (kể cả ExtraProperties động từ iProperty/Vault).</td></tr>
+      </table>
+
+      <h3 id="ft-inventor">3.3 — <b>Add from Inventor (import .idw)</b></h3>
+      <p>Import fitting từ file Inventor Drawing được thực hiện <b>ngay trong cửa sổ Fitting Table</b> (nút <b>➕ Add from Inventor</b> ở góc dưới trái, cạnh <b>Add from CAD</b>).</p>
+      <ol class="steps">
+        <li>Bảo đảm đã <b>Load Folder</b> (có Project đang mở). Nếu chưa, plugin báo “Load a folder first”.</li>
+        <li>Bấm <span class="cmd">➕ Add from Inventor</span>.</li>
+        <li>Hộp thoại <b>Add from Inventor</b> hiện ra — chọn <b>Target BOM Type</b>: <b>Equipment</b> (mặc định) hoặc <b>Hull</b>, rồi bấm <b>Select .idw…</b>.</li>
+        <li>Chọn 1 hoặc nhiều file <code>.idw</code>. Plugin bóc tách hình học/thuộc tính, tách mỗi view thành block, ánh xạ layer, bơm attribute và ghi vào catalog của dự án đang mở.</li>
+        <li>Kết thúc hiện hộp thoại kết quả (số thành công/thất bại + trạng thái Vault). Bảng tự làm mới.</li>
+      </ol>
+
+      <h3 id="ft-cad">3.4 — Add from CAD</h3>
+      <p>Thêm fitting vào catalog bằng cách chọn đối tượng trong bản vẽ:</p>
+      <ol class="steps">
+        <li>Bấm <span class="cmd">➕ Add from CAD</span> — cửa sổ tạm ẩn để bạn thao tác trên bản vẽ.</li>
+        <li>Pick đối tượng/feature hình học theo hướng dẫn ở dòng lệnh.</li>
+        <li>Điền thông tin trong hộp thoại Virtual Item rồi lưu — fitting được thêm vào catalog.</li>
+      </ol>
+
+      <h3 id="ft-menu">3.5 — Menu chuột phải (trên 1 dòng fitting)</h3>
+      <table>
+        <tr><th>Lệnh</th><th>Tác dụng</th></tr>
+        <tr><td>Edit Properties</td><td>Sửa thuộc tính fitting (không áp dụng cho item nguồn Inventor).</td></tr>
+        <tr><td>Edit Pos Num</td><td>Sửa Project Pos Num của fitting.</td></tr>
+        <tr><td>Edit View Type</td><td>Đánh dấu Plan View / quy tắc đếm Qty theo Plan View cho Hull BOM.</td></tr>
+        <tr><td>Sync</td><td>Cập nhật AttributeDefinitions của block và mọi INSERT trong bản vẽ hiện hành.</td></tr>
+        <tr><td>Sub-BOM / Accessories</td><td>Quản lý phụ kiện (accessories) gắn kèm fitting.</td></tr>
+        <tr><td><b>Copy to…</b></td><td>Sao chép fitting sang một Project Folder khác — xem 3.6.</td></tr>
+        <tr><td style="color:var(--red)">Remove from Project</td><td>Gỡ vĩnh viễn fitting khỏi dự án hiện tại.</td></tr>
+      </table>
+      <p>Menu này cũng xuất hiện khi chuột phải trên node Category (áp dụng cho toàn bộ fitting trong nhóm).</p>
+
+      <h3 id="ft-copyto">3.6 — <b>Copy to… (sao chép sang dự án khác)</b></h3>
+      <p>Cho phép sao chép fitting đang chọn sang một <b>Project Folder khác</b> và tự cập nhật <code>FittingCatalog.json</code> của dự án đích — không làm thay đổi dự án đang mở.</p>
+      <ol class="steps">
+        <li>Chọn 1 hoặc nhiều fitting trong Grid (giữ Ctrl/Shift để chọn nhiều).</li>
+        <li>Chuột phải → <span class="cmd">Copy to…</span></li>
+        <li>Chọn Project Folder <b>đích</b> (phải khác dự án hiện tại).</li>
+        <li>Plugin sẽ: sao chép file <code>.dwg</code> của block sang folder đích, nhân bản bản ghi catalog (kèm <b>Accessories</b>), trỏ đường dẫn về bản copy, rồi <b>cập nhật FittingCatalog.json</b> của dự án đích.</li>
+        <li>Thông báo tổng kết: số item đã copy + số file .dwg đã sao chép.</li>
+      </ol>
+      <div class="note"><b>Phạm vi sao chép</b>Bao gồm bản ghi catalog + file .dwg của block + toàn bộ <b>Accessories / Sub-BOM</b> gắn kèm fitting. Dự án đích dùng được độc lập, không phụ thuộc dự án nguồn.</div>
+
+      <h3 id="ft-tree">3.7 — Cây Category (sắp xếp &amp; thao tác nhóm)</h3>
+      <ul>
+        <li><b>Kéo-thả</b> các Sub Folder (Level 2 — mỗi Sub Folder = 1 Part Number) để đổi thứ tự hiển thị. Việc này chỉ đổi thứ tự hiển thị, <b>không</b> ghi đè Project Pos Num nghiệp vụ.</li>
+        <li><b>Multi-select:</b> Ctrl-click để chọn/bỏ từng node; Shift-click để chọn dải liên tục (cùng nhóm cha).</li>
+        <li><b>Chuột phải</b> trên Category → áp dụng thao tác (Edit/Sync/Copy to/Remove…) cho toàn bộ fitting trong nhóm đang chọn.</li>
+      </ul>
+
+      <h3 id="ft-columns">3.8 — Tùy biến cột (Customize Grid)</h3>
+      <p>Chuột phải lên <b>tiêu đề cột</b> → menu <b>Customize Grid</b>: tích/bỏ tích để bật/tắt bất kỳ cột nào. Cột cố định mặc định hiện; cột động (iProperty/Vault field) mặc định ẩn. Lựa chọn được lưu lại và dùng chung cho mọi dự án.</p>
+
+      <h3 id="ft-footer">3.9 — Thanh nút dưới cùng</h3>
+      <div class="card">
+        <div class="btnrow"><span class="btnpill green">➕ Add from CAD</span><div class="desc">Thêm fitting từ đối tượng trong bản vẽ (3.4).</div></div>
+        <div class="btnrow"><span class="btnpill purple">➕ Add from Inventor</span><div class="desc"><b>Import fitting từ file .idw vào dự án đang mở (3.3).</b></div></div>
+        <div class="btnrow"><span class="btnpill grey">Auto-Assign Pos</span><div class="desc">Tự gán số Position hàng loạt cho fitting DETAIL/HULL — hộp thoại cho chọn <b>số bắt đầu</b> (nhập 50 → 050, 051…).</div></div>
+        <div class="btnrow"><span class="btnpill grey">Push Update</span><div class="desc">Ghi đè file <code>.dwg</code> trong Project Folder bằng định nghĩa block từ bản vẽ đang mở.</div></div>
+        <div class="btnrow"><span class="btnpill grey">Refresh</span><div class="desc">Nạp lại dữ liệu catalog từ file.</div></div>
+        <div class="btnrow"><span class="btnpill grey">Insert Fitting Table</span><div class="desc">Chèn bảng lưới tất cả fitting (hoặc Category đang chọn) vào bản vẽ (3.10).</div></div>
+        <div class="btnrow"><span class="btnpill accent">Insert to CAD</span><div class="desc">Chèn (các) fitting đang chọn vào bản vẽ dưới dạng block. Double-click 1 dòng cũng chèn.</div></div>
+      </div>
+
+      <h3 id="ft-inserttable">3.10 — Chèn bảng Fitting Table vào CAD</h3>
+      <p>Nút <b>Insert Fitting Table</b> vẽ 1 bảng tổng hợp trực tiếp trong Model Space: mỗi hàng 1 fitting, gồm Pos / Part Number / Title / Views / Description / Material / Mass / UoM.</p>
+      <ul>
+        <li><b>Tiêu đề bảng</b> = tên Category đang chọn (chữ trắng, cỡ lớn); dòng “Created: yyyy-MM-dd HH:mm” ở cuối bảng. Không chọn category cụ thể (“All Fittings”) → tiêu đề là tên Project Folder.</li>
+        <li><b>Cập nhật 1-click:</b> click vào bảng cũ đã chèn → tự vẽ lại đúng vị trí cũ, không hỏi lại điểm chèn; ngày “Created” giữ nguyên.</li>
+        <li><b>Tô đỏ thay đổi:</b> khi cập nhật, hàng có dữ liệu thay đổi so với lần trước hiện <span style="color:var(--red);font-weight:600">chữ đỏ</span>.</li>
+      </ul>
+    </section>
+
+    <!-- ==================== TAB: FITTING HANDLE ==================== -->
+    <section>
+      <h2 class="sec">4. Tab — Fitting Handle</h2>
+
+      <h3 id="bom">4.1 — Xuất BOM (BOM Export)</h3>
+      <p>Nhóm <b>“BOM EXPORT”</b> có 2 nút mở cửa sổ <b>BOM Matrix Export &amp; Sync</b>:</p>
+      <div class="card">
+        <div class="btnrow"><span class="btnpill">Open Equipment BOM</span><div class="desc"><b>BOM cho Thiết bị (Equipment).</b> Đếm fitting theo từng Equipment.</div></div>
+        <div class="btnrow"><span class="btnpill">Open Hull BOM</span><div class="desc"><b>BOM cho phần Vỏ (Hull).</b> Hỗ trợ đếm theo Plan View khi 1 fitting có nhiều mặt cắt trong cùng khung A1.</div></div>
+      </div>
+      <p>Quy trình chuẩn trong cửa sổ BOM Matrix:</p>
+      <div class="card">
+        <div class="btnrow"><span class="btnpill">Scan Drawing</span><div class="desc">Quét bản vẽ, nhận diện block fitting và dựng ma trận BOM.</div></div>
+        <div class="btnrow"><span class="btnpill">Auto-Assign Positions</span><div class="desc">Tự gán số Position cho fitting chưa có số.</div></div>
+        <div class="btnrow"><span class="btnpill accent">Sync Pos to CAD</span><div class="desc">Ghi ngược số Position vào attribute của block trong bản vẽ.</div></div>
+        <div class="btnrow"><span class="btnpill accent">Export to Excel</span><div class="desc">Xuất ma trận BOM ra file Excel (.xlsx).</div></div>
+      </div>
+      <p>Chuột phải trên bảng có <b>“Sync Pos from Item Library”</b>: đọc lại số Position từ catalog dự án và làm mới bảng.</p>
+      <div class="warn"><b>Lưu ý thứ tự</b>Luôn <b>Scan → Auto-Assign Positions → Sync Pos to CAD → Export to Excel</b>. Export trước khi Sync thì số Position trong bản vẽ chưa được cập nhật.</div>
+
+      <h3 id="balloon">4.2 — Đánh Balloon (Ballooning)</h3>
+      <div class="card">
+        <div class="btnrow"><span class="btnpill">Place Balloon</span><div class="desc"><b>Đặt balloon thủ công.</b> Click liên tục lên từng fitting; nhấn Esc để kết thúc.</div></div>
+        <div class="btnrow"><span class="btnpill">Mass Auto-Balloon</span><div class="desc"><b>Đánh balloon hàng loạt theo vùng.</b> Chọn đường bao → tự gắn balloon cho mọi fitting trong vùng.</div></div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB: BLOCK UTILITIES ==================== -->
+    <section>
+      <h2 class="sec">5. Tab — Block Utilities</h2>
+
+      <h3 id="blockutil">5.1 — Công cụ Block</h3>
+      <p>Chỉnh sửa block đã có mà không phá vỡ tham chiếu. Mỗi nút yêu cầu chọn đối tượng trong bản vẽ:</p>
+      <table>
+        <tr><th>Nút</th><th>Chức năng</th></tr>
+        <tr><td><b>Rename Block</b></td><td>Đổi tên (nhân bản) một block.</td></tr>
+        <tr><td><b>Redefine Blocks</b></td><td>Định nghĩa lại block từ bản vẽ đang mở.</td></tr>
+        <tr><td><b>Replace Block</b></td><td>Thay block này bằng block khác (giữ vị trí/scale).</td></tr>
+        <tr><td><b>Change Insertion Point</b></td><td>Đổi điểm chèn (base point) của block.</td></tr>
+        <tr><td><b>Add Objects to Block</b></td><td>Thêm đối tượng vào định nghĩa block đang có.</td></tr>
+        <tr><td><b>Extract Objects from Block</b></td><td>Tách đối tượng lồng bên trong ra khỏi block.</td></tr>
+      </table>
+    </section>
+
+    <section id="quytrinh">
+      <h2 class="sec">Quy trình làm việc đề xuất</h2>
+      <ol class="steps">
+        <li><b>Mở dự án:</b> Tab <b>Fitting Table</b> → <b>Open Fitting Table</b> → <b>Load Folder</b> chọn Project Folder.</li>
+        <li><b>Xây dựng catalog:</b> <b>Add from Inventor</b> (chọn Equipment/Hull → .idw) và/hoặc <b>Add from CAD</b>.</li>
+        <li><b>Quản lý &amp; gán Pos:</b> sắp xếp Category, <b>Auto-Assign Pos</b>, <b>Push Update</b> khi cần.</li>
+        <li><b>Tái sử dụng:</b> chuột phải <b>Copy to…</b> để chuyển fitting sang dự án khác.</li>
+        <li><b>Chèn vào bản vẽ:</b> <b>Insert to CAD</b> (từng fitting) hoặc <b>Insert Fitting Table</b> (bảng tổng hợp).</li>
+        <li><b>Lập BOM &amp; Balloon:</b> Tab <b>Fitting Handle</b> → BOM (Scan → Auto-Assign → Sync → Export) và Place/Mass Auto-Balloon.</li>
+      </ol>
+    </section>
+
+    <section id="loi">
+      <h2 class="sec">Xử lý sự cố thường gặp</h2>
+      <table>
+        <tr><th>Hiện tượng</th><th>Cách xử lý</th></tr>
+        <tr><td>Gõ <code>MCG_Fitting</code> không hiện gì</td><td>Kiểm tra plugin đã nạp (NETLOAD hoặc bundle trong ApplicationPlugins). Khởi động lại AutoCAD.</td></tr>
+        <tr><td>Thứ tự tab chưa đổi (Fitting Table chưa lên đầu)</td><td>AutoCAD nhớ thứ tự tab theo GUID palette. Reset/đóng-mở lại Palette hoặc dùng bản cài mới để nhận thứ tự mới.</td></tr>
+        <tr><td>Add from Inventor báo “Load a folder first”</td><td>Bấm <b>Load Folder</b> chọn Project Folder trước khi import.</td></tr>
+        <tr><td>Copy to báo trùng folder</td><td>Chọn Project Folder <b>khác</b> với dự án đang mở.</td></tr>
+        <tr><td>Số Position trong bản vẽ chưa đổi</td><td>Chạy <b>Sync Pos to CAD</b> (BOM) hoặc <b>Sync</b> (menu chuột phải) sau khi gán.</td></tr>
+        <tr><td>Không thấy fitting sau khi import</td><td>Bấm <b>Refresh</b>; kiểm tra đúng Project qua ô <b>Project</b> / <b>Load Folder</b>.</td></tr>
+      </table>
+    </section>
+
+    <footer>
+      <p><b>MCG Fitting Management</b> — Hướng dẫn sử dụng · AutoCAD 2023 · .NET Framework 4.8 · WPF.</p>
+      <p>Lệnh mở giao diện: <span class="cmd">MCG_Fitting</span>. Tab chính: <b>Fitting Table</b>.</p>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

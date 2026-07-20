@@ -132,10 +132,12 @@ namespace MCG_FittingManagement.Commands
             _paletteSet = new PaletteSet("Fitting Management", PaletteGuid);
 
             // 2. Nạp 3 tab — PHẢI thực hiện TRƯỚC khi set Dock/Size
-            //    Tab "Project Config" đã bỏ (chức năng "Open Fitting Table" đã gộp sang tab
-            //    "Fitting Table" — trước đây là "Template" — cùng mở FittingTableWindow).
-            _paletteSet.AddVisual("Fitting Handle", new FittingHandleView());
+            //    "Fitting Table" là tab CHÍNH nên đặt ĐẦU TIÊN (index 0).
+            //    LƯU Ý: AutoCAD nhớ thứ tự/vị trí tab theo GUID của PaletteSet. Với user đã mở plugin
+            //    từ bản trước, AutoCAD có thể restore thứ tự tab cũ từ cache GUID — cần Reset Palette
+            //    (hoặc dùng bản cài mới) để thấy thứ tự mới. User mới/máy mới sẽ thấy đúng thứ tự này.
             _paletteSet.AddVisual("Fitting Table", new TemplateView());
+            _paletteSet.AddVisual("Fitting Handle", new FittingHandleView());
             _paletteSet.AddVisual("Block Utilities", new BlockUtilitiesView());
 
             // 3. Thiết lập thuộc tính — SAU AddVisual

@@ -29,6 +29,13 @@ namespace MCG_FittingManagement.Services.FittingManagement
         int RemoveFromMaster(IEnumerable<string> blockNames);
 
         /// <summary>
+        /// Copy danh sách item (kèm file .dwg block + Accessories nhúng trong CatalogItem) sang 1
+        /// Project Folder KHÁC, tự cập nhật FittingCatalog.json của folder đó. KHÔNG đổi Project đang
+        /// active. Trả về (số item đã ghi, số file .dwg đã copy).
+        /// </summary>
+        Tuple<int, int> CopyItemsToProjectFolder(IList<CatalogItem> items, string targetFolder);
+
+        /// <summary>
         /// Gán tự động Position Number cho các fitting DETAIL/HULL trong catalog (gom theo PartNumber),
         /// bắt đầu từ <paramref name="startFrom"/> (mặc định 1, do user chọn qua AutoAssignStartDialog).
         /// Trả về số nhóm đã gán.

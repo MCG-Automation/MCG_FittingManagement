@@ -105,6 +105,68 @@ namespace MCG_FittingManagement.Services.FittingManagement
         }
 
         /// <summary>
+        /// Copy danh sách item sang 1 Project Folder KHÁC (targetFolder): copy file .dwg của từng block
+        /// vào folder đích, clone metadata (deep-clone qua JSON — mang theo Accessories + ExtraProperties),
+        /// trỏ FilePath vào bản copy, rồi merge vào FittingCatalog.json của folder đích. KHÔNG đụng tới
+        /// catalog/Project đang active. Trả về (số item ghi vào catalog đích, số file .dwg đã copy).
+        /// </summary>
+        public Tuple<int, int> CopyItemsToProjectFolder(IList<CatalogItem> items, string targetFolder)
+        {
+            Debug.WriteLine($"{LOG_PREFIX} Bắt đầu CopyItemsToProjectFolder ({items?.Count ?? 0} items) -> {targetFolder}...");
+            try
+            {
+                if (items == null || items.Count == 0) return new Tuple<int, int>(0, 0);
+                if (string.IsNullOrWhiteSpace(targetFolder))
+                    throw new ArgumentException("Target folder rỗng.");
+                if (!Directory.Exists(targetFolder)) Directory.CreateDirectory(targetFolder);
+
+                // FittingCatalog.json của folder đích — tên file dùng chung toàn plugin.
+                string targetCatalogPath = Path.Combine(targetFolder, "FittingCatalog.json");
+
+                var clones = new List<CatalogItem>();
+                int dwgCopied = 0;
+
+                foreach (var item in items)
+                {
+                    if (item == null) continue;
+
+                    // Deep-clone qua JSON để KHÔNG chia sẻ tham chiếu Accessories/ExtraProperties với
+                    // item đang hiển thị trên Grid (tránh sửa nhầm dữ liệu dự án nguồn).
+                    var clone = JsonConvert.DeserializeObject<CatalogItem>(JsonConvert.SerializeObject(item));
+                    if (clone == null) continue;
+
+                    // Copy file .dwg (chỉ item Block có FilePath thật) vào folder đích, trỏ FilePath mới.
+                    if (!string.IsNullOrEmpty(item.FilePath) && File.Exists(item.FilePath))
+                    {
+                        string destPath = Path.Combine(targetFolder, Path.GetFileName(item.FilePath));
+                        bool samePath = string.Equals(Path.GetFullPath(item.FilePath),
+                                                      Path.GetFullPath(destPath),
+                                                      StringComparison.OrdinalIgnoreCase);
+                        if (!samePath)
+                        {
+                            File.Copy(item.FilePath, destPath, overwrite: true);
+                            dwgCopied++;
+                        }
+                        clone.FilePath = destPath;
+                    }
+
+                    clones.Add(clone);
+                }
+
+                if (clones.Count == 0) return new Tuple<int, int>(0, 0);
+
+                CatalogJsonStore.MergeItems(targetCatalogPath, clones);
+                Debug.WriteLine($"{LOG_PREFIX} CopyItemsToProjectFolder THÀNH CÔNG ({clones.Count} items, {dwgCopied} dwg).");
+                return new Tuple<int, int>(clones.Count, dwgCopied);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"{LOG_PREFIX} LỖI CopyItemsToProjectFolder: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Gán tự động Position Number (D3, tăng dần từ <paramref name="startFrom"/>) cho các fitting
         /// DETAIL/HULL trong catalog của Project Folder đang active — gom nhóm theo PartNumber (mỗi
         /// PartNumber 1 số). Trả về số nhóm đã gán.

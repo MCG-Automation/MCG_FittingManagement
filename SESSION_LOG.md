@@ -4,6 +4,87 @@
 
 ---
 
+## Session 2026-07-20 — Fitting Table thành tab chính + Add from Inventor/Copy to + doc HTML
+
+### Đã làm
+- **`MCG_FittingManagement_Instruction.html`** (root): viết lại — Fitting Table đưa lên đầu, hướng dẫn
+  chi tiết nhất (mục 3.1→3.10); bỏ thuật ngữ "Master Library"/"Active Project"; phản ánh Add from
+  Inventor, Copy to, và việc bỏ thông báo sau Insert Fitting Table.
+- **`Commands/PaletteManager.cs`**: đảo thứ tự `AddVisual` — "Fitting Table" đặt ĐẦU TIÊN (index 0),
+  trước "Fitting Handle"/"Block Utilities". Ghi chú caveat: AutoCAD nhớ thứ tự tab theo GUID nên user
+  cũ cần Reset Palette mới thấy thứ tự mới.
+- **`Views/FittingManagement/TemplateView.xaml(.cs)`**: gỡ toàn bộ GroupBox "IMPORT TEMPLATE FROM IDW"
+  (radio Equipment/Hull + nút Import .idw + status + handler + các helper import-only). Tab giờ chỉ còn
+  nút "Open Fitting Table". Sửa helper text bỏ "Master Library + Active Project".
+- **`Views/FittingManagement/Library/ImportBomTypeDialog.xaml(.cs)`** — MỚI: dialog hỏi Equipment/Hull
+  (mirror style AutoAssignStartDialog), property `string BomType` ("EQUIPMENT"/"HULL"). Nút OK =
+  "Select .idw...".
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml`**: bỏ badge "LIBRARY"; đổi label "Active
+  Project:" → "Project:"; thêm MenuItem "Copy to..." vào DataGrid.ContextMenu; thêm nút "➕ Add from
+  Inventor" (tím) cạnh "Add from CAD" ở footer.
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml.cs`**:
+  - `BtnAddFromInventor_Click` (async): guard `HasActiveProject` (KHÔNG tự hỏi/tạo folder — khác
+    behavior cũ ở tab), mở `ImportBomTypeDialog` → OpenFileDialog .idw → `ImportIdwFilesAsync` → dialog
+    kết quả → `LoadCatalog`. Progress route vào Title.
+  - Port `ShowImportResultDialog`/`BuildVaultBreakdown`/`OpenLogFolder` từ TemplateView.
+  - `BtnCopyTo_Click`: chọn item → `PromptSelectProjectFolder` (chặn trùng folder đang mở) →
+    `_masterService.CopyItemsToProjectFolder` → thông báo tổng kết. Thêm "Copy to..." vào
+    `BuildCategoryContextMenu`.
+  - `BtnInsertFittingTable_Click`: BỎ MessageBox thông báo sau khi chèn (chỉ gọi `InsertFittingTable`).
+  - Thêm usings: `System.Windows.Input`, `Microsoft.Win32`, `MCG_FittingManagement.Utilities`.
+- **`Services/.../Library/IMasterLibraryService.cs`** + **`FittingManagementService.MasterLibrary.cs`**:
+  thêm `Tuple<int,int> CopyItemsToProjectFolder(IList<CatalogItem> items, string targetFolder)` —
+  copy file .dwg sang folder đích, deep-clone CatalogItem qua JSON (mang theo Accessories +
+  ExtraProperties), trỏ FilePath mới, `CatalogJsonStore.MergeItems` vào FittingCatalog.json đích. Chặn
+  copy vào chính folder nguồn. KHÔNG đổi Project đang active.
+- `dotnet build -c Debug` — Build succeeded, 0 Warning, 0 Error.
+
+### Trạng thái
+- Phase hiện tại: Fitting Table — 6 yêu cầu user round mới đã code xong, build sạch. CHƯA test thủ công
+  trong AutoCAD (cần reload plugin).
+
+### Bước tiếp theo
+- Test trong AutoCAD:
+  1. `MCG_Fitting` → verify tab "Fitting Table" ở đầu (có thể cần Reset Palette do GUID cache).
+  2. Fitting Table window → "Add from Inventor": dialog Equipment/Hull → chọn .idw → import đúng dự án
+     đang mở; chưa Load Folder → báo "Load a folder first" (không tự hỏi folder).
+  3. Chuột phải fitting → "Copy to..." → chọn folder đích khác → verify .dwg + entry + Accessories
+     xuất hiện trong FittingCatalog.json của dự án đích; chọn trùng folder → báo lỗi.
+  4. Insert Fitting Table → KHÔNG còn hộp thoại thông báo sau khi chèn.
+  5. Verify không còn chữ "LIBRARY"/"Active Project" trên UI (label giờ là "Project:").
+
+### Ghi chú API
+- Costura/Fody + SDK-style csproj (UseWPF): file .xaml/.cs mới tự được include (default items), không
+  cần khai báo trong .csproj.
+- `Accessories` là `List<AccessoryItem>` nhúng ngay trong `CatalogItem` (không phải block .dwg riêng) —
+  nên deep-clone CatalogItem qua JSON round-trip đã tự mang theo accessories; Copy to không cần xử lý
+  file phụ kiện riêng.
+- `CatalogJsonStore.MergeItems(path, items)` nhận path tùy ý → ghi được vào FittingCatalog.json của
+  folder BẤT KỲ (không chỉ folder active) — nền tảng cho Copy to.
+
+---
+
+## Session 2026-07-17 — Phân tích Repo + tạo USER_INSTRUCTIONS.md
+
+### Đã làm
+- Phân tích toàn bộ cấu trúc repo thực tế: Commands, Services (partial), Views, Models, Utilities, build/deploy scripts.
+- Tạo **`USER_INSTRUCTIONS.md`** — hướng dẫn đầy đủ cho kỹ sư CAD (sử dụng plugin) và developer (build, kiến trúc, Git, troubleshooting).
+- Nội dung dựa trên code thực tế (3 tab Palette, lệnh `MCG_Fitting`, Project Folder model, Fitting Table workflows) — không copy outdated từ PALETTE_GUIDE (5 tab).
+
+### Trạng thái
+- Phase hiện tại: Fitting Table — vòng 7 cải tiến đã code xong, chờ test AutoCAD.
+- Tài liệu user mới: `USER_INSTRUCTIONS.md` sẵn sàng cho team.
+
+### Bước tiếp theo
+- User review `USER_INSTRUCTIONS.md` — bổ sung screenshot/quy trình nội bộ nếu cần.
+- Test AutoCAD theo checklist session 2026-07-15.
+
+### Ghi chú
+- `CONTEXT.md` vẫn trống — có thể populate sau nếu cần context dự án riêng.
+- `MCG_Fitting_Hide` không còn trong `PaletteManager.cs` hiện tại — doc đã ghi chú đúng trạng thái.
+
+---
+
 ## Session 2026-07-15 — 7 cải tiến Fitting Table (Title/Update 1-click/tô đỏ/wording/Accessories/Preview/Auto-Assign)
 
 ### Bối cảnh

@@ -5,8 +5,11 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using Microsoft.Win32;
 using MCG_FittingManagement.Models.FittingManagement;
 using MCG_FittingManagement.Services.FittingManagement;
+using MCG_FittingManagement.Utilities;
 
 namespace MCG_FittingManagement.Views.FittingManagement
 {
@@ -225,6 +228,10 @@ namespace MCG_FittingManagement.Views.FittingManagement
             var accessory = new MenuItem { Header = "Sub-BOM / Accessories", ToolTip = "Manage accessories attached to this fitting." };
             accessory.Click += BtnManageAccessory_Click;
             menu.Items.Add(accessory);
+
+            var copyTo = new MenuItem { Header = "Copy to...", ToolTip = "Copy fitting(s) — block .dwg + accessories — sang 1 Project Folder khác và cập nhật FittingCatalog.json của dự án đó." };
+            copyTo.Click += BtnCopyTo_Click;
+            menu.Items.Add(copyTo);
 
             menu.Items.Add(new Separator());
 
@@ -610,6 +617,197 @@ namespace MCG_FittingManagement.Views.FittingManagement
             }
         }
 
+        // =========================================================
+        // Add from Inventor — import fitting từ file .idw vào Project Folder đang mở. Trước đây nằm ở
+        // tab Palette; nay gộp vào cửa sổ cạnh "Add from CAD". KHÔNG tự hỏi/tạo Project Folder — yêu
+        // cầu Load Folder trước (khác behavior cũ ở tab). Chọn Equipment/Hull qua ImportBomTypeDialog.
+        // =========================================================
+        private async void BtnAddFromInventor_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_projectContext.HasActiveProject)
+            {
+                MessageBox.Show("Load a folder first.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var typeDlg = new ImportBomTypeDialog { Owner = this };
+            if (typeDlg.ShowDialog() != true) return;
+            string bomType = typeDlg.BomType; // "EQUIPMENT" | "HULL"
+
+            var ofd = new OpenFileDialog
+            {
+                Title = "Select Inventor Drawing Files (.idw)",
+                Filter = "Inventor Drawing (*.idw)|*.idw",
+                Multiselect = true
+            };
+            if (ofd.ShowDialog() != true || ofd.FileNames.Length == 0) return;
+
+            const bool pullFromVault = true;
+            string originalTitle = this.Title;
+            BtnAddFromInventor.IsEnabled = false;
+            Mouse.OverrideCursor = Cursors.AppStarting;
+            var progress = new Progress<string>(msg => this.Title = $"MacGregor Fitting Table — {msg}");
+
+            try
+            {
+                ImportResult result = await _fittingService.ImportIdwFilesAsync(ofd.FileNames, bomType, pullFromVault, progress);
+                ShowImportResultDialog("Import IDW", result);
+                LoadCatalog();
+            }
+            catch (Exception ex)
+            {
+                FileLogger.LogException(LOG_PREFIX, "BtnAddFromInventor_Click", ex);
+                MessageBox.Show($"Import error: {ex.Message}\n\nSee log: {FileLogger.LogPath}",
+                    "Import IDW Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+                BtnAddFromInventor.IsEnabled = true;
+                this.Title = originalTitle;
+            }
+        }
+
+        /// <summary>Dialog kết quả import (mirror phiên bản cũ ở TemplateView) — kèm breakdown Vault +
+        /// chi tiết lỗi từng file, nút Yes mở thư mục log.</summary>
+        private void ShowImportResultDialog(string title, ImportResult result)
+        {
+            string message = $"{title} complete.\n\n" +
+                             $"✓ Success: {result.SuccessCount}\n" +
+                             $"✗ Failed:  {result.FailCount}";
+
+            string vaultSection = BuildVaultBreakdown(result);
+            if (!string.IsNullOrEmpty(vaultSection))
+                message += "\n\n" + vaultSection;
+
+            if (result.FailCount > 0 && result.Errors.Count > 0)
+            {
+                int maxErrorsToShow = 8;
+                var errorsToShow = result.Errors.Take(maxErrorsToShow).ToList();
+                message += "\n\n── Error details ──\n" + string.Join("\n", errorsToShow);
+
+                if (result.Errors.Count > maxErrorsToShow)
+                    message += $"\n\n... and {result.Errors.Count - maxErrorsToShow} more (see log).";
+
+                message += $"\n\n── Log ──\n{FileLogger.LogPath}" +
+                           "\n\nClick Yes to open the log folder, No to close.";
+
+                var answer = MessageBox.Show(message, $"{title} Result",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (answer == MessageBoxResult.Yes) OpenLogFolder();
+            }
+            else
+            {
+                MessageBox.Show(message, $"{title} Result",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        /// <summary>Build breakdown trạng thái Vault cho dialog kết quả import (group theo Status).</summary>
+        private string BuildVaultBreakdown(ImportResult result)
+        {
+            if (result.VaultResults == null || result.VaultResults.Count == 0)
+                return null;
+
+            var successGroup = result.VaultResults.Where(r => r.IsSuccess).ToList();
+            var skipNotInVault = result.VaultResults.Where(r => r.Status == VaultRefreshStatus.SkippedNotInVault).ToList();
+            var skipNoAddIn = result.VaultResults.Where(r => r.Status == VaultRefreshStatus.SkippedNoAddIn).ToList();
+            var skipNotLoggedIn = result.VaultResults.Where(r => r.Status == VaultRefreshStatus.SkippedNotLoggedIn).ToList();
+            var failedGroup = result.VaultResults.Where(r => r.Status == VaultRefreshStatus.Failed).ToList();
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("── Vault status ──");
+
+            if (successGroup.Count > 0)
+            {
+                sb.AppendLine($"✓ Updated to latest: {successGroup.Count} file(s)");
+                foreach (var r in successGroup.Take(5)) sb.AppendLine($"  • {Path.GetFileName(r.FilePath)}");
+                if (successGroup.Count > 5) sb.AppendLine($"  ... and {successGroup.Count - 5} more");
+            }
+            if (skipNotInVault.Count > 0)
+            {
+                sb.AppendLine($"⚠ Not in Vault: {skipNotInVault.Count} file(s) — used local copy");
+                foreach (var r in skipNotInVault.Take(3)) sb.AppendLine($"  • {Path.GetFileName(r.FilePath)}");
+                if (skipNotInVault.Count > 3) sb.AppendLine($"  ... and {skipNotInVault.Count - 3} more");
+            }
+            if (skipNoAddIn.Count > 0)
+            {
+                sb.AppendLine($"⚠ Vault SDK not available: {skipNoAddIn.Count} file(s) — used local copy");
+                sb.AppendLine($"  → Install Autodesk Vault Client to enable Vault refresh.");
+            }
+            if (skipNotLoggedIn.Count > 0)
+            {
+                sb.AppendLine($"⚠ Not signed in to Vault: {skipNotLoggedIn.Count} file(s) — used local copy");
+                sb.AppendLine($"  → Open \"Autodesk Vault\" (Vault Explorer), sign in, then try again.");
+            }
+            if (failedGroup.Count > 0)
+            {
+                sb.AppendLine($"✗ Vault error: {failedGroup.Count} file(s) — used local copy");
+                foreach (var r in failedGroup.Take(3)) sb.AppendLine($"  • {Path.GetFileName(r.FilePath)}: {r.Message}");
+                if (failedGroup.Count > 3) sb.AppendLine($"  ... and {failedGroup.Count - 3} more (see log).");
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        private void OpenLogFolder()
+        {
+            try
+            {
+                if (File.Exists(FileLogger.LogPath))
+                    Process.Start("explorer.exe", $"/select,\"{FileLogger.LogPath}\"");
+                else
+                    Process.Start("explorer.exe", FileLogger.LogDirectory);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Cannot open log folder: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // =========================================================
+        // Copy to... — copy fitting(s) đang chọn (block .dwg + Accessories nhúng trong CatalogItem) sang
+        // 1 Project Folder KHÁC, cập nhật FittingCatalog.json của dự án đó. Không đổi Project đang active.
+        // =========================================================
+        private void BtnCopyTo_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = GridCatalog.SelectedItems.Cast<CatalogItem>().ToList();
+            if (selected.Count == 0)
+            {
+                MessageBox.Show("Select item(s) to copy.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            string targetFolder = PromptSelectProjectFolder();
+            if (targetFolder == null) return;
+
+            // Không cho copy vào chính Project Folder đang mở.
+            if (_projectContext.HasActiveProject &&
+                string.Equals(Path.GetFullPath(targetFolder).TrimEnd('\\'),
+                              Path.GetFullPath(_masterService.MasterLibraryFolder).TrimEnd('\\'),
+                              StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show("Target folder is the same as the current Project Folder. Choose a different one.",
+                    "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var res = _masterService.CopyItemsToProjectFolder(selected, targetFolder);
+                MessageBox.Show(
+                    $"Copied {res.Item1} item(s) to:\n{targetFolder}\n\n" +
+                    $"Block .dwg files copied: {res.Item2}\n" +
+                    "Accessories were copied together with each fitting.\n" +
+                    "The target project's FittingCatalog.json has been updated.",
+                    "Copy to", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         /// <summary>Sub-BOM / Accessories — dùng chung cho Grid row context menu VÀ Category Sub
         /// Folder/Views context menu. Khi nhiều item đang chọn (multi-view của cùng 1 fitting, hoặc
         /// union nhiều Sub Folder), dùng item ĐẦU TIÊN làm representative (mirror pattern
@@ -710,12 +908,9 @@ namespace MCG_FittingManagement.Views.FittingManagement
             Autodesk.AutoCAD.Internal.Utils.SetFocusToDwgView();
             try
             {
-                string reportPath = _fittingService.InsertFittingTable(projectItems, tableTitle);
-                if (!string.IsNullOrEmpty(reportPath))
-                {
-                    MessageBox.Show($"Fitting Table inserted.\n\nDiagnostic report: {reportPath}",
-                        "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
+                // Bỏ thông báo pop-up sau khi chèn (theo yêu cầu) — report chẩn đoán vẫn được service
+                // ghi ra file nếu cần tra cứu; ở đây chỉ chèn bảng, không hiển thị dialog.
+                _fittingService.InsertFittingTable(projectItems, tableTitle);
             }
             catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
         }
