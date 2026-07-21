@@ -67,7 +67,12 @@ namespace MCG_FittingManagement.Views.FittingManagement
             }
             _instance = new FittingTableWindow(masterService, fittingService);
             _instance.Closed += (_, __) => _instance = null;
-            Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(_instance);
+            // Dùng WPF .Show() THAY cho Application.ShowModelessWindow: ShowModelessWindow gán AutoCAD
+            // làm owner → cửa sổ (owned) LUÔN nổi trên AutoCAD, click vào bản vẽ không đẩy nó ra sau
+            // được (user phải bấm minimize/hide). .Show() (không owner) cho cửa sổ theo z-order chuẩn
+            // Windows → user chỉ cần click vào màn hình CAD là cửa sổ tự lùi ra sau (background). Mở lại
+            // bằng chính lệnh này (Activate ở nhánh trên) hoặc click nút trên taskbar.
+            _instance.Show();
         }
 
         public FittingTableWindow(IMasterLibraryService masterService,

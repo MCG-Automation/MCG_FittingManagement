@@ -4,6 +4,41 @@
 
 ---
 
+## Session 2026-07-20B — Cửa sổ tự lùi ra Background khi click vào CAD
+
+### Bối cảnh
+User (1 màn hình): cửa sổ Fitting Table / BOM che mất bản vẽ, phải bấm minimize/hide mới thấy CAD.
+Mong muốn: chỉ cần CLICK vào màn hình CAD là cửa sổ tự lùi ra sau (background), không cần hide.
+
+### Nguyên nhân
+Cả 2 cửa sổ modeless đều mở qua `Application.ShowModelessWindow(...)` — hàm này gán AutoCAD làm OWNER
+của cửa sổ WPF. Trong Windows, cửa sổ owned LUÔN nổi trên cửa sổ cha → click vào CAD không đẩy nó ra
+sau được. Không có `Topmost` ở đâu (đã grep xác nhận).
+
+### Đã làm
+- **`Views/FittingManagement/Library/FittingTableWindow.xaml.cs`** (`ShowOrActivate`): thay
+  `Application.ShowModelessWindow(_instance)` → `_instance.Show()` (WPF, KHÔNG gán owner AutoCAD) → cửa
+  sổ theo z-order chuẩn Windows, click vào CAD là tự lùi ra sau. Mở lại: rerun lệnh (nhánh Activate) hoặc
+  click nút trên taskbar.
+- **`Views/FittingManagement/FittingHandleView.xaml.cs`**: cùng cách cho `_equipmentBomWin` +
+  `_hullBomWin` (Open Equipment/Hull BOM).
+- `dotnet build -c Debug` — Build succeeded, 0 Error (5 warning MSB3061 do AutoCAD PID 37652 đang khoá
+  DLL cũ — không liên quan code).
+
+### Bước tiếp theo (cần test trong AutoCAD)
+1. Mở Fitting Table / BOM → click vào bản vẽ CAD → verify cửa sổ tự lùi ra SAU (không còn nổi trên CAD).
+2. Kiểm tra bàn phím vẫn gõ được trong ô Search của Fitting Table + các dialog con (VirtualItem,
+   EditPosNum, ImportBomType...). Cửa sổ WPF top-level qua `.Show()` thường vẫn nhận keyboard bình thường
+   (lỗi keyboard chỉ xảy ra khi host WPF trong WinForms/ElementHost/PaletteSet) — nhưng cần xác nhận thực tế.
+
+### Ghi chú API
+- `Application.ShowModelessWindow(Window)` = show modeless + set AutoCAD main window làm owner → owned
+  window luôn trên AutoCAD. Muốn cửa sổ lùi được ra sau thì phải KHÔNG có owner → dùng WPF `.Show()`.
+- Không thể vừa owned (nổi trên CAD) vừa "lùi ra sau khi click CAD" — Win32 ép owned window luôn trên
+  owner, không SetWindowPos xuống dưới owner được. Nên bắt buộc bỏ ownership.
+
+---
+
 ## Session 2026-07-20 — Fitting Table thành tab chính + Add from Inventor/Copy to + doc HTML
 
 ### Đã làm

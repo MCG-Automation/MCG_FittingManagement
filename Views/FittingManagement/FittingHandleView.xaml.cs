@@ -33,7 +33,9 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 }
                 _equipmentBomWin = new BomPreviewWindow(_service, BomMode.Equipment);
                 _equipmentBomWin.Closed += (_, __) => _equipmentBomWin = null;
-                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(_equipmentBomWin);
+                // .Show() thay ShowModelessWindow — xem giải thích ở FittingTableWindow.ShowOrActivate:
+                // để cửa sổ tự lùi ra sau khi user click vào bản vẽ CAD (không bị owned/nổi mãi trên CAD).
+                _equipmentBomWin.Show();
             }
             catch (Exception ex)
             {
@@ -52,7 +54,8 @@ namespace MCG_FittingManagement.Views.FittingManagement
                 }
                 _hullBomWin = new BomPreviewWindow(_service, BomMode.Hull);
                 _hullBomWin.Closed += (_, __) => _hullBomWin = null;
-                Autodesk.AutoCAD.ApplicationServices.Application.ShowModelessWindow(_hullBomWin);
+                // .Show() thay ShowModelessWindow — để cửa sổ tự lùi ra sau khi user click vào bản vẽ CAD.
+                _hullBomWin.Show();
             }
             catch (Exception ex)
             {
